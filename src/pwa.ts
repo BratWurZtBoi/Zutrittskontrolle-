@@ -1,8 +1,6 @@
-import { isNativeApp } from './native/kiosk';
-
-/** Registriert den Service Worker (Offline-Betrieb) – nur im Browser, nicht in der Android-App. */
+/** Registriert den Service Worker: Danach ist die App vollständig auf dem Gerät gespeichert und läuft offline. */
 export async function setupPwa(): Promise<void> {
-  if (isNativeApp() || !('serviceWorker' in navigator) || import.meta.env.DEV) return;
+  if (!('serviceWorker' in navigator) || import.meta.env.DEV) return;
   const { registerSW } = await import('virtual:pwa-register');
   registerSW({ immediate: true });
 }
@@ -13,6 +11,14 @@ export async function requestPersistentStorage(): Promise<boolean | undefined> {
     if (!navigator.storage?.persist) return undefined;
     if (await navigator.storage.persisted()) return true;
     return await navigator.storage.persist();
+  } catch {
+    return undefined;
+  }
+}
+
+export async function isStoragePersisted(): Promise<boolean | undefined> {
+  try {
+    return navigator.storage?.persisted ? await navigator.storage.persisted() : undefined;
   } catch {
     return undefined;
   }
