@@ -28,6 +28,10 @@ Android-Tablets und einem Windows-Laptop mit Webcam.
 
 ## Veröffentlichung
 
+- **Arbeitsablauf (vom Nutzer so gewünscht):** auf dem Arbeitsbranch entwickeln, nach jedem
+  abgeschlossenen, geprüften Schritt einen **Pull Request nach `main` erstellen und ihn direkt
+  selbst mergen** (Merge-Commit, kein Squash, damit der Branch weiter nutzbar bleibt).
+  Danach den Deploy-Lauf in GitHub Actions prüfen.
 - `.github/workflows/deploy.yml`: jeder Push → Typen, Tests, Build. Push auf `main` → GitHub Pages.
 - App-Adresse: https://bratwurztboi.github.io/Zutrittskontrolle-/ – Adresse nicht ändern,
   da die lokalen Daten an die Herkunft (Origin) gebunden sind.
