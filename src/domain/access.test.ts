@@ -78,6 +78,45 @@ describe('decideAccess', () => {
   });
 });
 
+describe('Bestätigung durch den Bediener', () => {
+  const confirmGroup: GroupRules = { ...okGroup, requireConfirmation: true };
+
+  it('wartet beim Eintritt auf Bestätigung, wenn jemand bestätigen kann', () => {
+    expect(decideAccess(input({ group: confirmGroup, confirmation: 'operator' }))).toEqual({
+      outcome: 'pending',
+      reason: 'CONFIRMATION_REQUIRED',
+      direction: 'in',
+    });
+  });
+
+  it('weist ab, wenn niemand bestätigen kann (Kiosk)', () => {
+    expect(decideAccess(input({ group: confirmGroup }))).toEqual({ outcome: 'denied', reason: 'CONFIRMATION_REQUIRED', direction: 'in' });
+  });
+
+  it('bucht nach erteilter Bestätigung', () => {
+    expect(decideAccess(input({ group: confirmGroup, confirmation: 'confirmed' })).outcome).toBe('granted');
+  });
+
+  it('Ausgang braucht keine Bestätigung', () => {
+    const present = { status: 'in' as const, lastBookingAt: 0 };
+    expect(decideAccess(input({ group: confirmGroup, confirmation: 'operator', presence: present }))).toEqual({
+      outcome: 'granted',
+      reason: 'OK',
+      direction: 'out',
+    });
+  });
+
+  it('andere Ablehnungsgründe gehen vor – gesperrte Karten landen nicht beim Bediener', () => {
+    expect(decideAccess(input({ group: confirmGroup, confirmation: 'operator', card: { ...okCard, accessGranted: false } })).reason).toBe(
+      'NO_PERMISSION',
+    );
+  });
+
+  it('Gruppen ohne Bestätigungspflicht bleiben automatisch', () => {
+    expect(decideAccess(input({ confirmation: 'operator' })).outcome).toBe('granted');
+  });
+});
+
 describe('cardStatus', () => {
   it('liefert den passenden Status', () => {
     expect(cardStatus(okCard, okGroup, now)).toBe('active');

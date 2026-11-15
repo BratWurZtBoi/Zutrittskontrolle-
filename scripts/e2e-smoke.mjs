@@ -333,7 +333,7 @@ try {
   await csvDownload.saveAs(csvPath);
   const csv = readFileSync(csvPath, 'utf8');
   check(/^zutritt-aktionen-\d{4}-\d{2}-\d{2}\.csv$/.test(csvDownload.suggestedFilename()), 'CSV-Export: Dateiname mit Datum');
-  check(csv.startsWith('\uFEFFDatum;Uhrzeit;Karte;Name;Gruppe;Richtung;Ergebnis;Grund;Quelle\r\n'), 'CSV-Export: Excel-Format (BOM, Semikolon)');
+  check(csv.startsWith('\uFEFFDatum;Uhrzeit;Karte;Name;Gruppe;Richtung;Ergebnis;Grund;Quelle;Bestätigt von\r\n'), 'CSV-Export: Excel-Format (BOM, Semikolon)');
   check(csv.includes('Berta Besuch') && csv.split('\r\n').length === 10, 'CSV-Export: 8 Aktionen mit Namen');
 
   console.log('12) Backup erstellen, Daten löschen, Backup einspielen');
@@ -484,6 +484,86 @@ try {
   console.log('  ✓ PDF erzeugt: .e2e/karten.pdf');
   await page.goto(`${URL}#/einstellungen`);
   await page.getByLabel('Darstellung').selectOption('auto');
+
+  console.log('17b) Bestätigung von Eintritten und Bediener-PIN');
+  await page.setViewportSize({ width: 1536, height: 780 });
+  await page.goto(`${URL}#/einstellungen`);
+  await page.getByLabel(/Neue PIN/).fill('482913');
+  await page.getByLabel('PIN wiederholen').fill('482913');
+  await page.getByRole('button', { name: 'PIN speichern' }).click();
+  await page.getByText('Bediener-Zugang eingerichtet.').waitFor();
+  check(true, 'Bediener-PIN eingerichtet');
+  await page.goto(`${URL}#/einstellungen/gruppen`);
+  await page.locator('.group-list li', { hasText: 'Besucher' }).getByRole('button', { name: 'Bearbeiten' }).click();
+  await page.getByLabel(/Eintritt muss bestätigt werden/).check();
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.locator('.group-list li', { hasText: 'Besucher' }).getByText('Eintritt wird bestätigt').waitFor();
+  check(true, 'Gruppe Besucher: Eintritt muss bestätigt werden');
+
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-status').getByRole('radio', { name: 'Eingang' }).click();
+  await page.locator('.dash-side .test-panel').evaluate((d) => (d.open = true));
+  const optionValue = (name) => page.locator('.dash-side .test-panel select option', { hasText: name }).getAttribute('value');
+  const felix = await optionValue('Anna Import');
+  const eventsBefore = (await readStore(page, 'events')).length;
+  await page.locator('.dash-side .test-panel select').selectOption(felix);
+  await page.locator('.dash-side').getByRole('button', { name: 'Karte scannen' }).click();
+  await page.locator('.pending-panel').waitFor();
+  check((await page.locator('.pending-panel').textContent()).includes('Anna Import'), 'Dashboard: Anfrage „Bestätigung erforderlich“ mit Name');
+  check((await readStore(page, 'events')).length === eventsBefore, 'Vor der Bestätigung wird nichts gebucht');
+  await page.screenshot({ path: `${OUT}/20-bestaetigung.png` });
+  await page.locator('body').click({ position: { x: 900, y: 600 } }); // Fokus aus dem Auswahlfeld nehmen
+  await page.keyboard.press('Enter');
+  await page.locator('.pending-panel').waitFor({ state: 'detached' });
+  await page.locator('.result-panel.fresh', { hasText: 'Willkommen' }).waitFor();
+  const felixEvent = (await readStore(page, 'events')).at(-1);
+  check(felixEvent?.outcome === 'granted' && felixEvent?.confirmedBy === 'admin', 'Enter = Einlassen, im Protokoll als bestätigt vermerkt');
+
+  const mia = await optionValue('Clara Import');
+  await page.locator('.dash-side .test-panel select').selectOption(mia);
+  await page.locator('.dash-side').getByRole('button', { name: 'Karte scannen' }).click();
+  await page.locator('.pending-panel').waitFor();
+  await page.locator('body').click({ position: { x: 900, y: 600 } });
+  await page.keyboard.press('Escape');
+  await page.locator('.result-panel.fresh', { hasText: 'Kein Zutritt' }).waitFor();
+  check((await page.locator('.result-panel').textContent()).includes('Vom Empfang abgewiesen'), 'Esc = Abweisen');
+  await page.locator('.dash-status').getByRole('radio', { name: 'Automatisch' }).click();
+
+  await page.goto(`${URL}#/`);
+  await page.locator('.scanner-page .test-panel').evaluate((d) => (d.open = true));
+  await page.locator('.scanner-page .test-panel select').selectOption(mia);
+  await page.locator('.scanner-page').getByRole('button', { name: 'Karte scannen' }).click();
+  await page.locator('.result-overlay').waitFor();
+  check((await page.locator('.result-overlay').textContent()).includes('am Empfang melden'), 'Kiosk-Scanner ohne Bediener: „Bitte am Empfang melden“');
+  await page.locator('.result-overlay').click();
+  await page.locator('.result-overlay').waitFor({ state: 'detached' });
+
+  // Bediener-Anmeldung
+  await page.getByRole('button', { name: 'Abmelden' }).click();
+  await page.getByRole('link', { name: 'Verwaltung' }).waitFor();
+  await page.getByRole('link', { name: 'Verwaltung' }).click();
+  await page.getByRole('heading', { name: 'Anmelden' }).waitFor();
+  await page.screenshot({ path: `${OUT}/21-anmelden-bediener.png` });
+  await page.getByLabel('Bediener-PIN').fill('111111');
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await page.getByText('Die PIN ist falsch.').waitFor();
+  await page.getByLabel('Bediener-PIN').fill('482913');
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await page.locator('.dashboard').waitFor();
+  check((await page.locator('.role-badge').textContent()) === 'Bediener', 'Bediener mit PIN angemeldet – Dashboard geöffnet');
+  const navText = await page.locator('.app-nav').textContent();
+  check(!navText.includes('Karten') && !navText.includes('Einstellungen') && navText.includes('Übersicht'), 'Bediener sieht nur Dashboard und Übersicht');
+  check((await page.locator('.dash-side .test-panel').count()) === 0, 'Testmodus bleibt dem Admin vorbehalten');
+  await page.goto(`${URL}#/uebersicht`);
+  await page.locator('.data-table tbody tr').first().waitFor();
+  check((await page.getByRole('button', { name: /CSV-Export/ }).count()) === 0, 'Bediener: kein CSV-Export');
+  await page.goto(`${URL}#/karten`);
+  await page.getByText('Diese Seite ist nur für den Admin').waitFor();
+  check(page.url().includes('#/anmelden'), 'Bediener: Karten nur mit Admin-Passwort');
+  await page.getByLabel('Admin-Passwort').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await page.locator('.card-row').first().waitFor();
+  check((await page.locator('.role-badge').count()) === 0, 'Admin-Anmeldung aus der Bediener-Sitzung heraus');
 
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);

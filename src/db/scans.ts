@@ -1,7 +1,7 @@
-import { decideAccess, type Decision } from '../domain/access';
+import { decideAccess, type ConfirmationContext, type Decision } from '../domain/access';
 import { parseCardPayload } from '../domain/cardCode';
 import { holderName } from '../domain/texts';
-import type { AccessEvent, AccessEventRecord, Card, Group, ScanMode } from '../domain/types';
+import type { AccessEvent, AccessEventRecord, Card, CardRecord, Group, ScanMode, StaffRole } from '../domain/types';
 import { decryptText } from '../security/crypto';
 import { cachedDecrypt } from '../security/decryptCache';
 import { getDataKey } from '../security/session';
@@ -13,6 +13,8 @@ export interface ScanOptions {
   cooldownMs: number;
   source: AccessEventRecord['source'];
   now?: Date;
+  /** Kann hier jemand Eintritte bestätigen? ('operator' = Dashboard, Standard 'none' = Kiosk) */
+  confirmation?: Exclude<ConfirmationContext, 'confirmed'>;
 }
 
 export interface ScanOutcome {
@@ -20,7 +22,7 @@ export interface ScanOutcome {
   /** Karte – Personendaten nur, wenn die Daten entsperrt sind. */
   card?: Card;
   group?: Group;
-  /** Protokolleintrag (fehlt bei Doppelscans – diese werden nicht gebucht). */
+  /** Protokolleintrag (fehlt bei Doppelscans und wartenden Scans – diese werden nicht gebucht). */
   event?: AccessEventRecord;
   at: number;
 }
@@ -47,38 +49,97 @@ export async function processScan(text: string, opts: ScanOptions): Promise<Scan
     const group = record ? await db.groups.get(record.groupId) : undefined;
     const presence = record ? await db.presence.get(record.id) : undefined;
     const decision = decideAccess({
-      card: record ? { ...record, hasHolder: Boolean(record.holderEnc || record.holder) } : undefined,
+      card: record ? { ...record, hasHolder: hasHolderRecord(record) } : undefined,
       group,
       presence,
       mode: opts.mode,
       now,
       cooldownMs: opts.cooldownMs,
+      confirmation: opts.confirmation ?? 'none',
     });
 
-    if (decision.outcome === 'duplicate') return { decision, record, group, event: undefined };
+    // Doppelscans und wartende Eintritte werden (noch) nicht gebucht
+    if (decision.outcome === 'duplicate' || decision.outcome === 'pending') return { decision, record, group, event: undefined };
 
-    const event: AccessEventRecord = {
-      timestamp: at,
-      outcome: decision.outcome,
-      direction: decision.direction,
-      reason: decision.reason,
-      cardId: record?.id,
-      cardNumber: record?.number,
-      groupId: record?.groupId,
-      groupName: group?.name,
-      holderNameEnc: record?.nameEnc,
-      holderName: record && !record.nameEnc ? holderName(record.holder) : undefined,
-      source: opts.source,
-    };
-    event.seq = await db.events.add(event);
-
-    if (record && decision.outcome === 'granted' && decision.direction) {
-      await db.presence.put({ cardId: record.id, status: decision.direction, lastBookingAt: at });
-    }
+    const event = await book(decision, record, group, at, opts.source);
     return { decision, record, group, event };
   });
 
   // Entschlüsseln erst nach der Transaktion
+  const card = result.record ? await toCard(result.record) : undefined;
+  return { decision: result.decision, card, group: result.group, event: result.event, at };
+}
+
+function hasHolderRecord(record: CardRecord): boolean {
+  return Boolean(record.holderEnc || record.holder);
+}
+
+/** Protokolleintrag schreiben und Anwesenheit aktualisieren (innerhalb einer Transaktion aufrufen). */
+async function book(
+  decision: Decision,
+  record: CardRecord | undefined,
+  group: Group | undefined,
+  at: number,
+  source: AccessEventRecord['source'],
+  confirmedBy?: StaffRole,
+): Promise<AccessEventRecord> {
+  const event: AccessEventRecord = {
+    timestamp: at,
+    outcome: decision.outcome === 'granted' ? 'granted' : 'denied',
+    direction: decision.direction,
+    reason: decision.reason,
+    cardId: record?.id,
+    cardNumber: record?.number,
+    groupId: record?.groupId,
+    groupName: group?.name,
+    holderNameEnc: record?.nameEnc,
+    holderName: record && !record.nameEnc ? holderName(record.holder) : undefined,
+    source,
+    ...(confirmedBy ? { confirmedBy } : {}),
+  };
+  event.seq = await db.events.add(event);
+  if (record && decision.outcome === 'granted' && decision.direction) {
+    await db.presence.put({ cardId: record.id, status: decision.direction, lastBookingAt: at });
+  }
+  return event;
+}
+
+export type PendingAction = 'accept' | 'reject' | 'timeout';
+
+/**
+ * Entscheidet über einen wartenden Eintritt. „Einlassen“ prüft die Karte erneut
+ * (sie könnte inzwischen gesperrt worden sein) und bucht dann den Eintritt.
+ * Abweisen und Zeitablauf werden protokolliert.
+ */
+export async function resolvePendingScan(
+  pending: ScanOutcome,
+  action: PendingAction,
+  opts: { by: StaffRole; source: AccessEventRecord['source']; now?: Date },
+): Promise<ScanOutcome> {
+  const now = opts.now ?? new Date();
+  const at = now.getTime();
+  const cardId = pending.card?.id;
+  const result = await db.transaction('rw', [db.cards, db.groups, db.presence, db.events], async () => {
+    const record = cardId ? await db.cards.get(cardId) : undefined;
+    const group = record ? await db.groups.get(record.groupId) : undefined;
+    let decision: Decision;
+    if (action === 'accept') {
+      const presence = record ? await db.presence.get(record.id) : undefined;
+      decision = decideAccess({
+        card: record ? { ...record, hasHolder: hasHolderRecord(record) } : undefined,
+        group,
+        presence,
+        mode: 'in',
+        now,
+        cooldownMs: 0,
+        confirmation: 'confirmed',
+      });
+    } else {
+      decision = { outcome: 'denied', reason: action === 'reject' ? 'REJECTED' : 'CONFIRMATION_TIMEOUT', direction: 'in' };
+    }
+    const event = await book(decision, record, group, at, opts.source, action === 'timeout' ? undefined : opts.by);
+    return { decision, record, group, event };
+  });
   const card = result.record ? await toCard(result.record) : undefined;
   return { decision: result.decision, card, group: result.group, event: result.event, at };
 }

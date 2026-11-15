@@ -40,8 +40,10 @@ describe('CSV', () => {
       source: 'camera',
     };
     const lines = eventsToCsv([e]).slice(1).split('\r\n');
-    expect(lines[0]).toBe('Datum;Uhrzeit;Karte;Name;Gruppe;Richtung;Ergebnis;Grund;Quelle');
-    expect(lines[1]).toBe('15.06.2026;08:05:09;M-006;Paul Platzhalter;Bestandspersonal;Eingang;abgewiesen;Diese Karte ist gesperrt.;Kamera');
+    expect(lines[0]).toBe('Datum;Uhrzeit;Karte;Name;Gruppe;Richtung;Ergebnis;Grund;Quelle;Bestätigt von');
+    expect(lines[1]).toBe('15.06.2026;08:05:09;M-006;Paul Platzhalter;Bestandspersonal;Eingang;abgewiesen;Diese Karte ist gesperrt.;Kamera;');
+    const confirmed = eventsToCsv([{ ...e, outcome: 'granted', reason: 'OK', confirmedBy: 'operator' }]).slice(1).split('\r\n');
+    expect(confirmed[1]?.endsWith(';erfasst;;Kamera;Bediener')).toBe(true);
   });
 
   it('exportiert den Anwesenheitsstatus', () => {

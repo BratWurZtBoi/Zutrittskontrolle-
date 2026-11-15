@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { CameraSelect } from '../components/CameraSelect';
 import { DashStatusBar } from '../components/DashStatusBar';
 import { EventTable } from '../components/EventTable';
+import { PendingPanel, usePendingShortcuts } from '../components/PendingPanel';
 import { ResultPanel } from '../components/ScanResult';
 import { StatusTable } from '../components/StatusTable';
 import { TestScanPanel } from '../components/TestScanPanel';
@@ -26,6 +27,7 @@ import { useRangeEvents, useStatusRows } from '../hooks/useOverviewData';
 import { useKeepScreenOn, useScanProcessor } from '../hooks/useScanProcessor';
 import { useSort } from '../hooks/useSort';
 import { CameraScanner } from '../scanner/CameraScanner';
+import { useSecurity } from '../security/useSecurity';
 
 type DashTab = 'presence' | 'events' | 'denied';
 
@@ -34,8 +36,10 @@ type DashTab = 'presence' | 'events' | 'denied';
  * Scan-Ergebnis links, rechts eine Liste mit Reitern. Nur die Seite scrollt.
  */
 export function DashboardPage() {
-  const { settings, result, handleText, onCamera } = useScanProcessor();
+  const { settings, result, handleText, onCamera, pending, resolvePending } = useScanProcessor({ confirm: true });
+  usePendingShortcuts(pending, resolvePending);
   useKeepScreenOn();
+  const { admin } = useSecurity();
   const groups = useLiveQuery(listGroups, [], []);
   const stats = useDashboardStats();
   const [tab, setTab] = useState<DashTab>('presence');
@@ -45,11 +49,12 @@ export function DashboardPage() {
       <DashStatusBar settings={settings} stats={stats} groups={groups} onShow={setTab} />
       <aside className="dash-side" aria-label="Scanner">
         <DashCamera settings={settings} onCode={onCamera} />
+        <PendingPanel pending={pending} onResolve={(id, action) => void resolvePending(id, action)} />
         <ResultPanel result={result} highlightSec={settings.resultDisplaySec} />
         <RecentScans />
-        {settings.testMode && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
+        {settings.testMode && admin && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
       </aside>
-      <DashList tab={tab} onTab={setTab} groups={groups} />
+      <DashList tab={tab} onTab={setTab} groups={groups} linkRows={admin} />
     </div>
   );
 }
@@ -150,7 +155,15 @@ const RANGES: { value: RangePreset; label: string }[] = [
   { value: 'all', label: 'Gesamter Zeitraum' },
 ];
 
-function DashList({ tab, onTab, groups }: { tab: DashTab; onTab: (t: DashTab) => void; groups: Group[] }) {
+interface DashListProps {
+  tab: DashTab;
+  onTab: (t: DashTab) => void;
+  groups: Group[];
+  /** Zeilen öffnen die Karte (nur für den Admin). */
+  linkRows: boolean;
+}
+
+function DashList({ tab, onTab, groups, linkRows }: DashListProps) {
   // Suche und Gruppe gelten für alle Reiter
   const [query, setQuery] = useState('');
   const [groupId, setGroupId] = useState('');
@@ -293,7 +306,7 @@ function DashList({ tab, onTab, groups }: { tab: DashTab; onTab: (t: DashTab) =>
 
       <div role="tabpanel" className="dash-list-body">
         {tab === 'presence' ? (
-          rows && <StatusTable rows={presenceRows} sort={presenceSort} compact showStatus={presenceStatus !== 'present'} />
+          rows && <StatusTable rows={presenceRows} sort={presenceSort} compact showStatus={presenceStatus !== 'present'} linkRows={linkRows} />
         ) : (
           raw && (
             <EventTable

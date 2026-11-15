@@ -1970,3 +1970,100 @@ table.data-table {
   opacity: 0.7;
 }
 
+
+/* ---------- Bediener-Rolle & Bestätigung ---------- */
+
+.role-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #111827;
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.auth-switch {
+  align-self: flex-start;
+}
+.checkbox-hint {
+  margin: -0.25rem 0 0.5rem 2rem;
+}
+.pending-panel {
+  padding: 0.75rem;
+  border: 3px solid var(--warn);
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  color: var(--text);
+  animation: pop 0.18s ease-out;
+}
+.pending-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: var(--warn-text);
+}
+.pending-who {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 0.6rem 0;
+}
+.pending-photo {
+  width: 96px;
+  height: 120px;
+  flex: none;
+  font-size: 1.8rem;
+  border-radius: 10px;
+}
+.pending-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.pending-name {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.pending-note {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.pending-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.pending-actions .btn {
+  flex-direction: column;
+  gap: 0;
+  min-height: 56px;
+  border: 0;
+  color: #fff;
+  font-size: 1.05rem;
+}
+.pending-actions small {
+  font-weight: 500;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+.pending-accept {
+  background: var(--ok);
+}
+.pending-reject {
+  background: var(--danger);
+}
+.pending-more {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--warn-text);
+}
+.badge-confirmed {
+  margin-left: 0.3rem;
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}

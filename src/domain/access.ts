@@ -7,7 +7,15 @@ import type { Card, Direction, Group, Outcome, PresenceRecord, ReasonCode, ScanM
 export type CardRules = Pick<Card, 'accessGranted' | 'blocked' | 'validFrom' | 'validUntil'> & {
   hasHolder: boolean;
 };
-export type GroupRules = Pick<Group, 'accessGranted' | 'allowUnassigned'>;
+export type GroupRules = Pick<Group, 'accessGranted' | 'allowUnassigned'> & Partial<Pick<Group, 'requireConfirmation'>>;
+
+/**
+ * Wie mit Gruppen umgehen, deren Eintritt bestätigt werden muss:
+ * - 'operator': jemand kann bestätigen (Dashboard) → Ergebnis „wartet auf Bestätigung“
+ * - 'none': niemand kann bestätigen (Kiosk-Scanner) → abweisen mit Hinweis
+ * - 'confirmed': wurde gerade bestätigt → normal buchen
+ */
+export type ConfirmationContext = 'operator' | 'none' | 'confirmed';
 
 export interface AccessInput {
   /** Karte zum gescannten Token, undefined = unbekannter Ausweis. */
@@ -18,6 +26,8 @@ export interface AccessInput {
   now: Date;
   /** Doppelscan-Schutz: Mindestabstand zwischen zwei Buchungen derselben Karte. */
   cooldownMs: number;
+  /** Standard: 'none'. Wirkt nur bei Gruppen mit Bestätigungspflicht. */
+  confirmation?: ConfirmationContext;
 }
 
 export interface Decision {
@@ -41,7 +51,7 @@ export function entryBlocker(card: CardRules, group: GroupRules | undefined, now
 }
 
 export function decideAccess(input: AccessInput): Decision {
-  const { card, group, presence, mode, now, cooldownMs } = input;
+  const { card, group, presence, mode, now, cooldownMs, confirmation = 'none' } = input;
 
   if (!card) return { outcome: 'denied', reason: 'UNKNOWN_CARD' };
   if (card.blocked) return { outcome: 'denied', reason: 'CARD_BLOCKED' };
@@ -66,6 +76,13 @@ export function decideAccess(input: AccessInput): Decision {
   if (direction === 'in') {
     const blocker = entryBlocker(card, group, now);
     if (blocker) return { outcome: 'denied', reason: blocker, direction };
+    // Bestätigungspflicht erst nach allen anderen Prüfungen: Abgewiesene Karten
+    // landen gar nicht erst beim Bediener.
+    if (group?.requireConfirmation && confirmation !== 'confirmed') {
+      return confirmation === 'operator'
+        ? { outcome: 'pending', reason: 'CONFIRMATION_REQUIRED', direction }
+        : { outcome: 'denied', reason: 'CONFIRMATION_REQUIRED', direction };
+    }
   }
 
   return { outcome: 'granted', reason: 'OK', direction };

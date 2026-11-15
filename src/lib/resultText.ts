@@ -20,6 +20,9 @@ export function describeOutcome(result: ScanOutcome): ResultText {
       detail: `${directionText(decision.direction)} wurde vor ${decision.secondsSinceLast ?? 0} s gebucht – Scan ignoriert.`,
     };
   }
+  if (decision.outcome === 'pending') {
+    return { tone: 'warn', title: 'Bitte kurz warten', detail: 'Ihr Eintritt wird gleich bestätigt.' };
+  }
   if (decision.outcome === 'denied') return { tone: 'deny', title: 'Kein Zutritt', detail: reasonText(decision.reason, card) };
   const detail = `${directionText(decision.direction)} gebucht · ${formatTime(result.at)} Uhr`;
   return decision.direction === 'out'

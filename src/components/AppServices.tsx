@@ -33,9 +33,9 @@ export function AppServices() {
   }, []);
 
   useEffect(() => {
-    const t = window.setInterval(() => checkAutoLogout(settings.autoLogoutMin), 20_000);
+    const t = window.setInterval(() => checkAutoLogout(settings.autoLogoutMin, Date.now(), settings.operatorAutoLogoutMin), 20_000);
     return () => window.clearInterval(t);
-  }, [settings.autoLogoutMin]);
+  }, [settings.autoLogoutMin, settings.operatorAutoLogoutMin]);
 
   useEffect(() => {
     applyTheme(settings.theme);

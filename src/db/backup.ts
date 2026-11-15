@@ -24,7 +24,7 @@ import {
 } from '../security/crypto';
 import { getDataKey } from '../security/session';
 import { toCard } from './cards';
-import { ValidationError, VAULT_KEY, db } from './db';
+import { DEVICE_SECRET_KEYS, ValidationError, db } from './db';
 import { toEvent } from './scans';
 import { loadSettings, type AppSettings } from './settings';
 
@@ -32,7 +32,17 @@ export const BACKUP_FORMAT = 'zutrittskontrolle-backup';
 export const BACKUP_VERSION = 1;
 
 /** Einstellungen, die mitgesichert werden (gerätebezogene wie Kamera bleiben auf dem Gerät). */
-const PORTABLE_SETTINGS = ['orgName', 'scanMode', 'cooldownSec', 'resultDisplaySec', 'sound', 'autoLogoutMin', 'retentionDays'] as const;
+const PORTABLE_SETTINGS = [
+  'orgName',
+  'scanMode',
+  'cooldownSec',
+  'resultDisplaySec',
+  'sound',
+  'autoLogoutMin',
+  'operatorAutoLogoutMin',
+  'confirmTimeoutSec',
+  'retentionDays',
+] as const;
 type PortableSettings = Partial<Pick<AppSettings, (typeof PORTABLE_SETTINGS)[number]>>;
 
 export type BackupCard = Omit<CardRecord, 'holderEnc' | 'nameEnc' | 'holder'> & { holder?: CardHolder };
@@ -271,7 +281,7 @@ export async function restoreBackup(payload: BackupPayload): Promise<BackupSumma
   // 2. Alles in einer Transaktion ersetzen
   await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings], async () => {
     await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear()]);
-    await db.settings.where('key').notEqual(VAULT_KEY).delete();
+    await db.settings.where('key').noneOf(DEVICE_SECRET_KEYS).delete();
     await db.groups.bulkAdd(payload.groups);
     await db.cards.bulkAdd(cards);
     await db.events.bulkAdd(events);

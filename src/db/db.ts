@@ -60,15 +60,19 @@ export class ValidationError extends Error {
 
 /** Schlüssel des Passwort-Tresors in der Einstellungstabelle. */
 export const VAULT_KEY = 'vault';
+/** Prüfwert der Bediener-PIN in der Einstellungstabelle. */
+export const OPERATOR_PIN_KEY = 'operatorPin';
+/** Gerätebezogene Zugangsdaten – bleiben bei „Alle Daten löschen“ und beim Einspielen eines Backups erhalten. */
+export const DEVICE_SECRET_KEYS = [VAULT_KEY, OPERATOR_PIN_KEY];
 
 /**
  * Löscht alle Daten (Karten, Gruppen, Protokoll, Anwesenheit, Einstellungen).
- * Das Admin-Passwort bleibt erhalten, außer `includePassword` ist gesetzt.
+ * Admin-Passwort und Bediener-PIN bleiben erhalten, außer `includePassword` ist gesetzt.
  */
 export async function clearAllData(includePassword = false): Promise<void> {
   await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings], async () => {
     await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear()]);
     if (includePassword) await db.settings.clear();
-    else await db.settings.where('key').notEqual(VAULT_KEY).delete();
+    else await db.settings.where('key').noneOf(DEVICE_SECRET_KEYS).delete();
   });
 }

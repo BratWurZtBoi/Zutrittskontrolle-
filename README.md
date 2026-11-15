@@ -27,6 +27,11 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   (verschlüsseltem) Namen protokolliert.
 - **Abmelden** beendet die Verwaltung, der Scanner zeigt weiter Namen. **Jetzt sperren** blendet
   auch im Scanner Namen und Fotos aus. Automatische Abmeldung nach Inaktivität (Standard 15 Min.).
+- **Bediener-PIN** (*Einstellungen → Bediener & Bestätigung*): eingeschränkter Zugang für den
+  Empfang – nur Dashboard und Übersicht, Eintritte bestätigen, „Alle ausbuchen“. Karten, Gruppen,
+  CSV-Export, Testmodus und Einstellungen bleiben dem Admin vorbehalten. Die PIN entschlüsselt
+  nichts: Nach einem Neustart entsperrt der Admin die Daten einmal mit dem Passwort, danach kann
+  sich der Bediener mit der PIN anmelden. Eigene automatische Abmeldung (Standard: nie).
 - **Löschfrist:** Protokolleinträge werden automatisch gelöscht (Standard 90 Tage, einstellbar).
 - **Testmodus** (Scans simulieren) ist standardmäßig aus und nur für angemeldete Admins sichtbar.
 - **Content Security Policy:** Der Browser verhindert technisch, dass die App Daten an fremde
@@ -52,6 +57,19 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - **Übersicht → Aktionen:** Zutrittsprotokoll mit Zeitraum (heute, gestern, 7/30 Tage, frei
   wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche und Sortierung.
 - Der **Vollbild-Scanner** bleibt als Kiosk-Modus für Geräte am Eingang (ohne Anmeldung nutzbar).
+
+### Eintritt bestätigen (je Gruppe)
+
+- *Einstellungen → Gruppen verwalten → Bearbeiten*: **„Eintritt muss bestätigt werden“**.
+  Ohne Häkchen wird wie bisher automatisch eingelassen.
+- Mit Häkchen erscheint beim Scan im Dashboard eine Anfrage mit großem Foto, Name, Firma und
+  Notiz: **Einlassen** (Taste **Enter**) oder **Abweisen** (Taste **Esc**). Der Gast sieht auf dem
+  Präsentationsbildschirm „Bitte kurz warten“. Gebucht wird erst nach der Bestätigung.
+- Mehrere Anfragen werden der Reihe nach angezeigt. Unbeantwortete Anfragen verfallen nach
+  90 Sekunden (einstellbar). Bestätigen, Abweisen und Verfallen stehen im Protokoll
+  („bestätigt“, CSV-Spalte „Bestätigt von“).
+- Am Kiosk-Scanner (ohne Bediener) werden solche Karten abgewiesen: „Bitte am Empfang melden“.
+- Das Ausbuchen bleibt immer automatisch.
 
 ### Präsentationsansicht für Gäste (2. Bildschirm)
 

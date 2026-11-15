@@ -19,12 +19,17 @@ export interface Group {
   allowUnassigned: boolean;
   /** Name und Foto der Person werden auf die Karte gedruckt. */
   printHolder: boolean;
+  /** Eintritt muss am Dashboard vom Admin/Bediener bestätigt werden (sonst automatisch). */
+  requireConfirmation?: boolean;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;
 }
 
-export type GroupInput = Pick<Group, 'name' | 'color' | 'prefix' | 'accessGranted' | 'allowUnassigned' | 'printHolder'>;
+export type GroupInput = Pick<
+  Group,
+  'name' | 'color' | 'prefix' | 'accessGranted' | 'allowUnassigned' | 'printHolder' | 'requireConfirmation'
+>;
 
 /** Personendaten hinter einer Karte – jederzeit änderbar oder entfernbar. */
 export interface CardHolder {
@@ -99,9 +104,19 @@ export type ReasonCode =
   | 'UNASSIGNED'
   | 'NOT_YET_VALID'
   | 'EXPIRED'
-  | 'DUPLICATE';
+  | 'DUPLICATE'
+  /** Eintritt muss bestätigt werden, aber hier ist niemand zum Bestätigen (Kiosk-Scanner). */
+  | 'CONFIRMATION_REQUIRED'
+  /** Vom Admin/Bediener abgewiesen. */
+  | 'REJECTED'
+  /** Nicht rechtzeitig bestätigt. */
+  | 'CONFIRMATION_TIMEOUT';
 
-export type Outcome = 'granted' | 'denied' | 'duplicate';
+/** 'pending' = wartet auf Bestätigung durch den Bediener (noch nicht gebucht). */
+export type Outcome = 'granted' | 'denied' | 'duplicate' | 'pending';
+
+/** Wer eine Bestätigung erteilt bzw. abgelehnt hat. */
+export type StaffRole = 'admin' | 'operator';
 
 /** Protokolleintrag, wie er in der Datenbank liegt. */
 export interface AccessEventRecord {
@@ -122,6 +137,8 @@ export interface AccessEventRecord {
   holderName?: string;
   /** 'system' = automatische Buchung, z. B. beim Zurückgeben einer Karte. */
   source: 'camera' | 'test' | 'system';
+  /** Eintritt wurde vom Admin/Bediener bestätigt bzw. abgewiesen. */
+  confirmedBy?: StaffRole;
 }
 
 /** Protokolleintrag für die Oberfläche. */

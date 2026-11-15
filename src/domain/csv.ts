@@ -32,7 +32,7 @@ const SOURCE: Record<AccessEvent['source'], string> = { camera: 'Kamera', test: 
 
 export function eventsToCsv(events: AccessEvent[]): string {
   return toCsv([
-    ['Datum', 'Uhrzeit', 'Karte', 'Name', 'Gruppe', 'Richtung', 'Ergebnis', 'Grund', 'Quelle'],
+    ['Datum', 'Uhrzeit', 'Karte', 'Name', 'Gruppe', 'Richtung', 'Ergebnis', 'Grund', 'Quelle', 'Bestätigt von'],
     ...events.map((e) => [
       date(e.timestamp),
       time(e.timestamp),
@@ -43,6 +43,7 @@ export function eventsToCsv(events: AccessEvent[]): string {
       e.outcome === 'granted' ? 'erfasst' : 'abgewiesen',
       e.outcome === 'granted' ? '' : reasonText(e.reason),
       SOURCE[e.source],
+      e.confirmedBy === 'admin' ? 'Admin' : e.confirmedBy === 'operator' ? 'Bediener' : '',
     ]),
   ]);
 }

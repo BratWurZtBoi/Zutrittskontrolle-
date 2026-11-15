@@ -14,6 +14,8 @@ interface Props {
   compact?: boolean;
   /** Nur kompakt: Statusspalte zeigen (sinnvoll, wenn auch Abwesende gelistet sind). */
   showStatus?: boolean;
+  /** Zeile antippen öffnet die Karte (Standard; für Bediener abgeschaltet). */
+  linkRows?: boolean;
   limit?: number;
 }
 
@@ -25,8 +27,10 @@ function nameText(row: StatusRow) {
 }
 
 /** Tabelle: wer ist anwesend, wer nicht – seit wann. Zeile antippen öffnet die Karte. */
-export function StatusTable({ rows, sort, compact = false, showStatus = true, limit }: Props) {
+export function StatusTable({ rows, sort, compact = false, showStatus = true, linkRows = true, limit }: Props) {
   const navigate = useNavigate();
+  const rowProps = (cardId: string) =>
+    linkRows ? { className: 'clickable', onClick: () => navigate(`/karten/${cardId}`) } : {};
   const sorted = sortStatusRows(rows, sort.key, sort.dir);
   const shown = limit ? sorted.slice(0, limit) : sorted;
   const now = new Date();
@@ -49,7 +53,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
           </thead>
           <tbody>
             {shown.map((row) => (
-              <tr key={row.card.id} className="clickable" onClick={() => navigate(`/karten/${row.card.id}`)}>
+              <tr key={row.card.id} {...rowProps(row.card.id)}>
                 <GroupBarCell group={row.group} />
                 <td>{nameText(row)}</td>
                 <td className="muted cell-ellipsis">{row.card.holder?.company ?? ''}</td>
@@ -84,7 +88,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
         </thead>
         <tbody>
           {shown.map(({ card, group, present, lastBookingAt }) => (
-            <tr key={card.id} className="clickable" onClick={() => navigate(`/karten/${card.id}`)}>
+            <tr key={card.id} {...rowProps(card.id)}>
               <td>
                 <span className={present ? 'status-dot present' : 'status-dot'} />
                 <span className="status-text">{present ? 'anwesend' : 'abwesend'}</span>

@@ -50,6 +50,11 @@ export function EventTable({ events, groups, sort, limit, onMore, compact = fals
                   {e.holderName ?? (e.holderLocked ? <span className="muted">🔒 gesperrt</span> : <span className="muted">–</span>)}
                   {e.source === 'test' && <span className="badge badge-test">Test</span>}
                   {e.source === 'system' && <span className="badge badge-test">automatisch</span>}
+                  {e.confirmedBy && e.outcome === 'granted' && (
+                    <span className="badge badge-confirmed" title={e.confirmedBy === 'admin' ? 'vom Admin bestätigt' : 'vom Bediener bestätigt'}>
+                      bestätigt
+                    </span>
+                  )}
                 </td>
                 <td>{e.cardNumber ?? <span className="muted">unbekannt</span>}</td>
                 {!compact && <td>{group ? <GroupBadge group={group} /> : (e.groupName ?? '–')}</td>}

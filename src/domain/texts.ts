@@ -29,6 +29,12 @@ export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | '
         : 'Berechtigung abgelaufen.';
     case 'DUPLICATE':
       return 'Bereits erfasst.';
+    case 'CONFIRMATION_REQUIRED':
+      return 'Eintritt muss bestätigt werden – bitte am Empfang melden.';
+    case 'REJECTED':
+      return 'Vom Empfang abgewiesen.';
+    case 'CONFIRMATION_TIMEOUT':
+      return 'Nicht rechtzeitig bestätigt.';
   }
 }
 

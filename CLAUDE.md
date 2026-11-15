@@ -38,9 +38,17 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   vorzeitig): erst lesen, dann (ent)schlüsseln, dann schreiben. In liveQuery-Abfragen alle
   DB-Zugriffe vor dem Entschlüsseln. Anzeige-Abfragen mit `useSecureLiveQuery` (lädt bei
   Sperren/Entsperren neu).
-- `src/security/session.ts`: Zustand im Arbeitsspeicher (`setup`/`locked`/`unlocked`, `admin`).
-  Neu laden = Neustart = gesperrt. Abmelden/Sperren über `requestExit()` + Navigation zu `/`.
-- Alle Routen außer `/`, `/anmelden`, `/einrichtung` liegen hinter `RequireAdmin`.
+- `src/security/session.ts`: Zustand im Arbeitsspeicher (`setup`/`locked`/`unlocked`, `admin`,
+  `operator`). Neu laden = Neustart = gesperrt. Abmelden/Sperren über `requestExit()` + Navigation zu `/`.
+- **Bediener-PIN** (`loginOperator`): nur Prüfwert (PBKDF2) unter `settings.operatorPin`, entschlüsselt
+  nichts – nur möglich, solange der Datenschlüssel geladen ist. `DEVICE_SECRET_KEYS` (Tresor + PIN)
+  bleiben bei „Alle Daten löschen“ und Backup-Wiederherstellung erhalten.
+- Routen: `RequireRole allow="staff"` (Admin oder Bediener) für `/dashboard`, `/uebersicht`
+  (Liste in `lib/roles.ts`), alles andere `allow="admin"`. Frei: `/`, `/anmelden`, `/einrichtung`, `/praesentation`.
+- **Bestätigung je Gruppe** (`Group.requireConfirmation`): `decideAccess` liefert `pending`
+  (Dashboard, `confirmation: 'operator'`) bzw. `denied/CONFIRMATION_REQUIRED` (Kiosk). Wartende Scans
+  werden nicht gebucht; `resolvePendingScan` (accept prüft erneut / reject / timeout) schreibt das
+  Ereignis mit `confirmedBy`. Warteschlange im Speicher in `useScanProcessor({ confirm: true })`.
 - CSP-Meta-Tag wird nur im Build eingefügt (`vite.config.ts`); keine Inline-Skripte/-Styles
   im HTML verwenden (React-`style`-Props sind erlaubt).
 - E2E: Testpasswort `Test-Passwort-123`; Navigation in Tests per Hash (`#/…`), nicht per Reload.
