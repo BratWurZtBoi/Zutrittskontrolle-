@@ -21,6 +21,8 @@ export interface Group {
   printHolder: boolean;
   /** Eintritt muss am Dashboard vom Admin/Bediener bestätigt werden (sonst automatisch). */
   requireConfirmation?: boolean;
+  /** Präsentationslayout für den Gästebildschirm (leer = Standard). */
+  presentationLayoutId?: string;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;
@@ -28,7 +30,7 @@ export interface Group {
 
 export type GroupInput = Pick<
   Group,
-  'name' | 'color' | 'prefix' | 'accessGranted' | 'allowUnassigned' | 'printHolder' | 'requireConfirmation'
+  'name' | 'color' | 'prefix' | 'accessGranted' | 'allowUnassigned' | 'printHolder' | 'requireConfirmation' | 'presentationLayoutId'
 >;
 
 /** Personendaten hinter einer Karte – jederzeit änderbar oder entfernbar. */
@@ -78,6 +80,8 @@ export interface CardRecord {
   replacedBy?: string;
   /** Diese Karte ist Ersatz für eine verlorene Karte. */
   replaces?: string;
+  /** Eigenes Präsentationslayout für diese Karte (überschreibt das der Gruppe). */
+  presentationLayoutId?: string;
   /** Markiert fiktive Testdaten, damit sie gezielt gelöscht werden können. */
   testData?: boolean;
   createdAt: number;

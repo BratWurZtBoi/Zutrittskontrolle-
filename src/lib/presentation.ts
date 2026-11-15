@@ -4,23 +4,75 @@
  * derselben App im selben Browser – ohne Server, ohne Internet.
  */
 import type { ScanOutcome } from '../db/scans';
-import { describeOutcome, displayName, hideIdentityFor, type ResultTone } from './resultText';
+import {
+  buildLayoutResult,
+  pickLayout,
+  type LayoutResult,
+  type PresentationLayout,
+  type ResultInput,
+} from '../domain/presentationLayout';
+import { reasonText } from '../domain/texts';
+import { describeOutcome, hideIdentityFor } from './resultText';
 
 const CHANNEL = 'zutrittskontrolle-praesentation';
 
-export interface PresentationScan {
+/** Ein Ergebnis für den Gästebildschirm: fertige Texte nach Layout, nur angezeigte Angaben. */
+export interface PresentationScan extends LayoutResult {
   type: 'scan';
-  tone: ResultTone;
-  title: string;
-  /** Name der Person (oder Kartennummer, wenn gesperrt / keine Person). */
-  name?: string;
-  photo?: string;
-  groupName?: string;
-  groupColor?: string;
-  /** Kurzer Hinweis für den Gast (bei Ablehnung der Grund). */
-  detail: string;
   at: number;
   displaySec: number;
+}
+
+/** Was zum Aufbereiten nötig ist (Layouts und Einstellungen). */
+export interface LayoutContext {
+  layouts: PresentationLayout[];
+  defaultLayoutId: string;
+  orgName: string;
+}
+
+/** Scan-Ergebnis → Nachricht für den Gästebildschirm (im Scanner-Fenster, wo die Daten entschlüsselt sind). */
+export function toPresentationScan(result: ScanOutcome, displaySec: number, ctx: LayoutContext): PresentationScan {
+  const text = describeOutcome(result, 'guest');
+  const hidden = hideIdentityFor('guest', result);
+  const { decision, card, group } = result;
+  const kind: ResultInput['kind'] =
+    decision.outcome === 'duplicate'
+      ? 'duplicate'
+      : decision.outcome === 'pending'
+        ? 'wait'
+        : decision.outcome === 'denied'
+          ? 'deny'
+          : decision.direction === 'out'
+            ? 'out'
+            : 'in';
+  // Verlorene Karte: auch kein persönliches Layout zeigen
+  const layout = pickLayout(ctx.layouts, {
+    card: hidden ? undefined : card?.presentationLayoutId,
+    group: hidden ? undefined : group?.presentationLayoutId,
+    fallback: ctx.defaultLayoutId,
+  });
+  const holder = card?.holder;
+  const built = buildLayoutResult(layout, {
+    tone: text.tone,
+    kind,
+    fallbackTitle: text.title,
+    fallbackText: text.detail,
+    reason: decision.outcome === 'denied' && !hidden ? reasonText(decision.reason, card) : undefined,
+    person: hidden
+      ? undefined
+      : {
+          firstName: holder?.firstName,
+          lastName: holder?.lastName,
+          company: holder?.company,
+          photo: holder?.photo,
+          groupName: group?.name,
+          groupColor: group?.color,
+        },
+    cardLabel: !hidden && card && !holder ? `Karte ${card.number}` : undefined,
+    at: result.at,
+    orgName: ctx.orgName,
+  });
+  return { type: 'scan', ...built, at: result.at, displaySec };
 }
 
 let sender: BroadcastChannel | null = null;
@@ -31,21 +83,8 @@ function channel(): BroadcastChannel | null {
   return sender;
 }
 
-export function broadcastScan(result: ScanOutcome, displaySec: number): void {
-  const text = describeOutcome(result, 'guest');
-  const hidden = hideIdentityFor('guest', result);
-  const message: PresentationScan = {
-    type: 'scan',
-    tone: text.tone,
-    title: text.title,
-    name: displayName(result, 'guest'),
-    photo: hidden ? undefined : result.card?.holder?.photo,
-    groupName: hidden ? undefined : result.group?.name,
-    groupColor: hidden ? undefined : result.group?.color,
-    detail: text.tone === 'deny' && !hidden ? `${text.detail} Bitte wenden Sie sich an den Empfang.` : text.detail,
-    at: result.at,
-    displaySec,
-  };
+export function broadcastScan(result: ScanOutcome, displaySec: number, ctx: LayoutContext): void {
+  const message = toPresentationScan(result, displaySec, ctx);
   try {
     channel()?.postMessage(message);
   } catch {

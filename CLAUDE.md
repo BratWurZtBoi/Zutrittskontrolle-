@@ -75,6 +75,11 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   Präsentation: Herzschlag per BroadcastChannel (`announcePresentation`/`watchPresentation`),
   Öffnen auf dem zweiten Bildschirm über `getScreenDetails()` (Fensterverwaltung). Entschlüsselte Namen
   werden pro Schlüssel zwischengespeichert (`security/decryptCache.ts`).
+- Präsentationslayouts: reine Logik in `domain/presentationLayout.ts` (`pickLayout` Karte > Gruppe >
+  Standard, `fillPlaceholders`, `buildLayoutResult`), Tabelle `layouts` (DB-Version 2), Standardlayout
+  `STANDARD_LAYOUT` nur im Code (nicht gespeichert, nicht änderbar). Platzhalter werden im
+  Scanner-Fenster gefüllt (`toPresentationScan`); das Präsentationsfenster liest nur Layouts/Einstellungen.
+  `PresentationView` nutzt Container-Einheiten (cqw/cqh) – gleiche Darstellung im Vollbild und in der Vorschau.
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.
 
@@ -109,6 +114,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    Datenbankzugriff auf Personendaten), helles/dunkles Layout (CSS-Variablen in `styles.css`,
    `data-theme` auf `<html>`, Spiegelung in localStorage `zk-theme`; Karten/Druck immer hell).
    Automatische Buchungen (`bySystem`) zählen nicht für den Doppelscan-Schutz.
+
+7. ✅ Dashboard neu (Statusleiste, kleine Kamera, Liste mit Reitern), Eintritt bestätigen je Gruppe,
+   Bediener-PIN, verlorene Karten (Ersatzkarte), Präsentationslayouts (Aufbau, Texte, Hintergrund).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

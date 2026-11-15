@@ -8,6 +8,7 @@ import { CardListPage } from './pages/CardListPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { ImportPage } from './pages/ImportPage';
+import { LayoutsPage } from './pages/LayoutsPage';
 import { LoginPage } from './pages/LoginPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PresentationPage } from './pages/PresentationPage';
@@ -44,6 +45,7 @@ export function App() {
             <Route path="druck" element={<PrintPage />} />
             <Route path="einstellungen" element={<SettingsPage />} />
             <Route path="einstellungen/gruppen" element={<GroupsPage />} />
+            <Route path="einstellungen/praesentation" element={<LayoutsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

@@ -36,6 +36,8 @@ export interface AppSettings {
   lastBackupAt?: number;
   /** Kameravorschau im Dashboard: klein, groß oder ausgeblendet (Scannen läuft weiter). */
   dashCamera: DashCameraSize;
+  /** Layout für den Ruhebildschirm und alle Gruppen/Karten ohne eigenes Layout. */
+  defaultLayoutId: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   confirmTimeoutSec: 90,
   retentionDays: 90,
   dashCamera: 'small',
+  defaultLayoutId: 'standard',
 };
 
 const KEY = 'app';

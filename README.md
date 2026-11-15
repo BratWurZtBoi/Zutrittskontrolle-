@@ -82,6 +82,27 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Foto und Gruppe; dazwischen einen Begrüßungsbildschirm mit Uhrzeit und Organisationsname.
 - Funktioniert ohne Internet: Die Ergebnisse gehen direkt von Fenster zu Fenster im selben Browser.
 
+### Präsentationslayouts (Aufbau, Texte, Hintergrund)
+
+- *Einstellungen → Präsentation → Layouts verwalten*. Das mitgelieferte Layout **„Standard“** ist
+  der bisherige Bildschirm; es bleibt unverändert und dient als Vorlage (**„+ Neues Layout“** / **„Kopieren“**).
+- Je Layout einstellbar, mit **Live-Vorschau** (fiktive Beispieldaten) für Ruhebildschirm,
+  Willkommen, Auf Wiedersehen, Kein Zutritt und Bitte warten:
+  - **Aufbau:** Zentriert, Foto links oder Nur Text
+  - **Hintergrund:** einfarbig, Farbverlauf oder eigenes Bild (wird verkleinert, nur lokal
+    gespeichert, abdunkelbar), Schriftfarbe hell/dunkel; bei Ergebnissen wahlweise die
+    Ergebnisfarbe (grün/blau/rot) oder der eigene Hintergrund mit farbigem Streifen
+  - **Logo** (optional)
+  - **Anzeigen:** Foto, Gruppe, Firma, Uhr/Datum, Organisationsname; Name voll, **nur Vorname**
+    oder **gar nicht** (Datenschutz)
+  - **Texte** mit Platzhaltern: `{vorname}`, `{nachname}`, `{name}`, `{firma}`, `{gruppe}`,
+    `{uhrzeit}`, `{datum}`, `{organisation}`, `{grund}`
+- **Zuweisen:** an ganze Gruppen (*Gruppen verwalten*) oder einzelne Karten (Kartenseite).
+  Es gilt: Karte vor Gruppe vor Standard. Ein Layout lässt sich als Standard für den
+  Ruhebildschirm und alle ohne Zuweisung festlegen.
+- Layouts sind im Backup enthalten. Texte werden unverschlüsselt gespeichert – Namen daher nur über
+  Platzhalter einsetzen.
+
 ### Personenlisten importieren (CSV)
 
 - *Karten* → **CSV-Import** → **Vorlage herunterladen** (liegt auch im Repository unter

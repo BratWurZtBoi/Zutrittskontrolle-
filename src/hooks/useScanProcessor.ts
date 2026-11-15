@@ -1,10 +1,13 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { listLayouts } from '../db/layouts';
 import { processScan, resolvePendingScan, type PendingAction, type ScanOutcome } from '../db/scans';
 import { ScanDeduper } from '../domain/scanDeduper';
 import type { AccessEventRecord } from '../domain/types';
 import { setKeepScreenOn } from '../lib/device';
 import { playFeedback, type FeedbackKind } from '../lib/feedback';
-import { broadcastScan } from '../lib/presentation';
+import { STANDARD_LAYOUT } from '../domain/presentationLayout';
+import { broadcastScan, type LayoutContext } from '../lib/presentation';
 import { staffRole } from '../security/session';
 import { useSettings } from './useSettings';
 
@@ -41,6 +44,15 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
   const settings = useSettings();
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  // Layouts für den Gästebildschirm (enthalten keine Personendaten)
+  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const layoutsRef = useRef(layouts);
+  layoutsRef.current = layouts;
+  const layoutContext = (): LayoutContext => ({
+    layouts: layoutsRef.current,
+    defaultLayoutId: settingsRef.current.defaultLayoutId,
+    orgName: settingsRef.current.orgName,
+  });
   const [result, setResult] = useState<ScanOutcome | null>(null);
   const [pending, setPending] = useState<PendingEntry[]>([]);
   const pendingRef = useRef<PendingEntry[]>([]);
@@ -56,7 +68,7 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
     const s = settingsRef.current;
     setResult(outcome);
     playFeedback(feedbackKind(outcome, confirm), s.sound);
-    broadcastScan(outcome, s.resultDisplaySec);
+    broadcastScan(outcome, s.resultDisplaySec, layoutContext());
   }, [confirm]);
 
   const handleText = useCallback(
@@ -79,7 +91,7 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
           const entry: PendingEntry = { id: `${cardId}-${outcome.at}`, outcome, source, expiresAt: outcome.at + s.confirmTimeoutSec * 1000 };
           updatePending([...pendingRef.current, entry]);
           playFeedback('attention', s.sound);
-          broadcastScan(outcome, s.confirmTimeoutSec);
+          broadcastScan(outcome, s.confirmTimeoutSec, layoutContext());
           return;
         }
         showFinal(outcome);

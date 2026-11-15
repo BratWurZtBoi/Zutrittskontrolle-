@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
+import type { PresentationLayout } from '../domain/presentationLayout';
 import type { AccessEventRecord, CardRecord, Group, PresenceRecord } from '../domain/types';
 
 export interface SettingRecord {
@@ -22,6 +23,7 @@ export class ZkDatabase extends Dexie {
   events!: EntityTable<AccessEventRecord, 'seq'>;
   presence!: EntityTable<PresenceRecord, 'cardId'>;
   settings!: EntityTable<SettingRecord, 'key'>;
+  layouts!: EntityTable<PresentationLayout, 'id'>;
 
   constructor(name = DB_NAME) {
     super(name);
@@ -31,6 +33,10 @@ export class ZkDatabase extends Dexie {
       events: '++seq, timestamp, cardId',
       presence: 'cardId, status',
       settings: 'key',
+    });
+    // v2: Präsentationslayouts (Gästebildschirm)
+    this.version(2).stores({
+      layouts: 'id',
     });
   }
 }
@@ -70,8 +76,8 @@ export const DEVICE_SECRET_KEYS = [VAULT_KEY, OPERATOR_PIN_KEY];
  * Admin-Passwort und Bediener-PIN bleiben erhalten, außer `includePassword` ist gesetzt.
  */
 export async function clearAllData(includePassword = false): Promise<void> {
-  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings], async () => {
-    await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear()]);
+  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings, db.layouts], async () => {
+    await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear(), db.layouts.clear()]);
     if (includePassword) await db.settings.clear();
     else await db.settings.where('key').noneOf(DEVICE_SECRET_KEYS).delete();
   });

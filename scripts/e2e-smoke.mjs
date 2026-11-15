@@ -595,6 +595,52 @@ try {
   check((await page.getByLabel('Vorname').inputValue()) === 'Ben', 'Ersatzkarte übernimmt die Person');
   check((await page.locator('.card-section .hint').textContent()).includes('Ersatz für die verlorene Karte'), 'Ersatzkarte verweist auf die verlorene Karte');
 
+  console.log('17d) Präsentationslayouts: anlegen, Gruppe zuweisen, Gästebildschirm');
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await page.goto(`${URL}#/einstellungen/praesentation`);
+  await page.getByRole('button', { name: '+ Neues Layout' }).click();
+  await page.getByLabel('Name des Layouts').fill('Empfang Personal');
+  await page.locator('.choice', { hasText: 'Foto links' }).click();
+  await page.getByLabel('Hintergrundart').selectOption('color');
+  await page.locator('.layout-form input[type="color"]').first().fill('#7c3aed');
+  await page.getByLabel(/eigener Hintergrund mit farbigem Streifen/).check();
+  await page.getByLabel('Eingang – Titel').fill('Hallo {vorname}!');
+  await page.getByLabel('Eingang – Text').fill('Schön, dass Sie da sind · {uhrzeit} Uhr');
+  await page.locator('.layout-preview .presentation-title', { hasText: 'Hallo Erika!' }).waitFor();
+  check(true, 'Editor: Live-Vorschau mit Platzhaltern (fiktive Beispieldaten)');
+  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await page.getByText('Gespeichert.').waitFor();
+  await page.screenshot({ path: `${OUT}/23-layout-editor.png` });
+  check(true, 'Layout gespeichert');
+  await page.goto(`${URL}#/einstellungen/gruppen`);
+  await page.locator('.group-list li', { hasText: 'Bestandspersonal' }).getByRole('button', { name: 'Bearbeiten' }).click();
+  await page.getByLabel('Präsentationslayout (Gästebildschirm)').selectOption({ label: 'Empfang Personal' });
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.locator('.group-list li', { hasText: 'Bestandspersonal' }).getByText('Layout „Empfang Personal“').waitFor();
+  check(true, 'Layout der Gruppe Bestandspersonal zugewiesen');
+
+  const guestScreen = await ctx.newPage();
+  guestScreen.on('pageerror', (e) => problems.push(`JS-Fehler (Präsentation): ${e.message}`));
+  await guestScreen.setViewportSize({ width: 1280, height: 720 });
+  await guestScreen.goto(`${URL}#/praesentation`);
+  await guestScreen.getByText('Herzlich willkommen').waitFor();
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-status').getByRole('radio', { name: 'Eingang' }).click();
+  await page.locator('.dash-side .test-panel').evaluate((d) => (d.open = true));
+  // eine Karte, die vorher noch nicht gescannt wurde (kein Doppelscan-Schutz)
+  const hans = await page.locator('.dash-side .test-panel select option', { hasText: 'Hans Beispiel' }).getAttribute('value');
+  await page.locator('.dash-side .test-panel select').selectOption(hans);
+  await page.locator('.dash-side').getByRole('button', { name: 'Karte scannen' }).click();
+  await guestScreen.locator('.presentation-result').waitFor({ timeout: 5000 });
+  const guestShown = await guestScreen.locator('.presentation-result').textContent();
+  check(guestShown.includes('Hallo Hans!') && guestShown.includes('Schön, dass Sie da sind'), `Gästebildschirm zeigt die Texte des Gruppenlayouts (${guestShown})`);
+  check((await guestScreen.locator('.pv-side').count()) === 1, 'Aufbau „Foto links“');
+  const bgColor = await guestScreen.locator('.presentation-result').evaluate((el) => getComputedStyle(el).backgroundColor);
+  check(bgColor === 'rgb(124, 58, 237)', `Eigener Hintergrund (${bgColor})`);
+  await guestScreen.screenshot({ path: `${OUT}/24-praesentation-layout.png` });
+  await guestScreen.close();
+  await page.locator('.dash-status').getByRole('radio', { name: 'Automatisch' }).click();
+
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);

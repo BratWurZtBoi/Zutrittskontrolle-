@@ -1873,99 +1873,177 @@ table.data-table {
 
 /* ---------- Präsentationsansicht (2. Bildschirm) ---------- */
 
-.presentation {
+/* Container: im Vollbild der ganze Bildschirm, im Editor eine 16:9-Vorschau.
+   Alle Größen in cqw/cqh (Container-Einheiten), damit beides gleich aussieht. */
+.pv {
+  container-type: size;
+  width: 100vw;
   height: 100dvh;
+  overflow: hidden;
+}
+.pv-preview {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.presentation {
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.5vh;
-  padding: 4vh 4vw;
+  gap: 1.5cqh;
+  padding: 4cqh 4cqw;
   text-align: center;
   color: #fff;
   cursor: none;
 }
+.pv-preview .presentation {
+  cursor: default;
+}
 .presentation-idle {
   background: radial-gradient(circle at 50% 30%, #1e3a8a 0%, #0f172a 70%);
 }
-.presentation-result {
-  animation: none;
+.pv-logo {
+  max-width: 30cqw;
+  max-height: 14cqh;
+  object-fit: contain;
 }
-.presentation-result.result-ok {
-  background: var(--ok);
-}
-.presentation-result.result-out {
-  background: var(--out);
-}
-.presentation-result.result-deny {
-  background: var(--danger);
-}
-.presentation-result.result-warn {
-  background: var(--warn);
+.pv-logo-small {
+  position: absolute;
+  top: 3cqh;
+  left: 3cqw;
+  max-width: 16cqw;
+  max-height: 9cqh;
 }
 .presentation-org {
-  font-size: clamp(1.5rem, 4vw, 3.5rem);
+  font-size: clamp(0.6rem, 4cqw, 3.5rem);
   font-weight: 700;
   opacity: 0.9;
 }
 .presentation-welcome {
-  font-size: clamp(2.5rem, 8vw, 7rem);
+  font-size: clamp(0.9rem, 8cqw, 7rem);
   font-weight: 800;
   line-height: 1.05;
 }
 .presentation-hint {
-  font-size: clamp(1.2rem, 3vw, 2.5rem);
+  font-size: clamp(0.5rem, 3cqw, 2.5rem);
   opacity: 0.85;
 }
 .presentation-clock {
-  margin-top: 3vh;
-  font-size: clamp(3rem, 10vw, 9rem);
+  margin-top: 3cqh;
+  font-size: clamp(1rem, 10cqw, 9rem);
   font-weight: 300;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .presentation-date {
-  font-size: clamp(1rem, 2.5vw, 2rem);
+  font-size: clamp(0.45rem, 2.5cqw, 2rem);
   opacity: 0.8;
 }
 .presentation-title {
   display: flex;
   align-items: center;
-  gap: 2vw;
-  font-size: clamp(2.5rem, min(9vw, 13vh), 9rem);
+  justify-content: center;
+  gap: 2cqw;
+  font-size: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
   font-weight: 800;
   line-height: 1;
 }
 .presentation-icon {
-  width: clamp(2.5rem, min(9vw, 13vh), 9rem);
-  height: clamp(2.5rem, min(9vw, 13vh), 9rem);
+  flex: none;
+  width: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
+  height: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
   stroke-width: 3;
 }
 .presentation-photo {
-  height: 30vh;
+  height: 30cqh;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  border: 8px solid rgba(255, 255, 255, 0.9);
-  border-radius: 24px;
+  border: max(2px, 0.8cqh) solid rgba(255, 255, 255, 0.9);
+  border-radius: 2.4cqh;
 }
 .presentation-name {
-  font-size: clamp(2rem, min(7vw, 10vh), 7rem);
+  font-size: clamp(0.8rem, min(7cqw, 10cqh), 7rem);
   font-weight: 800;
   line-height: 1.05;
 }
+.presentation-company {
+  font-size: clamp(0.5rem, min(3cqw, 5cqh), 2.5rem);
+  opacity: 0.9;
+}
 .presentation-group {
   padding: 0.3em 1em;
-  border: 3px solid rgba(255, 255, 255, 0.9);
+  border: max(1px, 0.3cqh) solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  font-size: clamp(1.2rem, 2.5vw, 2.2rem);
+  font-size: clamp(0.5rem, 2.5cqw, 2.2rem);
   font-weight: 700;
 }
 .presentation-detail {
-  max-width: 80vw;
-  font-size: clamp(1.2rem, min(3vw, 5vh), 3rem);
+  max-width: 80cqw;
+  font-size: clamp(0.5rem, min(3cqw, 5cqh), 3rem);
   font-weight: 600;
 }
+
+/* Aufbau „Foto links“ */
+.pv-side-row {
+  display: flex;
+  align-items: center;
+  gap: 5cqw;
+  max-width: 90cqw;
+}
+.pv-side-row .presentation-photo {
+  height: 62cqh;
+}
+.pv-side-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2cqh;
+  text-align: left;
+}
+.pv-side-text .presentation-title {
+  justify-content: flex-start;
+}
+
+/* Aufbau „Nur Text“: größer */
+.pv-minimal .presentation-title {
+  font-size: clamp(1rem, min(12cqw, 18cqh), 11rem);
+}
+.pv-minimal .presentation-icon {
+  width: clamp(1rem, min(12cqw, 18cqh), 11rem);
+  height: clamp(1rem, min(12cqw, 18cqh), 11rem);
+}
+.pv-minimal .presentation-name {
+  font-size: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
+}
+
+/* Eigener Hintergrund: Ergebnisfarbe als breiter Streifen und als Symbolfarbe */
+.pv-tone-band {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3.5cqh;
+  background: var(--pv-tone);
+}
+.pv-custom .presentation-icon {
+  color: var(--pv-tone);
+  background: #fff;
+  border-radius: 50%;
+  padding: 0.12em;
+}
+.pv-custom::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3.5cqh;
+  background: var(--pv-tone);
+}
+
 .presentation-fs {
   position: fixed;
   right: 1rem;
@@ -2090,4 +2168,109 @@ table.data-table {
 }
 .lost-box .button-row {
   margin-top: 0.5rem;
+}
+
+/* ---------- Präsentationslayouts (Editor) ---------- */
+
+.layout-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.layout-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.layout-thumb {
+  flex: 0 0 240px;
+  max-width: 100%;
+}
+.layout-row-main {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.layout-row-main h2 {
+  font-size: 1.1rem;
+}
+.layout-editor {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.layout-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.layout-states {
+  flex-wrap: wrap;
+  align-self: flex-start;
+}
+.layout-form fieldset {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.layout-form legend {
+  font-weight: 700;
+  padding: 0 0.3rem;
+}
+.layout-form input[type='color'] {
+  min-height: 44px;
+  padding: 0.2rem;
+}
+.layout-logo-preview {
+  max-height: 48px;
+  max-width: 160px;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+.choice-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.choice input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.choice.active {
+  border-color: var(--link);
+  background: var(--selected-bg);
+}
+.card-layout-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 1rem;
+}
+@media (min-width: 1100px) {
+  .layout-editor {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  }
+  .layout-preview {
+    position: sticky;
+    top: calc(var(--nav-h) + 1rem);
+  }
 }

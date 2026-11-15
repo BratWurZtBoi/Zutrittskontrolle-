@@ -6,6 +6,8 @@ import { requestExit } from '../security/exit';
 import { changePassword, disableOperatorPin, setOperatorPin } from '../security/session';
 import { pinProblem } from '../security/crypto';
 import { loadOperatorPin } from '../db/vault';
+import { listLayouts } from '../db/layouts';
+import { STANDARD_LAYOUT } from '../domain/presentationLayout';
 import { BackupSection } from '../components/BackupSection';
 import { CameraSelect } from '../components/CameraSelect';
 import { GroupBadge } from '../components/GroupBadge';
@@ -83,6 +85,8 @@ export function SettingsPage() {
           </Link>
         </div>
       </section>
+
+      <PresentationSection defaultLayoutId={settings.defaultLayoutId} />
 
       <section className="card form">
         <h2>Scanner</h2>
@@ -421,6 +425,34 @@ function OperatorSection({ settings }: { settings: AppSettings }) {
           )}
         </div>
       </form>
+    </section>
+  );
+}
+
+/** Gästebildschirm: Layouts verwalten und Standardlayout wählen. */
+function PresentationSection({ defaultLayoutId }: { defaultLayoutId: string }) {
+  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  return (
+    <section className="card form">
+      <h2>Präsentation (Gästebildschirm)</h2>
+      <p className="muted">
+        Aufbau, Texte und Hintergrund des Gästebildschirms als Layouts – zuweisbar an Gruppen oder einzelne Karten.
+      </p>
+      <label>
+        Standardlayout (Ruhebildschirm und alle ohne eigene Zuweisung)
+        <select value={layouts.some((l) => l.id === defaultLayoutId) ? defaultLayoutId : 'standard'} onChange={(e) => void saveSettings({ defaultLayoutId: e.target.value })}>
+          {layouts.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="button-row">
+        <Link className="btn" to="/einstellungen/praesentation">
+          Layouts verwalten
+        </Link>
+      </div>
     </section>
   );
 }
