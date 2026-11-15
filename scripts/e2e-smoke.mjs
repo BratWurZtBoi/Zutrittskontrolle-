@@ -6,7 +6,7 @@
  * Aufruf: npm run e2e:local   (Screenshots landen in .e2e/)
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import QRCode from 'qrcode';
@@ -299,8 +299,53 @@ try {
   await page.getByLabel('Zeitraum').selectOption('today');
   await page.locator('.data-table tbody tr').first().waitFor();
   await page.screenshot({ path: `${OUT}/08-uebersicht-aktionen.png`, fullPage: true });
+  const [csvDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'CSV-Export (Excel)' }).click(),
+  ]);
+  const csvPath = `${OUT}/${csvDownload.suggestedFilename()}`;
+  await csvDownload.saveAs(csvPath);
+  const csv = readFileSync(csvPath, 'utf8');
+  check(/^zutritt-aktionen-\d{4}-\d{2}-\d{2}\.csv$/.test(csvDownload.suggestedFilename()), 'CSV-Export: Dateiname mit Datum');
+  check(csv.startsWith('\uFEFFDatum;Uhrzeit;Karte;Name;Gruppe;Richtung;Ergebnis;Grund;Quelle\r\n'), 'CSV-Export: Excel-Format (BOM, Semikolon)');
+  check(csv.includes('Berta Besuch') && csv.split('\r\n').length === 10, 'CSV-Export: 8 Aktionen mit Namen');
 
-  console.log('12) Karten drucken');
+  console.log('12) Backup erstellen, Daten löschen, Backup einspielen');
+  await page.goto(`${URL}#/einstellungen`);
+  await page.getByLabel('Backup-Passwort (mindestens 8 Zeichen)').fill('Backup-Test-123');
+  await page.getByLabel('Backup-Passwort wiederholen').fill('Backup-Test-123');
+  const [backupDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Backup erstellen und speichern' }).click(),
+  ]);
+  const backupPath = `${OUT}/${backupDownload.suggestedFilename()}`;
+  await backupDownload.saveAs(backupPath);
+  check(backupDownload.suggestedFilename().endsWith('.zkb'), `Backup-Datei erstellt (${backupDownload.suggestedFilename()})`);
+  check(!/Mustermann|Besuch|Musterfirma/.test(readFileSync(backupPath, 'utf8')), 'Backup-Datei enthält keine Klartextdaten');
+  await page.getByText('Backup gespeichert:').waitFor();
+  await page.getByRole('button', { name: 'Alle Daten löschen' }).click();
+  await page.getByText(/Alle Daten gelöscht/).waitFor();
+  check((await readStore(page, 'cards')).length === 0, 'Alle Daten gelöscht');
+  await page.locator('#bk-file').setInputFiles(backupPath);
+  await page.getByLabel('Backup-Passwort', { exact: true }).fill('falsches-Passwort');
+  await page.getByRole('button', { name: 'Backup öffnen' }).click();
+  await page.getByText('Das Passwort ist falsch.').waitFor();
+  check(true, 'Backup: falsches Passwort wird abgelehnt');
+  await page.getByLabel('Backup-Passwort', { exact: true }).fill('Backup-Test-123');
+  await page.getByRole('button', { name: 'Backup öffnen' }).click();
+  await page.locator('.import-preview').waitFor();
+  check((await page.locator('.import-preview').textContent()).includes('17 Karte(n)'), 'Backup-Vorschau zeigt 17 Karten');
+  await page.screenshot({ path: `${OUT}/10-backup-vorschau.png`, fullPage: true });
+  await page.getByLabel('Ich möchte die Daten auf diesem Gerät ersetzen').check();
+  await page.getByRole('button', { name: 'Jetzt wiederherstellen' }).click();
+  await page.getByText(/Backup eingespielt: 17 Karte/).waitFor();
+  await page.goto(`${URL}#/karten`);
+  await page.locator('.card-row').nth(16).waitFor();
+  check((await page.locator('.card-row').count()) === 17, 'Nach dem Einspielen: 17 Karten');
+  check((await page.locator('.card-list').textContent()).includes('Mustermann'), 'Nach dem Einspielen: Namen wieder lesbar');
+  check(!/Mustermann/.test(JSON.stringify(await readStore(page, 'cards'))), 'Nach dem Einspielen: wieder verschlüsselt gespeichert');
+
+  console.log('13) Karten drucken');
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.goto(`${URL}#/karten`);
   await page.getByRole('link', { name: /Drucken \(17\)/ }).click();
@@ -313,7 +358,7 @@ try {
   await page.emulateMedia({ media: 'screen' });
   console.log('  ✓ PDF erzeugt: .e2e/karten.pdf');
 
-  console.log('13) Abmelden und Sperren');
+  console.log('14) Abmelden und Sperren');
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);
   await page.screenshot({ path: `${OUT}/09-einstellungen.png`, fullPage: true });

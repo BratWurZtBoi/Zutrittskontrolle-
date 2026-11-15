@@ -35,8 +35,18 @@ export function DashboardPage() {
   const groups = useLiveQuery(listGroups, [], []);
   const mirror = settings.mirrorPreview && settings.camera !== 'environment';
 
+  const backupDue = !settings.lastBackupAt || Date.now() - settings.lastBackupAt > 7 * 24 * 60 * 60 * 1000;
+
   return (
     <div className="dashboard">
+      {backupDue && (
+        <div className="backup-reminder">
+          {settings.lastBackupAt
+            ? `Letztes Backup vor ${Math.floor((Date.now() - settings.lastBackupAt) / 86_400_000)} Tagen.`
+            : 'Auf diesem Gerät wurde noch kein Backup erstellt.'}{' '}
+          <Link to="/einstellungen">Jetzt sichern</Link>
+        </div>
+      )}
       <section className="dash-panel dash-camera" aria-label="Scanner">
         <div className="dash-camera-view">
           <CameraScanner camera={settings.camera} mirror={mirror} onCode={onCamera} onStarted={onStarted} />

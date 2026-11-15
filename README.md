@@ -45,6 +45,19 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche und Sortierung.
 - Der **Vollbild-Scanner** bleibt als Kiosk-Modus für Geräte am Eingang (ohne Anmeldung nutzbar).
 
+### Datensicherung und Export
+
+- **Backup erstellen** (*Einstellungen → Datensicherung*): eine Datei (`.zkb`) mit allen Karten,
+  Personendaten, Fotos, Gruppen, dem Protokoll und den Einstellungen – verschlüsselt mit einem
+  eigenen **Backup-Passwort** (AES-256). Sie landet im Download-Ordner; auf Android kann sie auch
+  direkt geteilt werden (z. B. Quick Share zum Laptop).
+- **Backup einspielen:** Datei wählen, Passwort eingeben, Vorschau prüfen, bestätigen. Die Daten
+  auf dem Gerät werden **ersetzt**; das Admin-Passwort des Geräts bleibt. So lassen sich Daten
+  z. B. vom Handy auf den Windows-Rechner übertragen.
+- **CSV-Export für Excel** (*Übersicht*): die gerade gefilterte und sortierte Liste der Anwesenheit
+  bzw. der Aktionen. ⚠️ CSV-Dateien sind **nicht** verschlüsselt.
+- Das Dashboard erinnert, wenn das letzte Backup länger als 7 Tage zurückliegt.
+
 ### Karten, Personen und Gruppen
 
 - **Karten** werden eigenständig erstellt – einzeln oder in Serie (z. B. 20 Besucherkarten).
@@ -91,7 +104,8 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 ## Wichtige Hinweise zum Speicher
 
 - Die Daten hängen an **Browser + Adresse**. „Websitedaten löschen“ löscht sie.
-- Jedes Gerät hat seinen eigenen Datenbestand. Export/Import folgt.
+- Jedes Gerät hat seinen eigenen Datenbestand. Übertragen und sichern per Backup-Datei.
+- **Regelmäßig ein Backup erstellen** und die Datei auf einem anderen Gerät aufbewahren.
 
 ## Funktionsumfang
 
@@ -109,7 +123,7 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 | Automatische Abmeldung, Löschfrist fürs Protokoll, Content Security Policy | ✅ |
 | Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ✅ |
 | „Alle ausbuchen“ | ✅ |
-| Export/Import (verschlüsseltes Backup, CSV) | ⏳ als Nächstes |
+| Verschlüsseltes Backup (Export/Import), CSV-Export für Excel | ✅ |
 
 ## Technik
 

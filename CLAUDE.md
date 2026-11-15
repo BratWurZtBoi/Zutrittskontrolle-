@@ -80,4 +80,11 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    Auto-Abmeldung, Löschfrist, Testmodus nur Admin, CSP.
 4. ✅ Übersicht (Tabs Anwesenheit/Aktionen) mit Suche/Filter/Sortierung, „Alle ausbuchen“,
    Dashboard (Kamera + Anwesende + Aktionen); Vollbild-Scanner bleibt als Kiosk-Modus.
-5. Export/Import: verschlüsseltes Voll-Backup (eigenes Passwort), CSV-Export Historie/Karten.
+5. ✅ Export/Import: verschlüsseltes Voll-Backup (`db/backup.ts`, Format `zutrittskontrolle-backup`
+   v1: JSON-Hülle mit PBKDF2-Salt/IV, Inhalt gzip + AES-GCM; Einspielen ersetzt alle Daten und
+   verschlüsselt mit dem Geräteschlüssel neu, Tresor bleibt), CSV-Export (`domain/csv.ts`:
+   Semikolon, BOM, Formel-Injektion entschärft).
+
+Mögliche nächste Schritte (mit dem Nutzer abstimmen): Test auf echten Geräten und Feinschliff,
+CSV-Import von Personallisten, Backup zusammenführen statt ersetzen, Kiosk-Hinweise für Android
+(„App anheften“), Druckvorlagen/Logo auf der Karte.

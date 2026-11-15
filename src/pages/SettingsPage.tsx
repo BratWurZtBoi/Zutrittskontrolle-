@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router';
 import { PasswordInput } from '../components/PasswordInput';
 import { requestExit } from '../security/exit';
 import { changePassword } from '../security/session';
+import { BackupSection } from '../components/BackupSection';
 import { CameraSelect } from '../components/CameraSelect';
 import { GroupBadge } from '../components/GroupBadge';
 import { NumberField } from '../components/NumberField';
@@ -118,6 +119,8 @@ export function SettingsPage() {
 
       <SecuritySection autoLogoutMin={settings.autoLogoutMin} retentionDays={settings.retentionDays} />
 
+      <BackupSection lastBackupAt={settings.lastBackupAt} />
+
       <section className="card form">
         <h2>Daten</h2>
         <p className="muted">
@@ -194,7 +197,6 @@ export function SettingsPage() {
             )}
           </li>
         </ul>
-        <p className="muted">Geplant: Export/Import (verschlüsseltes Backup, CSV).</p>
       </section>
     </div>
   );

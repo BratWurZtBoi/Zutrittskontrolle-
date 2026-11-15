@@ -21,6 +21,8 @@ export interface AppSettings {
   autoLogoutMin: number;
   /** Löschfrist: Protokolleinträge nach so vielen Tagen löschen (0 = nie). */
   retentionDays: number;
+  /** Zeitpunkt des letzten Backups auf diesem Gerät. */
+  lastBackupAt?: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
