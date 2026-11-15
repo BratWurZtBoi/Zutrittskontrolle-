@@ -55,7 +55,7 @@ export function SetupPage() {
         <PasswordInput id="pw-repeat" value={repeat} onChange={setRepeat} autoComplete="new-password" />
         <p className="hint">
           <strong>Wichtig:</strong> Ohne Passwort lassen sich die verschlüsselten Daten nicht wiederherstellen – auch nicht
-          vom Entwickler. Bitte sicher notieren. (Eine Backup-Funktion folgt.)
+          vom Entwickler. Bitte sicher notieren und regelmäßig ein Backup erstellen.
         </p>
         <label className="checkbox">
           <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} />

@@ -1,6 +1,9 @@
+import { isDesktopApp } from './lib/desktop';
+
 /** Registriert den Service Worker: Danach ist die App vollständig auf dem Gerät gespeichert und läuft offline. */
 export async function setupPwa(): Promise<void> {
-  if (!('serviceWorker' in navigator) || import.meta.env.DEV) return;
+  // Im Windows-Programm liegen die Dateien ohnehin auf dem Rechner – kein Service Worker nötig
+  if (!('serviceWorker' in navigator) || import.meta.env.DEV || isDesktopApp()) return;
   const { registerSW } = await import('virtual:pwa-register');
   registerSW({ immediate: true });
 }

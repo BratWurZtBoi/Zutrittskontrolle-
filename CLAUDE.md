@@ -10,7 +10,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - **Nur fiktive Testdaten** verwenden (siehe `src/db/seed.ts`). Keine echten Namen/Fotos.
 - **Keine Cloud-Abhängigkeit** für Daten: alles bleibt in IndexedDB auf dem Gerät.
   Keine externen Requests zur Laufzeit (keine CDNs, Fonts, Analytics).
-- **Kein APK/Capacitor** – bewusst entschieden: reine PWA.
+- **Kein APK/Capacitor** für Android – bewusst entschieden: dort reine PWA.
+  **Windows:** zusätzlich ein Electron-Programm aus demselben Code (vom Nutzer gewünscht, Version 0.9).
 - Kleine, testbare Schritte. Vor jedem Commit: `npm run check`.
   Bei UI-Änderungen zusätzlich `npm run build && npm run e2e:local` (simulierte Kamera).
 - Oberfläche und Doku auf **Deutsch**, Bezeichner im Code auf Englisch.
@@ -87,6 +88,17 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - Einstellungen: Übersicht `#/einstellungen` (Kacheln) + je Bereich eine Seite unter `pages/settings/`
   mit `SettingsShell` (Seitenleiste ab 1000 px, sonst „← Einstellungen“). Neue Bereiche in
   `SETTINGS_SECTIONS` eintragen; keine langen Sammelseiten mehr.
+- **Windows-Programm** (`desktop/`): `main.cjs` lädt `dist/` über das eigene Protokoll
+  `app://zutrittskontrolle` (feste Herkunft → IndexedDB, Web Crypto, Kamera, BroadcastChannel wie im
+  Browser), sperrt alle Verbindungen außer eigenen Dateien, erlaubt Kamera ohne Rückfrage, öffnet die
+  Präsentation selbst auf dem zweiten Bildschirm. `preload.cjs` stellt `window.zkDesktop` bereit
+  (`lib/desktop.ts`: Präsentation, Sicherungsordner – Schreiben nur in den im Dialog gewählten
+  Ordner und nur Backup-Dateinamen –, Autostart, Info). Im Browser ist `getDesktop()` null.
+  Kein Service Worker im Programm. Test: `npm run build && xvfb-run -a npm run desktop:smoke`
+  (gepackt: `ZK_DESKTOP_EXE=…`). Installationsdatei baut `.github/workflows/desktop.yml` auf
+  `windows-latest` (`npm run desktop:build`, unsigniert) und legt sie unter Releases `v<Version>` ab
+  → bei neuen Funktionen die Version in `package.json` erhöhen. Lokal unter Linux scheitert nur der
+  letzte NSIS-Schritt (braucht wine).
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.
 
@@ -131,6 +143,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    File System Access API, Passwort mit Datenschlüssel verschlüsselt, Ordner-Zugriff separat gespeichert).
 8. ✅ Einstellungen als Übersicht mit Unterseiten; Ruhebildschirm getrennt von der Scan-Anzeige,
    Elemente frei hinzufügen/verschieben/entfernen (Version 0.8).
+9. ✅ Windows-Programm (Electron) zusätzlich zur Web-App, Installationsdatei über GitHub Releases,
+   Updates durch Drüberinstallieren, ohne Signatur (Version 0.9).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
