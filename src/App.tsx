@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { RequireRole } from './components/RequireAdmin';
 import { CardCreatePage } from './pages/CardCreatePage';
 import { CardDetailPage } from './pages/CardDetailPage';
+import { CardLayoutsPage } from './pages/CardLayoutsPage';
 import { CardListPage } from './pages/CardListPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EmergencyListPage } from './pages/EmergencyListPage';
@@ -62,6 +63,7 @@ export function App() {
             <Route path="einstellungen/geraet" element={<DeviceSettings />} />
             <Route path="einstellungen/gruppen" element={<GroupsPage />} />
             <Route path="einstellungen/praesentation" element={<LayoutsPage />} />
+            <Route path="einstellungen/karten" element={<CardLayoutsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

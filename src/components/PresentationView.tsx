@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { textColorOn } from '../domain/color';
 import {
   idleText,
@@ -9,6 +9,7 @@ import {
   type LayoutTone,
   type PresentationLayout,
 } from '../domain/presentationLayout';
+import { useElementDrag, type EditHandlers as GenericEditHandlers } from '../hooks/useElementDrag';
 import { AlertIcon, CheckIcon, CrossIcon, ExitIcon } from './Icons';
 
 const ICONS = { ok: CheckIcon, out: ExitIcon, deny: CrossIcon, warn: AlertIcon };
@@ -33,11 +34,7 @@ export function layoutBackground(layout: PresentationLayout): CSSProperties {
 }
 
 /** Bearbeitungsmodus im Editor: Elemente anklicken, ziehen, mit Pfeiltasten verschieben. */
-export interface EditHandlers {
-  selectedId?: string;
-  onSelect: (id: string | undefined) => void;
-  onChange: (element: LayoutElement) => void;
-}
+export type EditHandlers = GenericEditHandlers<LayoutElement>;
 
 interface Props {
   layout: PresentationLayout;
@@ -55,8 +52,7 @@ interface Props {
  * in Container-Einheiten (cqh) – dieselbe Darstellung im Vollbild und als Vorschau.
  */
 export function PresentationView({ layout, result, orgName, now, preview = false, edit }: Props) {
-  const screenRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ id: string; px: number; py: number; x: number; y: number } | null>(null);
+  const { surfaceRef, elementHandlers, surfaceHandlers } = useElementDrag(edit, layout.elements, moveElement);
   const isResult = layout.kind === 'result' && result !== null;
   const outcomeBg = isResult && layout.resultBackground === 'outcome';
   const tone = result?.tone ?? 'ok';
@@ -67,37 +63,6 @@ export function PresentationView({ layout, result, orgName, now, preview = false
   const Icon = ICONS[tone];
   const time = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   const date = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-  // --- Ziehen im Editor -----------------------------------------------------
-  const onPointerDown = (e: PointerEvent<HTMLElement>, element: LayoutElement) => {
-    if (!edit) return;
-    e.preventDefault();
-    e.stopPropagation();
-    edit.onSelect(element.id);
-    drag.current = { id: element.id, px: e.clientX, py: e.clientY, x: element.x, y: element.y };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-  const onPointerMove = (e: PointerEvent<HTMLElement>, element: LayoutElement) => {
-    const d = drag.current;
-    const rect = screenRef.current?.getBoundingClientRect();
-    if (!edit || !d || d.id !== element.id || !rect) return;
-    const dx = ((e.clientX - d.px) / rect.width) * 100;
-    const dy = ((e.clientY - d.py) / rect.height) * 100;
-    edit.onChange(moveElement(element, Math.round((d.x + dx) * 2) / 2, Math.round((d.y + dy) * 2) / 2));
-  };
-  const onPointerUp = () => {
-    drag.current = null;
-  };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const selected = layout.elements.find((x) => x.id === edit?.selectedId);
-    if (!edit || !selected) return;
-    const step = e.shiftKey ? 5 : 0.5;
-    const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
-    const m = moves[e.key];
-    if (!m) return;
-    e.preventDefault();
-    edit.onChange(moveElement(selected, selected.x + m[0], selected.y + m[1]));
-  };
 
   const renderElement = (element: LayoutElement) => {
     const hiddenHere = isResult && !isVisibleFor(element, result.kind);
@@ -163,10 +128,7 @@ export function PresentationView({ layout, result, orgName, now, preview = false
         className={`pv-el pv-${element.type}-box${selected ? ' pv-selected' : ''}${hiddenHere ? ' pv-hidden-here' : ''}${edit ? ' pv-editable' : ''}`}
         style={box}
         data-element={element.id}
-        onPointerDown={edit ? (e) => onPointerDown(e, element) : undefined}
-        onPointerMove={edit ? (e) => onPointerMove(e, element) : undefined}
-        onPointerUp={edit ? onPointerUp : undefined}
-        onPointerCancel={edit ? onPointerUp : undefined}
+        {...elementHandlers(element)}
       >
         {content}
       </div>
@@ -176,13 +138,11 @@ export function PresentationView({ layout, result, orgName, now, preview = false
   return (
     <div className={`pv${preview ? ' pv-preview' : ''}`}>
       <div
-        ref={screenRef}
+        ref={surfaceRef}
         className={`presentation ${isResult ? `presentation-result result-${tone}` : 'presentation-idle'} ${outcomeBg || !isResult ? '' : 'pv-custom'}`}
         style={style}
         role={preview || !isResult ? undefined : 'alert'}
-        tabIndex={edit ? 0 : undefined}
-        onKeyDown={edit ? onKeyDown : undefined}
-        onPointerDown={edit ? () => edit.onSelect(undefined) : undefined}
+        {...surfaceHandlers}
         aria-label={edit ? 'Vorschau – Elemente anklicken und ziehen, Pfeiltasten verschieben' : undefined}
       >
         {isResult && !outcomeBg && <div className="pv-tone-band" aria-hidden="true" />}

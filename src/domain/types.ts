@@ -23,6 +23,8 @@ export interface Group {
   requireConfirmation?: boolean;
   /** Präsentationslayout für den Gästebildschirm (leer = Standard). */
   presentationLayoutId?: string;
+  /** Layout der gedruckten Karten dieser Gruppe (leer = Standard). */
+  cardLayoutId?: string;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;
@@ -30,7 +32,15 @@ export interface Group {
 
 export type GroupInput = Pick<
   Group,
-  'name' | 'color' | 'prefix' | 'accessGranted' | 'allowUnassigned' | 'printHolder' | 'requireConfirmation' | 'presentationLayoutId'
+  | 'name'
+  | 'color'
+  | 'prefix'
+  | 'accessGranted'
+  | 'allowUnassigned'
+  | 'printHolder'
+  | 'requireConfirmation'
+  | 'presentationLayoutId'
+  | 'cardLayoutId'
 >;
 
 /** Personendaten hinter einer Karte – jederzeit änderbar oder entfernbar. */

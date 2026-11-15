@@ -85,6 +85,13 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   nur Layouts/Einstellungen. `PresentationView` (cqh-Einheiten) dient auch als Editor-Vorschau mit
   Ziehen/Pfeiltasten. Layouts der Version 0.7 (ohne `elements`) wandelt `normalizeLayout` bzw.
   einmalig `upgradeLegacyLayouts` (App-Start) um.
+- **Kartenlayouts** (gedruckte Karten): `domain/cardLayout.ts` (Elemente text/qr/photo/logo/band in %
+  der Karte, Schrift in % der Kartenhöhe, `showWhen` mit/ohne Person, `hideIfEmpty`, Farben
+  `group`/`on-group`/#hex, QR mindestens `MIN_QR_MM`), Tabelle `cardLayouts` (DB-Version 3),
+  `STANDARD_CARD_LAYOUT` nur im Code; Zuordnung `Group.cardLayoutId` > `settings.defaultCardLayoutId`.
+  Personendaten nur bei `group.printHolder` (`cardDataFor` in `PrintPage`). `CardView` rendert Druck
+  (echte mm) und Editor-Vorschau; Kartendrucker-Druck über benannte `@page karte-quer/karte-hoch`.
+  Ziehen/Pfeiltasten in beiden Editoren über `hooks/useElementDrag.ts`.
 - Einstellungen: Übersicht `#/einstellungen` (Kacheln) + je Bereich eine Seite unter `pages/settings/`
   mit `SettingsShell` (Seitenleiste ab 1000 px, sonst „← Einstellungen“). Neue Bereiche in
   `SETTINGS_SECTIONS` eintragen; keine langen Sammelseiten mehr.
@@ -145,6 +152,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    Elemente frei hinzufügen/verschieben/entfernen (Version 0.8).
 9. ✅ Windows-Programm (Electron) zusätzlich zur Web-App, Installationsdatei über GitHub Releases,
    Updates durch Drüberinstallieren, ohne Signatur (Version 0.9).
+10. ✅ Kartenlayout frei gestaltbar (Quer/Hoch, Elemente, Zuweisung je Gruppe), Druck auf A4-Bogen
+    oder Kartendrucker (Version 0.10).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
@@ -154,4 +163,5 @@ Teilen (`lib/download.ts`): Chrome teilt nur bestimmte Endungen – `shareableFi
 
 Mögliche nächste Schritte (mit dem Nutzer abstimmen): Fremdkarten (QR/Strichcode einlernen,
 zurückgestellt), Musik/Animationen in Layouts (zurückgestellt), USB-Handscanner, Test auf echten
-Geräten und Feinschliff, Backup zusammenführen statt ersetzen, Logo auf der Karte.
+Geräten und Feinschliff, Datenschutz (Hinweis, Auskunft/Löschen je Person), Zutrittszeiten je Gruppe,
+Kartenrückseite, Backup zusammenführen statt ersetzen.
