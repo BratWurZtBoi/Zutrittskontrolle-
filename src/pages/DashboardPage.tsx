@@ -21,6 +21,7 @@ import {
 import { useFilteredEvents, useStatusRows } from '../hooks/useOverviewData';
 import { useKeepScreenOn, useScanProcessor } from '../hooks/useScanProcessor';
 import { useSort } from '../hooks/useSort';
+import { openPresentationWindow } from '../lib/presentation';
 import { CameraScanner } from '../scanner/CameraScanner';
 
 /**
@@ -53,6 +54,11 @@ export function DashboardPage() {
         </div>
         <ScannerControls settings={settings} cameraStarts={cameraStarts} />
         <ResultPanel result={result} highlightSec={settings.resultDisplaySec} />
+        <div className="dash-camera-actions">
+          <button type="button" className="btn btn-small" onClick={openPresentationWindow}>
+            Präsentation für Gäste öffnen (2. Bildschirm)
+          </button>
+        </div>
         {settings.testMode && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
       </section>
       <PresencePanel groups={groups} />

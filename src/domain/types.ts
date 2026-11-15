@@ -135,4 +135,6 @@ export interface PresenceRecord {
   status: Direction;
   /** Zeitpunkt der letzten erfolgreichen Buchung. */
   lastBookingAt: number;
+  /** Letzte Buchung war automatisch (z. B. „Alle ausbuchen“) – zählt nicht für den Doppelscan-Schutz. */
+  bySystem?: boolean;
 }

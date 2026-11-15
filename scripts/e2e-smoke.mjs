@@ -6,7 +6,7 @@
  * Aufruf: npm run e2e:local   (Screenshots landen in .e2e/)
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import QRCode from 'qrcode';
@@ -345,23 +345,120 @@ try {
   check((await page.locator('.card-list').textContent()).includes('Mustermann'), 'Nach dem Einspielen: Namen wieder lesbar');
   check(!/Mustermann/.test(JSON.stringify(await readStore(page, 'cards'))), 'Nach dem Einspielen: wieder verschlüsselt gespeichert');
 
-  console.log('13) Karten drucken');
-  await page.setViewportSize({ width: 1100, height: 900 });
+  console.log('13) Mehrfachauswahl: Besucherdaten entfernen, Karten löschen');
   await page.goto(`${URL}#/karten`);
-  await page.getByRole('link', { name: /Drucken \(17\)/ }).click();
+  await page.getByRole('button', { name: 'Auswählen' }).click();
+  await page.getByLabel('Karte B-001 auswählen').check();
+  await page.getByLabel('Karte B-002 auswählen').check();
+  await page.getByRole('button', { name: 'Personendaten entfernen' }).click();
+  await page.getByText('Personendaten von 2 Karte(n) entfernt.').waitFor();
+  const afterReturn = await readStore(page, 'cards');
+  check(['B-001', 'B-002'].every((n) => !afterReturn.find((c) => c.number === n).holderEnc), 'Personendaten von B-001 und B-002 entfernt');
+  await page.getByLabel('Gruppe').selectOption({ label: 'Dienstleister' });
+  await page.getByLabel(/Alle angezeigten/).check();
+  check((await page.locator('.selection-count').textContent()).includes('3'), '„Alle angezeigten“ wählt 3 Karten');
+  await page.screenshot({ path: `${OUT}/11-mehrfachauswahl.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+  await page.getByText('3 Karte(n) gelöscht.').waitFor();
+  check((await readStore(page, 'cards')).length === 14, 'Drei Karten per Mehrfachauswahl gelöscht (14 übrig)');
+  await page.getByRole('button', { name: 'Auswahl beenden' }).click();
+
+  console.log('14) CSV-Import mit Vorlage');
+  await page.goto(`${URL}#/karten/import`);
+  const [templateDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Vorlage herunterladen' }).click(),
+  ]);
+  const templatePath = `${OUT}/${templateDownload.suggestedFilename()}`;
+  await templateDownload.saveAs(templatePath);
+  const template = readFileSync(templatePath, 'utf8');
+  check(template.startsWith('﻿Kartennummer;Gruppe;Vorname;Nachname;Firma/Abteilung;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis'), 'Vorlage mit Kopfzeile heruntergeladen');
+  const importCsv = [
+    'Kartennummer;Gruppe;Vorname;Nachname;Firma/Abteilung;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis',
+    ';Besucher;Anna;Import;Import GmbH;;ja;;',
+    ';M;Ben;Import;Lager;;ja;;31.12.2030',
+    'B-004;;Clara;Import;;Zuweisung;ja;;',
+    ';Hausmeister;Fehler;Zeile;;;ja;;',
+  ].join('\r\n');
+  const importPath = `${OUT}/import.csv`;
+  // wie Excel „CSV (Trennzeichen-getrennt)“: Windows-1252 statt UTF-8
+  writeFileSync(importPath, Buffer.from(importCsv.replace('Gültig', 'Gültig'), 'latin1'));
+  await page.locator('#csv-file').setInputFiles(importPath);
+  await page.locator('.import-table tbody tr').nth(3).waitFor();
+  const chips = await page.locator('.summary-chips').textContent();
+  check(chips.includes('2 neue Karte(n)') && chips.includes('1 Zuweisung(en)') && chips.includes('1 Fehler'), 'Import-Vorschau: 2 neu, 1 Zuweisung, 1 Fehler');
+  check((await page.locator('.import-table').textContent()).includes('Gruppe „Hausmeister“ gibt es nicht.'), 'Import-Vorschau zeigt Fehlergrund');
+  await page.screenshot({ path: `${OUT}/12-import-vorschau.png`, fullPage: true });
+  await page.getByRole('button', { name: '3 Zeile(n) importieren' }).click();
+  await page.getByText('Import abgeschlossen').waitFor();
+  await page.goto(`${URL}#/karten`);
+  await page.locator('.card-row').nth(15).waitFor();
+  const listText = await page.locator('.card-list').textContent();
+  check((await page.locator('.card-row').count()) === 16, 'Nach dem Import: 16 Karten');
+  check(listText.includes('Anna Import') && listText.includes('Ben Import') && listText.includes('Clara Import'), 'Importierte Personen in der Kartenliste');
+
+  console.log('15) Präsentationsansicht auf zweitem Bildschirm');
+  const presentation = await ctx.newPage();
+  presentation.on('pageerror', (e) => problems.push(`JS-Fehler (Präsentation): ${e.message}`));
+  await presentation.setViewportSize({ width: 1280, height: 720 });
+  await presentation.goto(`${URL}#/praesentation`);
+  await presentation.getByText('Herzlich willkommen').waitFor();
+  check((await presentation.locator('.presentation-org').textContent()).includes('Musterfirma'), 'Präsentation: Wartebildschirm mit Organisationsname');
+  await presentation.screenshot({ path: `${OUT}/13-praesentation-warten.png` });
+  // „Alle Daten löschen“ im Backup-Schritt hat den Testmodus zurückgesetzt
+  await page.goto(`${URL}#/einstellungen`);
+  await page.getByLabel(/Testmodus/).click();
+  await page.waitForTimeout(300);
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-camera .test-panel').evaluate((d) => (d.open = true));
+  await page.locator('.dash-camera .test-panel select').selectOption(cards.find((c) => c.number === 'M-002').id);
+  await page.locator('.dash-camera').getByRole('button', { name: 'Karte scannen' }).click();
+  await presentation.locator('.presentation-result').waitFor({ timeout: 5000 });
+  const shown = await presentation.locator('.presentation-result').textContent();
+  check(shown.includes('Willkommen') && shown.includes('Erika Musterfrau'), 'Präsentation zeigt dem Gast „Willkommen“ und den Namen');
+  await presentation.screenshot({ path: `${OUT}/14-praesentation-ergebnis.png` });
+  await presentation.close();
+
+  console.log('16) Dunkles Layout');
+  await page.goto(`${URL}#/einstellungen`);
+  await page.getByLabel('Darstellung').selectOption('dark');
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  check(true, 'Dunkles Layout aktiv');
+  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check(bg !== 'rgb(241, 245, 249)', `Hintergrund ist dunkel (${bg})`);
+  await page.screenshot({ path: `${OUT}/15-dunkel-einstellungen.png` });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-presence tbody tr').first().waitFor();
+  await page.screenshot({ path: `${OUT}/16-dunkel-dashboard.png` });
+  await page.goto(`${URL}#/uebersicht`);
+  await page.locator('.data-table tbody tr').first().waitFor();
+  await page.screenshot({ path: `${OUT}/17-dunkel-uebersicht.png` });
+  await page.setViewportSize(viewport);
+  await page.goto(`${URL}#/karten`);
+  await page.locator('.card-row').first().waitFor();
+  await page.screenshot({ path: `${OUT}/18-dunkel-karten.png` });
+
+  console.log('17) Karten drucken (Druck bleibt hell)');
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.getByRole('link', { name: /Drucken \(16\)/ }).click();
   await page.locator('.id-card .qr[src]').first().waitFor();
-  check((await page.locator('.id-card').count()) === 16, '16 Karten druckbereit (gesperrte ausgenommen)');
+  check((await page.locator('.id-card').count()) === 15, '15 Karten druckbereit (gesperrte ausgenommen)');
   await page.waitForTimeout(500);
-  await page.screenshot({ path: `${OUT}/07-druck.png` });
+  await page.screenshot({ path: `${OUT}/19-druck-dunkel.png` });
   await page.emulateMedia({ media: 'print' });
+  const printBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check(printBg === 'rgb(255, 255, 255)', 'Druckansicht ist auch im dunklen Layout weiß');
   await page.pdf({ path: `${OUT}/karten.pdf`, format: 'A4', printBackground: true, preferCSSPageSize: true });
   await page.emulateMedia({ media: 'screen' });
   console.log('  ✓ PDF erzeugt: .e2e/karten.pdf');
+  await page.goto(`${URL}#/einstellungen`);
+  await page.getByLabel('Darstellung').selectOption('auto');
 
-  console.log('14) Abmelden und Sperren');
+  console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);
-  await page.screenshot({ path: `${OUT}/09-einstellungen.png`, fullPage: true });
+  
   await page.getByRole('button', { name: 'Abmelden' }).click();
   await page.locator('.scanner-page').waitFor();
   check((await page.locator('.lock-banner').count()) === 0, 'Nach Abmelden bleiben die Daten für den Scanner entsperrt');

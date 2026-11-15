@@ -1,28 +1,17 @@
 import { useEffect, useState } from 'react';
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
-import { directionText, holderName, reasonText } from '../domain/texts';
+import { holderName } from '../domain/texts';
+import { describeOutcome } from '../lib/resultText';
 import { GroupBadge } from './GroupBadge';
 import { HolderPhoto } from './HolderPhoto';
 import { AlertIcon, CheckIcon, CrossIcon, ExitIcon, LockIcon } from './Icons';
 
+const ICONS = { ok: CheckIcon, out: ExitIcon, deny: CrossIcon, warn: AlertIcon };
+
 function describe(result: ScanOutcome) {
-  const { decision, card } = result;
-  if (decision.outcome === 'duplicate') {
-    return {
-      tone: 'warn',
-      title: 'Bereits erfasst',
-      Icon: AlertIcon,
-      detail: `${directionText(decision.direction)} wurde vor ${decision.secondsSinceLast ?? 0} s gebucht – Scan ignoriert.`,
-    };
-  }
-  if (decision.outcome === 'denied') {
-    return { tone: 'deny', title: 'Kein Zutritt', Icon: CrossIcon, detail: reasonText(decision.reason, card) };
-  }
-  const detail = `${directionText(decision.direction)} gebucht · ${formatTime(result.at)} Uhr`;
-  return decision.direction === 'out'
-    ? { tone: 'out', title: 'Auf Wiedersehen', Icon: ExitIcon, detail }
-    : { tone: 'ok', title: 'Willkommen', Icon: CheckIcon, detail };
+  const text = describeOutcome(result);
+  return { ...text, Icon: ICONS[text.tone] };
 }
 
 function ResultContent({ result }: { result: ScanOutcome }) {

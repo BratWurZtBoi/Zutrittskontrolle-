@@ -3,7 +3,11 @@ import type { ScanMode } from '../domain/types';
 export type CameraChoice = 'user' | 'environment' | `device:${string}`;
 import { db } from './db';
 
+export type ThemeChoice = 'auto' | 'light' | 'dark';
+
 export interface AppSettings {
+  /** Darstellung: automatisch nach Systemeinstellung, hell oder dunkel (je Gerät). */
+  theme: ThemeChoice;
   /** Name der Organisation – erscheint auf den Ausweisen. */
   orgName: string;
   scanMode: ScanMode;
@@ -26,6 +30,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  theme: 'auto',
   orgName: 'Musterfirma (Testbetrieb)',
   scanMode: 'auto',
   cooldownSec: 30,

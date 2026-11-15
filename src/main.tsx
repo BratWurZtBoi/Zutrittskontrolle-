@@ -5,7 +5,10 @@ import { removeLegacyDatabase } from './db/db';
 import { ensureDefaultGroups } from './db/groups';
 import { unlockAudio } from './lib/feedback';
 import { requestPersistentStorage, setupPwa } from './pwa';
+import { applyStoredTheme } from './lib/theme';
 import './styles.css';
+
+applyStoredTheme();
 
 // Töne sind erst nach einer Benutzeraktion erlaubt.
 window.addEventListener('pointerdown', unlockAudio, { once: true });

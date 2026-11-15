@@ -243,7 +243,7 @@ async function checkOutIfPresent(card: CardRecord, now: number): Promise<void> {
     source: 'system',
   };
   await db.events.add(event);
-  await db.presence.put({ cardId: card.id, status: 'out', lastBookingAt: now });
+  await db.presence.put({ cardId: card.id, status: 'out', lastBookingAt: now, bySystem: true });
 }
 
 /** Bucht alle anwesenden Karten aus (z. B. am Tagesende). Liefert die Anzahl. */
@@ -279,6 +279,44 @@ export async function reissueToken(id: string, now = Date.now()): Promise<Card> 
     return updated;
   });
   return toCard(record);
+}
+
+// ---------------------------------------------------------------------------
+// Mehrfachauswahl
+// ---------------------------------------------------------------------------
+
+/**
+ * Personendaten mehrerer Karten entfernen (wie „Karte zurückgeben“): bucht aus,
+ * entfernt Personendaten und Gültigkeit. Liefert die Anzahl geänderter Karten.
+ */
+export async function returnCards(ids: string[], now = Date.now()): Promise<number> {
+  return db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
+    let count = 0;
+    for (const id of ids) {
+      const current = await db.cards.get(id);
+      if (!current || !(current.holderEnc || current.holder || current.validFrom || current.validUntil)) continue;
+      await checkOutIfPresent(current, now);
+      const { holder: _legacy, holderEnc: _h, nameEnc: _n, ...rest } = current;
+      await db.cards.put({ ...rest, holderSince: undefined, validFrom: undefined, validUntil: undefined, updatedAt: now });
+      count++;
+    }
+    return count;
+  });
+}
+
+/** Mehrere Karten sperren oder entsperren. */
+export async function setCardsBlocked(ids: string[], blocked: boolean, now = Date.now()): Promise<number> {
+  return db.cards.where('id').anyOf(ids).modify({ blocked, updatedAt: now });
+}
+
+/** Mehrere Karten löschen (Protokoll bleibt erhalten). */
+export async function deleteCards(ids: string[]): Promise<number> {
+  return db.transaction('rw', [db.cards, db.presence], async () => {
+    const existing = (await db.cards.bulkGet(ids)).filter(Boolean).length;
+    await db.cards.bulkDelete(ids);
+    await db.presence.bulkDelete(ids);
+    return existing;
+  });
 }
 
 /** Löscht die Karte. Das Protokoll bleibt erhalten (enthält Momentaufnahmen). */
