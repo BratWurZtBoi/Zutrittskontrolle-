@@ -143,8 +143,10 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 - **Backup erstellen** (*Einstellungen → Datensicherung*): eine Datei (`.zkb`) mit allen Karten,
   Personendaten, Fotos, Gruppen, dem Protokoll und den Einstellungen – verschlüsselt mit einem
-  eigenen **Backup-Passwort** (AES-256). Sie landet im Download-Ordner; auf Android kann sie auch
-  direkt geteilt werden (z. B. Quick Share zum Laptop).
+  eigenen **Backup-Passwort** (AES-256). Sie landet im Download-Ordner und kann auch direkt
+  geteilt werden (**Teilen …**, z. B. Quick Share zum Laptop). Beim Teilen heißt sie `….zkb.txt`,
+  weil Chrome die Endung `.zkb` nicht teilen lässt – der Inhalt bleibt verschlüsselt, „Backup
+  einspielen“ nimmt beide Varianten an.
 - **Backup einspielen:** Datei wählen, Passwort eingeben, Vorschau prüfen, bestätigen. Die Daten
   auf dem Gerät werden **ersetzt**; das Admin-Passwort des Geräts bleibt. So lassen sich Daten
   z. B. vom Handy auf den Windows-Rechner übertragen.

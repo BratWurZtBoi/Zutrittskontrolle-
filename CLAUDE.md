@@ -126,7 +126,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
 
-Mögliche nächste Schritte (mit dem Nutzer abstimmen): Quick-Share-Fix (Teilen der Backup-Datei als
-`.txt`, Chrome erlaubt `.zkb` nicht – vom Nutzer zurückgestellt), Fremdkarten (QR/Strichcode einlernen,
+Teilen (`lib/download.ts`): Chrome teilt nur bestimmte Endungen – `shareableFile()` hängt sonst
+`.txt` an (Backup → `….zkb.txt`, Inhalt unverändert); Fehler werden angezeigt, nicht verschluckt.
+
+Mögliche nächste Schritte (mit dem Nutzer abstimmen): Fremdkarten (QR/Strichcode einlernen,
 zurückgestellt), Musik/Animationen in Layouts (zurückgestellt), USB-Handscanner, Test auf echten
 Geräten und Feinschliff, Backup zusammenführen statt ersetzen, Logo auf der Karte.

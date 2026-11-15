@@ -352,7 +352,10 @@ try {
   await page.getByRole('button', { name: 'Alle Daten löschen' }).click();
   await page.getByText(/Alle Daten gelöscht/).waitFor();
   check((await readStore(page, 'cards')).length === 0, 'Alle Daten gelöscht');
-  await page.locator('#bk-file').setInputFiles(backupPath);
+  // so kommt die Datei per Quick Share an: gleicher Inhalt, Endung .zkb.txt
+  const sharedPath = `${backupPath}.txt`;
+  writeFileSync(sharedPath, readFileSync(backupPath));
+  await page.locator('#bk-file').setInputFiles(sharedPath);
   await page.getByLabel('Backup-Passwort', { exact: true }).fill('falsches-Passwort');
   await page.getByRole('button', { name: 'Backup öffnen' }).click();
   await page.getByText('Das Passwort ist falsch.').waitFor();
