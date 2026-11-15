@@ -1,27 +1,31 @@
 /** Deutsche Anzeigetexte für Entscheidungen und Status. */
+import type { CardStatus } from './access';
 import { formatIsoDate } from './dates';
-import type { PersonStatus } from './access';
-import type { Direction, Person, ReasonCode } from './types';
+import type { Card, CardHolder, Direction, ReasonCode } from './types';
 
-export function reasonText(reason: ReasonCode, person?: Pick<Person, 'validFrom' | 'validUntil'>): string {
+export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | 'validUntil'>): string {
   switch (reason) {
     case 'OK':
       return 'Buchung erfasst';
     case 'INVALID_CODE':
-      return 'Dieser QR-Code ist kein gültiger Ausweis.';
+      return 'Dieser QR-Code ist keine gültige Karte.';
     case 'UNKNOWN_CARD':
-      return 'Ausweis unbekannt oder durch einen neuen Ausweis ersetzt.';
+      return 'Karte unbekannt oder durch einen neuen QR-Code ersetzt.';
     case 'CARD_BLOCKED':
-      return 'Dieser Ausweis ist gesperrt.';
+      return 'Diese Karte ist gesperrt.';
+    case 'GROUP_DISABLED':
+      return 'Zutritt für diese Gruppe ist derzeit gesperrt.';
     case 'NO_PERMISSION':
       return 'Keine Zutrittsberechtigung.';
+    case 'UNASSIGNED':
+      return 'Karte ist keiner Person zugeordnet.';
     case 'NOT_YET_VALID':
-      return person?.validFrom
-        ? `Berechtigung gilt erst ab ${formatIsoDate(person.validFrom)}.`
+      return card?.validFrom
+        ? `Berechtigung gilt erst ab ${formatIsoDate(card.validFrom)}.`
         : 'Berechtigung noch nicht gültig.';
     case 'EXPIRED':
-      return person?.validUntil
-        ? `Berechtigung abgelaufen am ${formatIsoDate(person.validUntil)}.`
+      return card?.validUntil
+        ? `Berechtigung abgelaufen am ${formatIsoDate(card.validUntil)}.`
         : 'Berechtigung abgelaufen.';
     case 'DUPLICATE':
       return 'Bereits erfasst.';
@@ -34,10 +38,16 @@ export function directionText(direction: Direction | undefined): string {
   return '–';
 }
 
-export const STATUS_LABEL: Record<PersonStatus, string> = {
+export const STATUS_LABEL: Record<CardStatus, string> = {
   active: 'Zutritt erlaubt',
-  blocked: 'Ausweis gesperrt',
+  blocked: 'Gesperrt',
+  'group-disabled': 'Gruppe gesperrt',
   'no-permission': 'Kein Zutritt',
+  unassigned: 'Nicht zugeordnet',
   'not-yet-valid': 'Noch nicht gültig',
   expired: 'Abgelaufen',
 };
+
+export function holderName(holder: CardHolder | undefined): string | undefined {
+  return holder ? `${holder.firstName} ${holder.lastName}`.trim() : undefined;
+}

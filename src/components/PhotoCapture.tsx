@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CameraChoice } from '../db/settings';
+import { useSettings } from '../hooks/useSettings';
 import { describeCameraError, openCamera, stopStream } from '../lib/camera';
 import { captureToDataUrl, fileToDataUrl } from '../lib/image';
-import { CameraSwitchIcon } from './Icons';
+import { CameraSelect } from './CameraSelect';
 
 interface Props {
   value?: string;
@@ -10,21 +12,25 @@ interface Props {
 
 /** Foto per Kamera (Smartphone, Tablet, Webcam) aufnehmen oder als Datei wählen. */
 export function PhotoCapture({ value, onChange }: Props) {
+  const settings = useSettings();
   const [cameraOn, setCameraOn] = useState(false);
-  const [facing, setFacing] = useState<'user' | 'environment'>('user');
+  const [camera, setCamera] = useState<CameraChoice | null>(null);
+  const [started, setStarted] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const activeCamera = camera ?? settings.camera;
 
   useEffect(() => {
     if (!cameraOn) return;
     let stream: MediaStream | null = null;
     let cancelled = false;
     setError(null);
-    openCamera({ facingMode: facing, width: 1280, height: 960 })
+    openCamera({ camera: activeCamera, width: 1280, height: 960 })
       .then((s) => {
         if (cancelled) return stopStream(s);
         stream = s;
+        setStarted((n) => n + 1);
         if (videoRef.current) {
           videoRef.current.srcObject = s;
           void videoRef.current.play().catch(() => undefined);
@@ -35,7 +41,7 @@ export function PhotoCapture({ value, onChange }: Props) {
       cancelled = true;
       stopStream(stream);
     };
-  }, [cameraOn, facing]);
+  }, [cameraOn, activeCamera]);
 
   const capture = () => {
     if (!videoRef.current) return;
@@ -60,23 +66,16 @@ export function PhotoCapture({ value, onChange }: Props) {
     <div className="photo-capture">
       {cameraOn ? (
         <div className="photo-camera">
-          <video ref={videoRef} className={facing === 'user' ? 'mirrored' : ''} playsInline muted autoPlay />
+          <video ref={videoRef} className={activeCamera === 'environment' ? '' : 'mirrored'} playsInline muted autoPlay />
           <div className="button-row">
             <button type="button" className="btn btn-primary" onClick={capture}>
               Auslösen
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setFacing((f) => (f === 'user' ? 'environment' : 'user'))}
-              title="Kamera wechseln"
-            >
-              <CameraSwitchIcon /> Wechseln
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => setCameraOn(false)}>
               Abbrechen
             </button>
           </div>
+          <CameraSelect value={activeCamera} onChange={setCamera} refreshKey={started} className="camera-select" />
         </div>
       ) : (
         <div className="photo-preview">

@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { removeLegacyDatabase } from './db/db';
+import { ensureDefaultGroups } from './db/groups';
 import { unlockAudio } from './lib/feedback';
 import { requestPersistentStorage, setupPwa } from './pwa';
 import './styles.css';
@@ -10,6 +12,8 @@ window.addEventListener('pointerdown', unlockAudio, { once: true });
 
 void setupPwa();
 void requestPersistentStorage();
+void removeLegacyDatabase();
+void ensureDefaultGroups();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root fehlt');

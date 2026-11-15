@@ -1,15 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertIcon, CameraSwitchIcon, CheckIcon, CrossIcon, ExitIcon } from '../components/Icons';
-import { PersonPhoto } from '../components/PersonPhoto';
+import { CameraSelect } from '../components/CameraSelect';
+import { GroupBadge } from '../components/GroupBadge';
+import { HolderPhoto } from '../components/HolderPhoto';
+import { AlertIcon, CheckIcon, CrossIcon, ExitIcon } from '../components/Icons';
+import { listCards } from '../db/cards';
 import { db } from '../db/db';
-import { listPersons } from '../db/persons';
 import { processScan, type ScanOutcome } from '../db/scans';
 import { saveSettings } from '../db/settings';
 import { encodeCardPayload } from '../domain/cardCode';
 import { formatTime } from '../domain/dates';
 import { ScanDeduper } from '../domain/scanDeduper';
-import { directionText, reasonText } from '../domain/texts';
+import { directionText, holderName, reasonText } from '../domain/texts';
 import type { AccessEvent, ScanMode } from '../domain/types';
 import { useSettings } from '../hooks/useSettings';
 import { setKeepScreenOn } from '../lib/device';
@@ -40,6 +42,7 @@ export function ScannerPage() {
   const busy = useRef(false);
   const deduper = useRef(new ScanDeduper(SAME_CODE_HOLD_MS));
   const presentCount = useLiveQuery(() => db.presence.where('status').equals('in').count(), [], 0);
+  const [cameraStarts, setCameraStarts] = useState(0);
 
   useEffect(() => {
     void setKeepScreenOn(true);
@@ -70,13 +73,14 @@ export function ScannerPage() {
   }, [result, settings.resultDisplaySec]);
 
   const onCamera = useCallback((text: string) => void handleText(text, 'camera'), [handleText]);
-  const mirror = settings.mirrorPreview && settings.facingMode === 'user';
+  const mirror = settings.mirrorPreview && settings.camera !== 'environment';
+  const onStarted = useCallback(() => setCameraStarts((n) => n + 1), []);
 
   return (
     <div className="scanner-page">
       <div className="scanner-stage">
-        <CameraScanner facingMode={settings.facingMode} mirror={mirror} onCode={onCamera} />
-        <div className="scanner-hint">Ausweis mit QR-Code vor die Kamera halten</div>
+        <CameraScanner camera={settings.camera} mirror={mirror} onCode={onCamera} onStarted={onStarted} />
+        <div className="scanner-hint">Karte mit QR-Code vor die Kamera halten</div>
       </div>
 
       <div className="scanner-bar no-print">
@@ -94,14 +98,12 @@ export function ScannerPage() {
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => void saveSettings({ facingMode: settings.facingMode === 'user' ? 'environment' : 'user' })}
-          title="Kamera wechseln"
-        >
-          <CameraSwitchIcon /> {settings.facingMode === 'user' ? 'Frontkamera' : 'Rückkamera'}
-        </button>
+        <CameraSelect
+          value={settings.camera}
+          onChange={(camera) => void saveSettings({ camera })}
+          refreshKey={cameraStarts}
+          className="camera-select"
+        />
         <span className="present-count">
           Anwesend: <strong>{presentCount}</strong>
         </span>
@@ -115,7 +117,8 @@ export function ScannerPage() {
 }
 
 function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClose: () => void }) {
-  const { decision, person } = result;
+  const { decision, card, group } = result;
+  const holder = card?.holder;
   let tone: string;
   let title: string;
   let Icon = CheckIcon;
@@ -142,7 +145,7 @@ function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClose: () =
   } else if (decision.outcome === 'duplicate') {
     detail = `${directionText(decision.direction)} wurde vor ${decision.secondsSinceLast ?? 0} s gebucht – Scan ignoriert.`;
   } else {
-    detail = reasonText(decision.reason, person);
+    detail = reasonText(decision.reason, card);
   }
 
   return (
@@ -151,13 +154,14 @@ function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClose: () =
         <Icon className="result-icon" />
         <span className="result-title">{title}</span>
       </div>
-      {person && <PersonPhoto person={person} className="result-photo" />}
-      {person && (
-        <div className="result-name">
-          {person.firstName} {person.lastName}
+      {card && <HolderPhoto holder={holder} fallback={card.number} className="result-photo" />}
+      {card && <div className="result-name">{holder ? holderName(holder) : `Karte ${card.number}`}</div>}
+      {card && (
+        <div className="result-id">
+          <GroupBadge group={group} className="result-group" /> {holder ? `Karte ${card.number}` : ''}
+          {holder?.company ? ` · ${holder.company}` : ''}
         </div>
       )}
-      {person && <div className="result-id">ID {person.personnelNo}</div>}
       <div className="result-detail">{detail}</div>
       <div className="result-dismiss">Tippen zum Schließen</div>
     </div>
@@ -166,26 +170,26 @@ function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClose: () =
 
 /** Nur im Testmodus: Scans ohne zweiten Bildschirm oder gedruckten Ausweis simulieren. */
 function TestScanPanel({ onScan }: { onScan: (text: string) => void }) {
-  const persons = useLiveQuery(listPersons, [], []);
+  const cards = useLiveQuery(listCards, [], []);
   const [selected, setSelected] = useState('');
-  const person = persons.find((p) => p.id === selected) ?? persons[0];
+  const current = cards.find(({ card }) => card.id === selected) ?? cards[0];
 
   return (
     <details className="test-panel no-print">
       <summary>Testmodus: Scan simulieren</summary>
-      {persons.length === 0 ? (
-        <p>Noch keine Personen angelegt. Unter „Personen“ können Testpersonen erzeugt werden.</p>
+      {cards.length === 0 ? (
+        <p>Noch keine Karten vorhanden. Unter „Karten“ können Testkarten erzeugt werden.</p>
       ) : (
         <div className="button-row">
-          <select value={person?.id ?? ''} onChange={(e) => setSelected(e.target.value)} aria-label="Person für Testscan">
-            {persons.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.lastName}, {p.firstName} ({p.personnelNo})
+          <select value={current?.card.id ?? ''} onChange={(e) => setSelected(e.target.value)} aria-label="Karte für Testscan">
+            {cards.map(({ card, group }) => (
+              <option key={card.id} value={card.id}>
+                {card.number} – {card.holder ? holderName(card.holder) : 'frei'} ({group?.name ?? '?'})
               </option>
             ))}
           </select>
-          <button type="button" className="btn btn-primary" onClick={() => person && onScan(encodeCardPayload(person.cardToken))}>
-            Ausweis scannen
+          <button type="button" className="btn btn-primary" onClick={() => current && onScan(encodeCardPayload(current.card.token))}>
+            Karte scannen
           </button>
           <button type="button" className="btn" onClick={() => onScan('https://example.com/kein-ausweis')}>
             Fremder QR-Code

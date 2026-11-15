@@ -366,20 +366,29 @@ textarea {
   transform: scaleX(-1);
 }
 
-/* ---------- Personen ---------- */
+/* ---------- Karten ---------- */
 
-.search {
+.filter-bar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
 }
+@media (min-width: 700px) {
+  .filter-bar {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
 
-.person-list,
-.present-grid {
+.card-list,
+.present-grid,
+.group-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.person-row,
+.card-row,
 .present-item {
   display: flex;
   align-items: center;
@@ -388,22 +397,104 @@ textarea {
   margin-bottom: 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-left: 6px solid #94a3b8;
   border-radius: var(--radius);
   color: inherit;
   text-decoration: none;
 }
-.person-row-main {
+.card-row-main {
   flex: 1;
   min-width: 0;
 }
-.person-row-name {
-  font-weight: 700;
+.card-row-title {
+  font-weight: 600;
 }
-.person-row-badges {
+.card-row-badges {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.25rem;
+}
+.present-item .group-badge {
+  margin-top: 0.2rem;
+}
+
+.photo-unassigned {
+  background: #f1f5f9;
+  border: 2px dashed #cbd5e1;
+  font-size: 0.8rem;
+}
+
+.success-box {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.unassigned-box {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  text-align: center;
+}
+.hint {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+}
+.form-actions {
+  margin-top: 1rem;
+}
+.small {
+  font-size: 0.85rem;
+}
+
+/* Gruppen */
+.group-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.group-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.color-dot {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+}
+.color-field {
+  border: 0;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}
+.color-field legend {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.color-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px #cbd5e1;
+  cursor: pointer;
+}
+.color-swatch.selected {
+  box-shadow: 0 0 0 3px var(--text);
+}
+.color-presets input[type='color'] {
+  width: 56px;
+  height: 40px;
+  padding: 2px;
 }
 
 .present-grid {
@@ -542,10 +633,18 @@ table.events {
   padding: 0.6rem 0.75rem;
   background: #0f172a;
 }
-.scanner-bar .btn {
+.scanner-bar .btn,
+.scanner-bar select {
   background: #1e293b;
   border-color: #334155;
   color: #e2e8f0;
+}
+.camera-select {
+  width: auto;
+  max-width: 100%;
+}
+.photo-camera .camera-select {
+  margin-top: 0.5rem;
 }
 .present-count {
   margin-left: auto;
@@ -651,7 +750,11 @@ table.events {
 }
 .result-id {
   font-size: clamp(1rem, 2.5vw, 1.4rem);
-  opacity: 0.9;
+}
+.result-group {
+  font-size: clamp(0.9rem, 2.2vw, 1.2rem);
+  padding: 0.2rem 0.8rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
 }
 .result-detail {
   font-size: clamp(1.2rem, 3.5vw, 2rem);
@@ -689,7 +792,7 @@ table.events {
   flex-direction: column;
   background: #fff;
   color: #0f172a;
-  border: 0.3mm solid #94a3b8;
+  border: 0.5mm solid #94a3b8;
   border-radius: 3mm;
   overflow: hidden;
   break-inside: avoid;
@@ -708,17 +811,34 @@ table.events {
   font-size: 2.6mm;
   font-weight: 700;
 }
-.id-card-head span:first-child {
+.id-card-group {
+  font-size: 3.2mm;
+  text-transform: uppercase;
+  letter-spacing: 0.2mm;
+  white-space: nowrap;
+}
+.id-card-org {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 2.3mm;
+  font-weight: 600;
+  opacity: 0.9;
 }
-.id-card-kind {
-  text-transform: uppercase;
+.id-card-foot {
+  height: 2.5mm;
+}
+.id-card-anon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 1mm;
+}
+.id-card-number {
+  font-size: 9mm;
+  font-weight: 800;
+  line-height: 1;
   letter-spacing: 0.3mm;
-  font-size: 2.1mm;
-  opacity: 0.85;
-  white-space: nowrap;
 }
 .id-card-body {
   flex: 1;

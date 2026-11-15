@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CameraChoice } from '../db/settings';
 import { describeCameraError, openCamera, stopStream } from '../lib/camera';
 import { createQrDecoder } from './qrDecoder';
 
 interface Props {
-  facingMode: 'user' | 'environment';
+  camera: CameraChoice;
   mirror: boolean;
   onCode: (text: string) => void;
+  /** Wird aufgerufen, sobald die Kamera läuft. */
+  onStarted?: () => void;
 }
 
 /** Größte Kantenlänge des Bildes, das an den Decoder geht (Kompromiss Tempo/Reichweite). */
@@ -18,10 +21,12 @@ const SCAN_INTERVAL_MS = 80;
  * Startet die Kamera automatisch neu, wenn sie unterbrochen wurde
  * (z. B. nach dem Wechsel in eine andere App).
  */
-export function CameraScanner({ facingMode, mirror, onCode }: Props) {
+export function CameraScanner({ camera, mirror, onCode, onStarted }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const onCodeRef = useRef(onCode);
   onCodeRef.current = onCode;
+  const onStartedRef = useRef(onStarted);
+  onStartedRef.current = onStarted;
   const [error, setError] = useState<string | null>(null);
   const [restartKey, setRestartKey] = useState(0);
   const [ready, setReady] = useState(false);
@@ -33,7 +38,7 @@ export function CameraScanner({ facingMode, mirror, onCode }: Props) {
     setError(null);
     setReady(false);
 
-    openCamera({ facingMode })
+    openCamera({ camera })
       .then(async (s) => {
         if (cancelled) {
           stopStream(s);
@@ -47,7 +52,10 @@ export function CameraScanner({ facingMode, mirror, onCode }: Props) {
         if (!video) return;
         video.srcObject = s;
         await video.play().catch(() => undefined);
-        if (!cancelled) setReady(true);
+        if (!cancelled) {
+          setReady(true);
+          onStartedRef.current?.();
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(describeCameraError(err));
@@ -64,7 +72,7 @@ export function CameraScanner({ facingMode, mirror, onCode }: Props) {
       stopStream(stream);
       if (videoRef.current) videoRef.current.srcObject = null;
     };
-  }, [facingMode, restartKey]);
+  }, [camera, restartKey]);
 
   // Scan-Schleife
   useEffect(() => {

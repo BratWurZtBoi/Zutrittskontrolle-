@@ -1,0 +1,228 @@
+import { generateCardToken } from '../domain/cardCode';
+import { isValidIsoDate } from '../domain/dates';
+import { holderName } from '../domain/texts';
+import type { AccessEvent, Card, CardHolder, CardUpdate, Group } from '../domain/types';
+import { ValidationError, db, newId } from './db';
+
+export const MAX_CARDS = 500;
+export const MAX_BATCH = 100;
+
+function formatNumber(prefix: string, n: number): string {
+  return `${prefix}-${String(n).padStart(3, '0')}`;
+}
+
+/** Höchste vergebene laufende Nummer einer Gruppe (Format PREFIX-NNN). */
+async function highestNumber(prefix: string): Promise<number> {
+  const all = await db.cards.toArray();
+  let max = 0;
+  for (const c of all) {
+    if (c.number.startsWith(`${prefix}-`)) {
+      const n = Number.parseInt(c.number.slice(prefix.length + 1), 10);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+  }
+  return max;
+}
+
+/** Nächste freie Kartennummern einer Gruppe, z. B. ["B-006", "B-007"]. */
+export async function suggestNumbers(groupId: string, count: number): Promise<string[]> {
+  const group = await db.groups.get(groupId);
+  if (!group) return [];
+  const start = (await highestNumber(group.prefix)) + 1;
+  return Array.from({ length: count }, (_, i) => formatNumber(group.prefix, start + i));
+}
+
+export interface CreateCardsOptions {
+  groupId: string;
+  count: number;
+  /** Nur bei einer einzelnen Karte: eigene Kartennummer statt der automatischen. */
+  number?: string;
+  testData?: boolean;
+  now?: number;
+}
+
+/** Erstellt eine oder mehrere Karten (ohne Personendaten) mit fortlaufender Nummer. */
+export async function createCards(opts: CreateCardsOptions): Promise<Card[]> {
+  const now = opts.now ?? Date.now();
+  if (!Number.isInteger(opts.count) || opts.count < 1 || opts.count > MAX_BATCH) {
+    throw new ValidationError(`Es können 1 bis ${MAX_BATCH} Karten auf einmal erstellt werden.`);
+  }
+  return db.transaction('rw', [db.cards, db.groups], async () => {
+    const group = await db.groups.get(opts.groupId);
+    if (!group) throw new ValidationError('Bitte eine Gruppe wählen.');
+    const existing = await db.cards.count();
+    if (existing + opts.count > MAX_CARDS) {
+      throw new ValidationError(`Es sind höchstens ${MAX_CARDS} Karten möglich (vorhanden: ${existing}).`);
+    }
+
+    let numbers: string[];
+    const custom = opts.number?.trim();
+    if (custom && opts.count === 1) {
+      if (custom.length > 20) throw new ValidationError('Die Kartennummer darf höchstens 20 Zeichen lang sein.');
+      if (await db.cards.where('number').equals(custom).first()) {
+        throw new ValidationError(`Die Kartennummer „${custom}“ ist bereits vergeben.`);
+      }
+      numbers = [custom];
+    } else {
+      const start = (await highestNumber(group.prefix)) + 1;
+      numbers = Array.from({ length: opts.count }, (_, i) => formatNumber(group.prefix, start + i));
+    }
+
+    const cards: Card[] = numbers.map((number) => ({
+      id: newId(),
+      number,
+      groupId: group.id,
+      token: generateCardToken(),
+      tokenIssuedAt: now,
+      blocked: false,
+      accessGranted: true,
+      testData: opts.testData || undefined,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    await db.cards.bulkAdd(cards);
+    return cards;
+  });
+}
+
+export function getCard(id: string): Promise<Card | undefined> {
+  return db.cards.get(id);
+}
+
+export function findCardByToken(token: string): Promise<Card | undefined> {
+  return db.cards.where('token').equals(token).first();
+}
+
+export interface CardWithGroup {
+  card: Card;
+  group: Group | undefined;
+}
+
+/** Alle Karten, sortiert nach Gruppe und Nummer. */
+export async function listCards(): Promise<CardWithGroup[]> {
+  const [cards, groups] = await Promise.all([db.cards.toArray(), db.groups.toArray()]);
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  return cards
+    .map((card) => ({ card, group: byId.get(card.groupId) }))
+    .sort(
+      (a, b) =>
+        (a.group?.sortOrder ?? 0) - (b.group?.sortOrder ?? 0) ||
+        a.card.number.localeCompare(b.card.number, 'de', { numeric: true }),
+    );
+}
+
+function normalizeHolder(holder: CardHolder | undefined): CardHolder | undefined {
+  if (!holder) return undefined;
+  const h: CardHolder = {
+    firstName: holder.firstName.trim(),
+    lastName: holder.lastName.trim(),
+    company: holder.company?.trim() || undefined,
+    photo: holder.photo || undefined,
+    note: holder.note?.trim() || undefined,
+  };
+  if (!h.firstName && !h.lastName) {
+    throw new ValidationError('Bitte mindestens Vor- oder Nachnamen eingeben – oder die Zuordnung entfernen.');
+  }
+  return h;
+}
+
+function validateDates(validFrom?: string, validUntil?: string): void {
+  if (validFrom && !isValidIsoDate(validFrom)) throw new ValidationError('„Gültig ab“ ist kein gültiges Datum.');
+  if (validUntil && !isValidIsoDate(validUntil)) throw new ValidationError('„Gültig bis“ ist kein gültiges Datum.');
+  if (validFrom && validUntil && validFrom > validUntil) {
+    throw new ValidationError('„Gültig bis“ liegt vor „Gültig ab“.');
+  }
+}
+
+/** Speichert Berechtigung und Personendaten einer Karte. */
+export async function updateCard(id: string, update: CardUpdate, now = Date.now()): Promise<Card> {
+  const validFrom = update.validFrom?.trim() || undefined;
+  const validUntil = update.validUntil?.trim() || undefined;
+  validateDates(validFrom, validUntil);
+  const holder = normalizeHolder(update.holder);
+
+  return db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
+    const current = await db.cards.get(id);
+    if (!current) throw new ValidationError('Karte nicht gefunden.');
+    const personChanged = holderName(current.holder) !== holderName(holder);
+    if (personChanged && current.holder) await checkOutIfPresent(current, now);
+    const updated: Card = {
+      ...current,
+      accessGranted: update.accessGranted,
+      validFrom,
+      validUntil,
+      holder,
+      holderSince: holder ? (personChanged ? now : current.holderSince) : undefined,
+      updatedAt: now,
+    };
+    await db.cards.put(updated);
+    return updated;
+  });
+}
+
+/**
+ * Karte zurückgeben (z. B. Besucherkarte): bucht aus, entfernt Personendaten
+ * und Gültigkeit – die Karte ist danach frei für die nächste Person.
+ */
+export async function returnCard(id: string, now = Date.now()): Promise<Card> {
+  return db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
+    const current = await db.cards.get(id);
+    if (!current) throw new ValidationError('Karte nicht gefunden.');
+    await checkOutIfPresent(current, now);
+    const updated: Card = {
+      ...current,
+      holder: undefined,
+      holderSince: undefined,
+      validFrom: undefined,
+      validUntil: undefined,
+      updatedAt: now,
+    };
+    await db.cards.put(updated);
+    return updated;
+  });
+}
+
+/** Bucht eine anwesende Karte automatisch aus (Protokolleintrag mit Quelle „system“). */
+async function checkOutIfPresent(card: Card, now: number): Promise<void> {
+  const presence = await db.presence.get(card.id);
+  if (presence?.status !== 'in') return;
+  const group = await db.groups.get(card.groupId);
+  const event: AccessEvent = {
+    timestamp: now,
+    outcome: 'granted',
+    direction: 'out',
+    reason: 'OK',
+    cardId: card.id,
+    cardNumber: card.number,
+    groupId: card.groupId,
+    groupName: group?.name,
+    holderName: holderName(card.holder),
+    source: 'system',
+  };
+  await db.events.add(event);
+  await db.presence.put({ cardId: card.id, status: 'out', lastBookingAt: now });
+}
+
+export async function setCardBlocked(id: string, blocked: boolean, now = Date.now()): Promise<void> {
+  const changed = await db.cards.update(id, { blocked, updatedAt: now });
+  if (!changed) throw new ValidationError('Karte nicht gefunden.');
+}
+
+/** Neuer QR-Code für die Karte (z. B. bei Verlust). Der bisherige Code wird ungültig. */
+export async function reissueToken(id: string, now = Date.now()): Promise<Card> {
+  return db.transaction('rw', db.cards, async () => {
+    const current = await db.cards.get(id);
+    if (!current) throw new ValidationError('Karte nicht gefunden.');
+    const updated: Card = { ...current, token: generateCardToken(), tokenIssuedAt: now, blocked: false, updatedAt: now };
+    await db.cards.put(updated);
+    return updated;
+  });
+}
+
+/** Löscht die Karte. Das Protokoll bleibt erhalten (enthält Momentaufnahmen). */
+export async function deleteCard(id: string): Promise<void> {
+  await db.transaction('rw', [db.cards, db.presence], async () => {
+    await db.cards.delete(id);
+    await db.presence.delete(id);
+  });
+}

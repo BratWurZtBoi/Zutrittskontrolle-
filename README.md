@@ -1,72 +1,82 @@
 # Zutrittskontrolle
 
-Offlinefähige Zutritts- und Anwesenheitskontrolle für bis zu 100 Personen –
-als **Web-App (PWA)** für Android-Smartphones, Tablets und Windows-Laptops mit Webcam.
+Offlinefähige Zutritts- und Anwesenheitskontrolle mit QR-Karten –
+als **Web-App (PWA)** für Android-Smartphones, Tablets und Windows-Rechner mit Webcam.
 Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
-> **Testbetrieb:** Es werden ausschließlich fiktive Testpersonen verwendet.
+> **Testbetrieb:** Es werden ausschließlich fiktive Testdaten verwendet.
+
+**App-Adresse:** https://adminzirkel.github.io/Zutrittskontrolle-/
 
 ## So funktioniert es
 
 - Die App wird einmal über GitHub Pages geladen und danach **vollständig auf dem Gerät gespeichert**.
   Sie läuft anschließend auch ohne Internet (Flugmodus).
-- **Alle Daten** (Personen, Fotos, Protokolle, Anwesenheit) liegen **nur lokal** im Browser-Speicher
-  (IndexedDB) des jeweiligen Geräts. Nichts davon wird hochgeladen.
+- **Alle Daten** (Karten, Personendaten, Fotos, Protokolle, Anwesenheit) liegen **nur lokal**
+  im Browser-Speicher (IndexedDB) des jeweiligen Geräts. Nichts davon wird hochgeladen.
 - Die QR-Erkennung läuft lokal auf dem Gerät (jsQR), es wird kein Bild übertragen.
 
-**App-Adresse:** https://bratwurztboi.github.io/Zutrittskontrolle-/
+### Karten, Personen und Gruppen
 
-## Einmalige Einrichtung (im Handy-Browser auf github.com)
+- **Karten** werden eigenständig erstellt – einzeln oder in Serie (z. B. 20 Besucherkarten).
+  Jede Karte hat eine Kartennummer (z. B. `B-001`), einen QR-Code und eine **Gruppe**.
+- **Personendaten** (Name, Firma/Abteilung, Foto, Notiz) werden einer Karte zugewiesen und
+  können jederzeit geändert oder entfernt werden. **„Karte zurückgeben“** bucht aus und entfernt
+  die Personendaten – ideal für Besucherkarten.
+- **Gruppen** (z. B. Bestandspersonal = blau, Besucher = orange) werden unter
+  *Einstellungen → Gruppen verwalten* angelegt: Name, Farbe, Kürzel für die Kartennummern und
+  Regeln (Zutritt für die Gruppe, Name/Foto auf die Karte drucken, Zutritt ohne zugeordnete Person).
+- Die Gruppenfarbe erscheint auf der gedruckten Karte, in den Listen und im Scanner.
 
-1. **Repository öffentlich machen:** Repository → *Settings* → ganz unten *Danger Zone* →
-   *Change visibility* → *Public*. (Im Code stehen nur fiktive Testdaten.)
-2. **GitHub Pages aktivieren:** *Settings* → *Pages* → *Build and deployment* → *Source*:
-   **GitHub Actions** auswählen.
-3. Sobald Änderungen auf `main` landen, veröffentlicht GitHub Actions die App automatisch
-   (ca. 1–2 Minuten, Fortschritt unter dem Reiter *Actions*).
+## Einmalige Einrichtung (im Browser auf github.com)
+
+1. Repository öffentlich: *Settings* → *Danger Zone* → *Change visibility* → *Public*.
+2. GitHub Pages: *Settings* → *Pages* → *Source*: **GitHub Actions**.
+3. Jeder Merge nach `main` veröffentlicht die App automatisch (ca. 1–2 Minuten, Reiter *Actions*).
 
 ## App installieren
 
 **Galaxy S24 Ultra / Android-Tablet (Chrome):** App-Adresse öffnen → Menü ⋮ →
 *Zum Startbildschirm hinzufügen* → *Installieren*. Beim ersten Scannen die Kamera erlauben.
 
-**Windows-Laptop (Edge oder Chrome):** App-Adresse öffnen → in der Adressleiste auf das
-Installieren-Symbol klicken (oder Menü → *Apps* → *Diese Seite als App installieren*).
+**Windows-Rechner mit Webcam (Edge oder Chrome):** App-Adresse öffnen → in der Adressleiste auf
+das Installieren-Symbol klicken (oder Menü → *Apps* → *Diese Seite als App installieren*).
+Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner oder unter
+*Einstellungen → Kamera* auswählen.
 
 **Updates:** App schließen und neu öffnen – neue Versionen werden automatisch geladen.
-Die installierte Version steht unter *Einstellungen → Gerät & App*.
 
 ## Erste Schritte zum Testen
 
-1. *Personen* → **Testpersonen anlegen** (12 fiktive Personen mit Platzhalter-Fotos,
-   darunter ein gesperrter Ausweis, eine abgelaufene und eine noch nicht gültige Berechtigung).
-2. *Scanner* → Testmodus aufklappen → Person wählen → **Ausweis scannen** simuliert einen Scan.
-3. Echter Kameratest: *Personen* → **Ausweise drucken** auf dem Laptop öffnen (oder als PDF
-   speichern) und die QR-Codes mit dem Handy scannen.
-4. *Anwesenheit* zeigt, wer eingebucht ist, und die Zutrittshistorie.
+1. *Karten* → **Testkarten anlegen** (9 Personalkarten, 5 Besucherkarten – davon 3 frei;
+   darunter eine gesperrte, eine abgelaufene und eine noch nicht gültige Karte).
+2. *Scanner* → Testmodus aufklappen → Karte wählen → **Karte scannen** simuliert einen Scan.
+3. Freie Besucherkarte öffnen → **Person zuweisen** → **Nur heute** → Speichern → scannen →
+   danach **Karte zurückgeben**.
+4. Echter Kameratest: *Karten* → **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
+   und mit dem Gerät scannen, auf dem die Karten erstellt wurden.
+5. *Anwesenheit* zeigt, wer eingebucht ist, und die Zutrittshistorie.
 
 ## Wichtige Hinweise zum Speicher
 
-- Die Daten hängen an **Browser + Adresse**. „Websitedaten löschen“ in Chrome löscht sie.
-- Die App bittet beim Start um *dauerhaften Speicher* (Status unter *Einstellungen*).
-- Jedes Gerät hat seinen eigenen Datenbestand. Verschlüsselte Backups/Übertragung folgen.
+- Die Daten hängen an **Browser + Adresse**. „Websitedaten löschen“ löscht sie.
+- Jedes Gerät hat seinen eigenen Datenbestand. Export/Import folgt.
 
 ## Funktionsumfang
 
 | Funktion | Stand |
 | --- | --- |
-| Personenverwaltung (Name, ID, Foto per Kamera oder Datei) | ✅ |
-| QR-Ausweise im Scheckkartenformat erstellen und drucken / als PDF | ✅ |
-| Zutrittsberechtigung, Gültigkeitszeitraum, Ausweis sperren / neu ausstellen | ✅ |
-| Dauerhaft aktive Kamera mit automatischer QR-Erkennung | ✅ |
-| Große Anzeige von Name, Foto und Entscheidung, Ton & Vibration | ✅ |
-| Automatische Ein-/Ausbuchung (Auto, nur Eingang, nur Ausgang) | ✅ |
-| Anwesenheitsübersicht und Zutrittshistorie | ✅ |
-| Doppelscan-Schutz (einstellbar, Standard 30 s) | ✅ |
-| Offline-Betrieb (PWA) | ✅ |
-| Geschützter Administrationsbereich (PIN) | ⏳ nächster Schritt |
-| Verschlüsselte Backups (Export/Import) | ⏳ geplant |
-| Historie filtern/exportieren (CSV), „Alle ausbuchen“ | ⏳ geplant |
+| Karten einzeln oder in Serie erstellen, Personendaten flexibel zuweisen/ändern/entfernen | ✅ |
+| Gruppen mit Farbe, Kürzel und Regeln (Einstellungsmenü), Auswahl per Dropdown | ✅ |
+| Karten im Scheckkartenformat mit Gruppenfarbe drucken / als PDF (8 pro A4-Seite) | ✅ |
+| Zutrittsberechtigung, Gültigkeit („Nur heute“), Karte sperren, neuer QR-Code | ✅ |
+| Dauerhaft aktive Kamera, automatische QR-Erkennung, Kameraauswahl (Windows/USB-Webcam) | ✅ |
+| Große Anzeige von Name, Foto, Gruppe und Entscheidung, Ton & Vibration | ✅ |
+| Automatische Ein-/Ausbuchung, Doppelscan-Schutz, Protokoll, Anwesenheit | ✅ |
+| Offline-Betrieb (PWA) auf Android und Windows | ✅ |
+| Admin-Passwort, verschlüsselte Personendaten, Sperrbildschirm | ⏳ Schritt 3 |
+| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ⏳ Schritt 4 |
+| Export/Import (verschlüsseltes Backup, CSV) | ⏳ Schritt 5 |
 
 ## Technik
 
@@ -74,17 +84,16 @@ React 19 · TypeScript · Vite · vite-plugin-pwa (Workbox) · Dexie (IndexedDB)
 
 ```
 src/
-  domain/     Reine Logik: Zutrittsentscheidung, QR-Format, Doppelscan-Schutz (mit Tests)
-  db/         Lokale Datenbank: Personen, Scans/Protokoll, Einstellungen, Testdaten (mit Tests)
+  domain/     Reine Logik: Zutrittsentscheidung, QR-Format, Doppelscan-Schutz, Farben (mit Tests)
+  db/         Lokale Datenbank: Gruppen, Karten, Scans/Protokoll, Einstellungen, Testdaten (mit Tests)
   scanner/    Kamera-Scanner und QR-Decoder (Web Worker)
-  lib/        Kamera, Fotos, QR-Erzeugung, Ton, Bildschirm-an
+  lib/        Kamera (inkl. Geräteauswahl), Fotos, QR-Erzeugung, Ton, Bildschirm-an
   components/ Wiederverwendbare Oberflächenbausteine
-  pages/      Scanner, Personen, Ausweise, Anwesenheit, Einstellungen
+  pages/      Scanner, Karten, Druck, Gruppen, Anwesenheit, Einstellungen
 ```
 
 **QR-Inhalt:** `ZK1:` + 26 Zeichen Zufallstoken (128 Bit). Der Code enthält keine
-personenbezogenen Daten. „Neuen Ausweis ausstellen“ erzeugt ein neues Token, der alte
-Code wird ungültig.
+personenbezogenen Daten. „Neuer QR-Code“ erzeugt ein neues Token, der alte Code wird ungültig.
 
 ## Entwicklung (über Claude Code)
 
@@ -96,4 +105,4 @@ npm run e2e:local   # End-to-End-Test mit simulierter Kamera (Cloud-Umgebung)
 npm run icons       # App-Icons aus public/favicon.svg neu erzeugen
 ```
 
-GitHub Actions prüft jeden Push; Pushes auf `main` werden veröffentlicht.
+GitHub Actions prüft jeden Push; Merges nach `main` werden veröffentlicht.

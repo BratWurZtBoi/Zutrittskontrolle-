@@ -30,6 +30,14 @@ export const UsersIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const CardIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <circle cx="8" cy="11" r="2" />
+    <path d="M5 16a3 3 0 0 1 6 0M14 9h5M14 13h5" />
+  </svg>
+);
+
 export const ListIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <circle cx="12" cy="12" r="9" />
