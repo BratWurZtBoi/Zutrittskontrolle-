@@ -128,6 +128,18 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Regeln (Zutritt für die Gruppe, Name/Foto auf die Karte drucken, Zutritt ohne zugeordnete Person).
 - Die Gruppenfarbe erscheint auf der gedruckten Karte, in den Listen und im Scanner.
 
+### Verlorene Karten
+
+- Kartenseite → **„Als verloren melden“**: Die Karte ist sofort gesperrt (Status „Verloren“,
+  Filter „Nur verlorene Karten“ in der Kartenliste).
+- Wird sie gescannt, zeigt das Dashboard **„Verlorene Karte!“** mit Name und Datum der Meldung
+  (gelb umrandet, eigener Warnton). Der Gast sieht nur neutral „Kein Zutritt – Bitte wenden Sie sich
+  an den Empfang“, ohne Name oder Foto.
+- **„Ersatzkarte ausstellen“**: neue Karte (nächste Nummer) mit Person, Berechtigung, Gültigkeit und
+  Anwesenheit; danach direkt drucken. Die verlorene Karte bleibt gesperrt und verweist auf den Ersatz.
+- Alternativ **„Neuer QR-Code“**: gleiche Kartennummer, neu drucken – der alte Code ist ungültig.
+- **„Wiedergefunden – entsperren“** hebt die Meldung auf.
+
 ## Einmalige Einrichtung (im Browser auf github.com)
 
 1. Repository öffentlich: *Settings* → *Danger Zone* → *Change visibility* → *Public*.

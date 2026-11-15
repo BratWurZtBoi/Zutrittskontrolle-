@@ -72,6 +72,12 @@ export interface CardRecord {
   holder?: CardHolder;
   /** Seit wann die aktuelle Person der Karte zugeordnet ist. */
   holderSince?: number;
+  /** Als verloren gemeldet (Zeitpunkt) – die Karte ist dann auch gesperrt. */
+  lostAt?: number;
+  /** Diese (verlorene) Karte wurde durch eine Ersatzkarte ersetzt. */
+  replacedBy?: string;
+  /** Diese Karte ist Ersatz für eine verlorene Karte. */
+  replaces?: string;
   /** Markiert fiktive Testdaten, damit sie gezielt gelöscht werden können. */
   testData?: boolean;
   createdAt: number;
@@ -99,6 +105,8 @@ export type ReasonCode =
   | 'INVALID_CODE'
   | 'UNKNOWN_CARD'
   | 'CARD_BLOCKED'
+  /** Karte als verloren gemeldet. */
+  | 'CARD_LOST'
   | 'GROUP_DISABLED'
   | 'NO_PERMISSION'
   | 'UNASSIGNED'

@@ -565,6 +565,36 @@ try {
   await page.locator('.card-row').first().waitFor();
   check((await page.locator('.role-badge').count()) === 0, 'Admin-Anmeldung aus der Bediener-Sitzung heraus');
 
+  console.log('17c) Verlorene Karte melden und Ersatzkarte ausstellen');
+  await page.goto(`${URL}#/karten`);
+  await page.locator('.card-row', { hasText: 'Ben Import' }).click();
+  await page.getByRole('button', { name: 'Als verloren melden' }).click();
+  await page.locator('.lost-box').waitFor();
+  check((await page.locator('.card-section .badge-lost').textContent()) === 'Verloren', 'Karte als verloren gemeldet (gesperrt, Status „Verloren“)');
+  const lostCardUrl = page.url();
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-side .test-panel').evaluate((d) => (d.open = true));
+  const ben = await page.locator('.dash-side .test-panel select option', { hasText: 'Ben Import' }).getAttribute('value');
+  await page.locator('.dash-side .test-panel select').selectOption(ben);
+  await page.locator('.dash-side').getByRole('button', { name: 'Karte scannen' }).click();
+  await page.locator('.result-panel.result-lost').waitFor();
+  const lostPanel = await page.locator('.result-panel').textContent();
+  check(lostPanel.includes('Verlorene Karte!') && lostPanel.includes('Ben Import'), 'Dashboard: Warnung „Verlorene Karte!“ mit Name');
+  await page.screenshot({ path: `${OUT}/22-verlorene-karte.png` });
+  await page.goto(`${URL}#/`);
+  await page.locator('.scanner-page .test-panel').evaluate((d) => (d.open = true));
+  await page.locator('.scanner-page .test-panel select').selectOption(ben);
+  await page.locator('.scanner-page').getByRole('button', { name: 'Karte scannen' }).click();
+  await page.locator('.result-overlay').waitFor();
+  const guestText = await page.locator('.result-overlay').textContent();
+  check(guestText.includes('Bitte wenden Sie sich an den Empfang') && !guestText.includes('Ben') && !guestText.includes('verloren'), 'Gast sieht weder Grund noch Name');
+  await page.locator('.result-overlay').click();
+  await page.goto(lostCardUrl);
+  await page.getByRole('button', { name: 'Ersatzkarte ausstellen' }).click();
+  await page.getByText(/Ersatzkarte M-\d+ ausgestellt/).waitFor();
+  check((await page.getByLabel('Vorname').inputValue()) === 'Ben', 'Ersatzkarte übernimmt die Person');
+  check((await page.locator('.card-section .hint').textContent()).includes('Ersatz für die verlorene Karte'), 'Ersatzkarte verweist auf die verlorene Karte');
+
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);

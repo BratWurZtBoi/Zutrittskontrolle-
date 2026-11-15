@@ -11,7 +11,7 @@ import { seedTestCards } from '../db/seed';
 import { holderName } from '../domain/texts';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 
-type Assignment = 'all' | 'assigned' | 'free';
+type Assignment = 'all' | 'assigned' | 'free' | 'lost';
 
 export function CardListPage() {
   const cards = useSecureLiveQuery(listCards, []);
@@ -36,7 +36,8 @@ export function CardListPage() {
     return (cards ?? []).filter(({ card }) => {
       if (groupFilter && card.groupId !== groupFilter) return false;
       if (assignment === 'assigned' && !card.hasHolder) return false;
-      if (assignment === 'free' && card.hasHolder) return false;
+      if (assignment === 'free' && (card.hasHolder || card.lostAt)) return false;
+      if (assignment === 'lost' && !card.lostAt) return false;
       if (!q) return true;
       const h = card.holder;
       return `${card.number} ${h?.firstName ?? ''} ${h?.lastName ?? ''} ${h?.company ?? ''}`.toLowerCase().includes(q);
@@ -161,6 +162,7 @@ export function CardListPage() {
               <option value="all">Zugeordnet und frei</option>
               <option value="assigned">Nur zugeordnet</option>
               <option value="free">Nur freie Karten</option>
+              <option value="lost">Nur verlorene Karten</option>
             </select>
           </div>
 

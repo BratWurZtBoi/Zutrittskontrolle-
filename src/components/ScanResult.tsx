@@ -2,22 +2,33 @@ import { useEffect, useState } from 'react';
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
 import { holderName } from '../domain/texts';
-import { describeOutcome } from '../lib/resultText';
+import { describeOutcome, hideIdentityFor, type Audience } from '../lib/resultText';
 import { GroupBadge } from './GroupBadge';
 import { HolderPhoto } from './HolderPhoto';
 import { AlertIcon, CheckIcon, CrossIcon, ExitIcon, LockIcon } from './Icons';
 
 const ICONS = { ok: CheckIcon, out: ExitIcon, deny: CrossIcon, warn: AlertIcon };
 
-function describe(result: ScanOutcome) {
-  const text = describeOutcome(result);
+function describe(result: ScanOutcome, audience: Audience) {
+  const text = describeOutcome(result, audience);
   return { ...text, Icon: ICONS[text.tone] };
 }
 
-function ResultContent({ result }: { result: ScanOutcome }) {
+function ResultContent({ result, audience }: { result: ScanOutcome; audience: Audience }) {
+  const { title, Icon, detail } = describe(result, audience);
+  if (hideIdentityFor(audience, result)) {
+    return (
+      <>
+        <div className="result-head">
+          <Icon className="result-icon" />
+          <span className="result-title">{title}</span>
+        </div>
+        <div className="result-detail">{detail}</div>
+      </>
+    );
+  }
   const { card, group } = result;
   const holder = card?.holder;
-  const { title, Icon, detail } = describe(result);
   return (
     <>
       <div className="result-head">
@@ -42,11 +53,11 @@ function ResultContent({ result }: { result: ScanOutcome }) {
   );
 }
 
-/** Vollbild-Anzeige im Kiosk-Scanner. */
+/** Vollbild-Anzeige im Kiosk-Scanner (für Gäste sichtbar). */
 export function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClose: () => void }) {
   return (
-    <div className={`result-overlay result-${describe(result).tone}`} role="alert" onClick={onClose}>
-      <ResultContent result={result} />
+    <div className={`result-overlay result-${describe(result, 'guest').tone}`} role="alert" onClick={onClose}>
+      <ResultContent result={result} audience="guest" />
       <div className="result-dismiss">Tippen zum Schließen</div>
     </div>
   );
@@ -73,9 +84,13 @@ export function ResultPanel({ result, highlightSec }: { result: ScanOutcome | nu
     );
   }
   return (
-    <div className={`result-panel result-${describe(result).tone} ${fresh ? 'fresh' : 'stale'}`} role="status" aria-live="polite">
+    <div
+      className={`result-panel result-${describe(result, 'staff').tone} ${fresh ? 'fresh' : 'stale'} ${result.decision.reason === 'CARD_LOST' ? 'result-lost' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
       {!fresh && <div className="result-stale-label">Letzter Scan · {formatTime(result.at)} Uhr</div>}
-      <ResultContent result={result} />
+      <ResultContent result={result} audience="staff" />
     </div>
   );
 }

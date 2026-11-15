@@ -23,6 +23,10 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - **Karte** (`Card`): Nummer (`B-001`), Gruppe (fest), QR-Token, gesperrt, Berechtigung,
   Gültigkeit, optional **Inhaber** (`CardHolder`: Name, Firma, Foto, Notiz) – frei änderbar.
   Personenwechsel/Rückgabe bucht die bisherige Person automatisch aus (Quelle `system`).
+  Verlust: `lostAt` (+ `blocked`), Grund `CARD_LOST` geht vor `CARD_BLOCKED`; Ersatzkarte
+  (`issueReplacementCard`) übernimmt verschlüsselte Personendaten + Anwesenheit, Verweis
+  `replacedBy`/`replaces`. Gäste (Kiosk, Präsentation: `Audience 'guest'`) sehen bei verlorenen
+  Karten weder Grund noch Person.
 - **Ereignis** (`AccessEvent`): enthält Momentaufnahmen (Kartennummer, Gruppe, Name), damit
   die Historie nach Änderungen lesbar bleibt. **Anwesenheit** je Karte.
 - Gespeichert werden `CardRecord`/`AccessEventRecord` (Personendaten verschlüsselt), die

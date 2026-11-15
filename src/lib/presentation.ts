@@ -4,7 +4,7 @@
  * derselben App im selben Browser – ohne Server, ohne Internet.
  */
 import type { ScanOutcome } from '../db/scans';
-import { describeOutcome, displayName, type ResultTone } from './resultText';
+import { describeOutcome, displayName, hideIdentityFor, type ResultTone } from './resultText';
 
 const CHANNEL = 'zutrittskontrolle-praesentation';
 
@@ -32,16 +32,17 @@ function channel(): BroadcastChannel | null {
 }
 
 export function broadcastScan(result: ScanOutcome, displaySec: number): void {
-  const text = describeOutcome(result);
+  const text = describeOutcome(result, 'guest');
+  const hidden = hideIdentityFor('guest', result);
   const message: PresentationScan = {
     type: 'scan',
     tone: text.tone,
     title: text.title,
-    name: displayName(result),
-    photo: result.card?.holder?.photo,
-    groupName: result.group?.name,
-    groupColor: result.group?.color,
-    detail: text.tone === 'deny' ? `${text.detail} Bitte wenden Sie sich an den Empfang.` : text.detail,
+    name: displayName(result, 'guest'),
+    photo: hidden ? undefined : result.card?.holder?.photo,
+    groupName: hidden ? undefined : result.group?.name,
+    groupColor: hidden ? undefined : result.group?.color,
+    detail: text.tone === 'deny' && !hidden ? `${text.detail} Bitte wenden Sie sich an den Empfang.` : text.detail,
     at: result.at,
     displaySec,
   };

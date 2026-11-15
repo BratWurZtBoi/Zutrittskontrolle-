@@ -4,7 +4,7 @@
 import { toLocalDateString } from './dates';
 import type { Card, Direction, Group, Outcome, PresenceRecord, ReasonCode, ScanMode } from './types';
 
-export type CardRules = Pick<Card, 'accessGranted' | 'blocked' | 'validFrom' | 'validUntil'> & {
+export type CardRules = Pick<Card, 'accessGranted' | 'blocked' | 'validFrom' | 'validUntil' | 'lostAt'> & {
   hasHolder: boolean;
 };
 export type GroupRules = Pick<Group, 'accessGranted' | 'allowUnassigned'> & Partial<Pick<Group, 'requireConfirmation'>>;
@@ -54,6 +54,8 @@ export function decideAccess(input: AccessInput): Decision {
   const { card, group, presence, mode, now, cooldownMs, confirmation = 'none' } = input;
 
   if (!card) return { outcome: 'denied', reason: 'UNKNOWN_CARD' };
+  // Verlorene Karten in beide Richtungen abweisen – der Bediener wird gewarnt
+  if (card.lostAt) return { outcome: 'denied', reason: 'CARD_LOST' };
   if (card.blocked) return { outcome: 'denied', reason: 'CARD_BLOCKED' };
 
   // Doppelscan-Schutz nur gegenüber echten Scans, nicht nach automatischen Buchungen
@@ -89,9 +91,10 @@ export function decideAccess(input: AccessInput): Decision {
 }
 
 /** Status einer Karte für Listenansichten (unabhängig von der Anwesenheit). */
-export type CardStatus = 'active' | 'blocked' | 'group-disabled' | 'no-permission' | 'unassigned' | 'not-yet-valid' | 'expired';
+export type CardStatus = 'active' | 'lost' | 'blocked' | 'group-disabled' | 'no-permission' | 'unassigned' | 'not-yet-valid' | 'expired';
 
 export function cardStatus(card: CardRules, group: GroupRules | undefined, now: Date): CardStatus {
+  if (card.lostAt) return 'lost';
   if (card.blocked) return 'blocked';
   switch (entryBlocker(card, group, now)) {
     case 'GROUP_DISABLED':

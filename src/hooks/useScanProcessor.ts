@@ -11,8 +11,9 @@ import { useSettings } from './useSettings';
 /** Derselbe Code gilt erst wieder als neu, wenn er so lange nicht im Bild war. */
 const SAME_CODE_HOLD_MS = 2500;
 
-function feedbackKind(o: ScanOutcome): FeedbackKind {
+function feedbackKind(o: ScanOutcome, staffView: boolean): FeedbackKind {
   if (o.decision.outcome === 'duplicate') return 'duplicate';
+  if (staffView && o.decision.reason === 'CARD_LOST') return 'alert';
   if (o.decision.outcome === 'pending') return 'attention';
   if (o.decision.outcome === 'denied') return 'denied';
   return o.decision.direction === 'out' ? 'granted-out' : 'granted-in';
@@ -54,9 +55,9 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
   const showFinal = useCallback((outcome: ScanOutcome) => {
     const s = settingsRef.current;
     setResult(outcome);
-    playFeedback(feedbackKind(outcome), s.sound);
+    playFeedback(feedbackKind(outcome, confirm), s.sound);
     broadcastScan(outcome, s.resultDisplaySec);
-  }, []);
+  }, [confirm]);
 
   const handleText = useCallback(
     async (text: string, source: AccessEventRecord['source']) => {

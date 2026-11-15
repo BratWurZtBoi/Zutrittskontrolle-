@@ -118,6 +118,11 @@ describe('Bestätigung durch den Bediener', () => {
 });
 
 describe('cardStatus', () => {
+  it('verloren geht vor gesperrt', () => {
+    expect(cardStatus({ ...okCard, blocked: true, lostAt: 1 }, okGroup, now)).toBe('lost');
+    expect(decideAccess(input({ card: { ...okCard, blocked: true, lostAt: 1 } })).reason).toBe('CARD_LOST');
+  });
+
   it('liefert den passenden Status', () => {
     expect(cardStatus(okCard, okGroup, now)).toBe('active');
     expect(cardStatus({ ...okCard, blocked: true, accessGranted: false }, okGroup, now)).toBe('blocked');

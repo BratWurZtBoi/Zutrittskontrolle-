@@ -58,6 +58,6 @@ describe('CSV', () => {
       lastBookingAt: new Date(2026, 5, 15, 7, 30, 0).getTime(),
     };
     const lines = statusToCsv([row]).slice(1).split('\r\n');
-    expect(lines[1]).toBe('M-001;Bestandspersonal;Mustermann;Max;Technik;anwesend;15.06.2026 07:30:00;ja;nein;;31.12.2026');
+    expect(lines[1]).toBe('M-001;Bestandspersonal;Mustermann;Max;Technik;anwesend;15.06.2026 07:30:00;ja;nein;;31.12.2026;');
   });
 });
