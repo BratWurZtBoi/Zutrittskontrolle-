@@ -25,6 +25,25 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   Personenwechsel/Rückgabe bucht die bisherige Person automatisch aus (Quelle `system`).
 - **Ereignis** (`AccessEvent`): enthält Momentaufnahmen (Kartennummer, Gruppe, Name), damit
   die Historie nach Änderungen lesbar bleibt. **Anwesenheit** je Karte.
+- Gespeichert werden `CardRecord`/`AccessEventRecord` (Personendaten verschlüsselt), die
+  Oberfläche bekommt `Card`/`AccessEvent` (entschlüsselt, sofern entsperrt; `hasHolder` immer).
+
+## Sicherheit (umgesetzt, Variante A)
+
+- `src/security/crypto.ts`: zufälliger AES-256-GCM-Datenschlüssel, umhüllt mit PBKDF2-SHA-256
+  (600 000 Runden) aus dem Admin-Passwort; Tresor liegt in `settings` unter `vault`.
+- Verschlüsselt: `holderEnc` (CardHolder als JSON), `nameEnc` (Name), `holderNameEnc` im Protokoll.
+  Beim Scan wird `nameEnc` unverändert ins Protokoll kopiert → funktioniert auch gesperrt.
+- **Web Crypto nie innerhalb einer Dexie-Transaktion aufrufen** (Transaktion schließt sonst
+  vorzeitig): erst lesen, dann (ent)schlüsseln, dann schreiben. In liveQuery-Abfragen alle
+  DB-Zugriffe vor dem Entschlüsseln. Anzeige-Abfragen mit `useSecureLiveQuery` (lädt bei
+  Sperren/Entsperren neu).
+- `src/security/session.ts`: Zustand im Arbeitsspeicher (`setup`/`locked`/`unlocked`, `admin`).
+  Neu laden = Neustart = gesperrt. Abmelden/Sperren über `requestExit()` + Navigation zu `/`.
+- Alle Routen außer `/`, `/anmelden`, `/einrichtung` liegen hinter `RequireAdmin`.
+- CSP-Meta-Tag wird nur im Build eingefügt (`vite.config.ts`); keine Inline-Skripte/-Styles
+  im HTML verwenden (React-`style`-Props sind erlaubt).
+- E2E: Testpasswort `Test-Passwort-123`; Navigation in Tests per Hash (`#/…`), nicht per Reload.
 
 ## Architektur
 
@@ -52,11 +71,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 
 1. ✅ Prototyp: Ausweise, Scanner, Protokoll, Anwesenheit
 2. ✅ Karten statt Personen, Gruppen mit Farbe/Kürzel/Regeln, Kameraauswahl (Windows)
-3. Sicherheit – **Variante A** (vom Nutzer gewählt): Admin-Passwort schützt alles außer dem
-   Scanner; Personendaten (Inhaber, Namen im Protokoll) AES-GCM-verschlüsselt mit Datenschlüssel,
-   der mit PBKDF2-Schlüssel aus dem Passwort umhüllt wird; nach jedem App-Start einmal entsperren,
-   gesperrt entscheidet der Scanner weiter, zeigt aber nur Kartennummer + Gruppe. Dazu: Testmodus
-   nur für Admin (Standard aus), CSP-Meta-Tag, Löschfrist fürs Protokoll.
+3. ✅ Sicherheit (Variante A): Admin-Passwort, Verschlüsselung, Entsperren beim Start,
+   Auto-Abmeldung, Löschfrist, Testmodus nur Admin, CSP.
 4. Übersicht mit Suche/Filter/Sortierung (Karten + Aktionen) und Dashboard
    (Kamera + Anwesende + Aktionen); Vollbild-Scanner bleibt als Kiosk-Modus.
 5. Export/Import: verschlüsseltes Voll-Backup (eigenes Passwort), CSV-Export Historie/Karten.

@@ -16,6 +16,23 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   im Browser-Speicher (IndexedDB) des jeweiligen Geräts. Nichts davon wird hochgeladen.
 - Die QR-Erkennung läuft lokal auf dem Gerät (jsQR), es wird kein Bild übertragen.
 
+### Sicherheit
+
+- **Admin-Passwort:** Beim ersten Öffnen der Verwaltung wird ein Passwort festgelegt. Es schützt
+  alles außer dem Scanner (Karten, Gruppen, Anwesenheit, Einstellungen).
+- **Verschlüsselung:** Namen, Fotos und Notizen werden mit AES-256 verschlüsselt gespeichert.
+  Der Schlüssel wird aus dem Passwort abgeleitet (PBKDF2, 600 000 Runden) und nie gespeichert.
+- **Nach jedem App-Start** einmal mit dem Passwort entsperren. Gesperrt prüft der Scanner den
+  Zutritt weiter, zeigt aber nur Kartennummer und Gruppe – die Buchungen werden trotzdem mit
+  (verschlüsseltem) Namen protokolliert.
+- **Abmelden** beendet die Verwaltung, der Scanner zeigt weiter Namen. **Jetzt sperren** blendet
+  auch im Scanner Namen und Fotos aus. Automatische Abmeldung nach Inaktivität (Standard 15 Min.).
+- **Löschfrist:** Protokolleinträge werden automatisch gelöscht (Standard 90 Tage, einstellbar).
+- **Testmodus** (Scans simulieren) ist standardmäßig aus und nur für angemeldete Admins sichtbar.
+- **Content Security Policy:** Der Browser verhindert technisch, dass die App Daten an fremde
+  Server sendet.
+- ⚠️ **Passwort vergessen = verschlüsselte Daten verloren.** Bitte sicher notieren.
+
 ### Karten, Personen und Gruppen
 
 - **Karten** werden eigenständig erstellt – einzeln oder in Serie (z. B. 20 Besucherkarten).
@@ -48,14 +65,16 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 
 ## Erste Schritte zum Testen
 
-1. *Karten* → **Testkarten anlegen** (9 Personalkarten, 5 Besucherkarten – davon 3 frei;
+1. *Verwaltung* → Admin-Passwort einrichten.
+2. *Karten* → **Testkarten anlegen** (9 Personalkarten, 5 Besucherkarten – davon 3 frei;
    darunter eine gesperrte, eine abgelaufene und eine noch nicht gültige Karte).
-2. *Scanner* → Testmodus aufklappen → Karte wählen → **Karte scannen** simuliert einen Scan.
-3. Freie Besucherkarte öffnen → **Person zuweisen** → **Nur heute** → Speichern → scannen →
+3. *Einstellungen* → **Testmodus** einschalten → *Scanner* → Testmodus aufklappen → Karte wählen →
+   **Karte scannen** simuliert einen Scan.
+4. Freie Besucherkarte öffnen → **Person zuweisen** → **Nur heute** → Speichern → scannen →
    danach **Karte zurückgeben**.
-4. Echter Kameratest: *Karten* → **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
+5. Echter Kameratest: *Karten* → **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
    und mit dem Gerät scannen, auf dem die Karten erstellt wurden.
-5. *Anwesenheit* zeigt, wer eingebucht ist, und die Zutrittshistorie.
+6. *Anwesenheit* zeigt, wer eingebucht ist, und die Zutrittshistorie.
 
 ## Wichtige Hinweise zum Speicher
 
@@ -74,8 +93,9 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 | Große Anzeige von Name, Foto, Gruppe und Entscheidung, Ton & Vibration | ✅ |
 | Automatische Ein-/Ausbuchung, Doppelscan-Schutz, Protokoll, Anwesenheit | ✅ |
 | Offline-Betrieb (PWA) auf Android und Windows | ✅ |
-| Admin-Passwort, verschlüsselte Personendaten, Sperrbildschirm | ⏳ als Nächstes |
-| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ⏳ danach |
+| Admin-Passwort, verschlüsselte Personendaten (AES-256), Entsperren beim Start | ✅ |
+| Automatische Abmeldung, Löschfrist fürs Protokoll, Content Security Policy | ✅ |
+| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ⏳ als Nächstes |
 | Export/Import (verschlüsseltes Backup, CSV) | ⏳ geplant |
 
 ## Technik
@@ -86,10 +106,11 @@ React 19 · TypeScript · Vite · vite-plugin-pwa (Workbox) · Dexie (IndexedDB)
 src/
   domain/     Reine Logik: Zutrittsentscheidung, QR-Format, Doppelscan-Schutz, Farben (mit Tests)
   db/         Lokale Datenbank: Gruppen, Karten, Scans/Protokoll, Einstellungen, Testdaten (mit Tests)
+  security/   Verschlüsselung (Web Crypto), Passwort-Tresor, Admin-Sitzung (mit Tests)
   scanner/    Kamera-Scanner und QR-Decoder (Web Worker)
   lib/        Kamera (inkl. Geräteauswahl), Fotos, QR-Erzeugung, Ton, Bildschirm-an
   components/ Wiederverwendbare Oberflächenbausteine
-  pages/      Scanner, Karten, Druck, Gruppen, Anwesenheit, Einstellungen
+  pages/      Scanner, Anmeldung, Karten, Druck, Gruppen, Anwesenheit, Einstellungen
 ```
 
 **QR-Inhalt:** `ZK1:` + 26 Zeichen Zufallstoken (128 Bit). Der Code enthält keine

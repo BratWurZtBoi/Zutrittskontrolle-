@@ -5,6 +5,7 @@ import {
   MAX_BATCH,
   createCards,
   deleteCard,
+  listCards,
   reissueToken,
   returnCard,
   setCardBlocked,
@@ -13,7 +14,9 @@ import {
 } from './cards';
 import { ValidationError, clearAllData, db } from './db';
 import { createGroup, deleteGroup, ensureDefaultGroups, listGroups, updateGroup } from './groups';
-import { listPresentCards, listRecentEvents, processScan } from './scans';
+import { listPresentCards, listRecentEvents, processScan, purgeOldEvents } from './scans';
+import { createVault } from '../security/crypto';
+import { setDataKeyForTests } from '../security/session';
 import { removeTestCards, seedTestCards } from './seed';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 
@@ -24,7 +27,8 @@ let staff: Group;
 let visitors: Group;
 
 beforeEach(async () => {
-  await clearAllData();
+  await clearAllData(true);
+  setDataKeyForTests((await createVault('testpasswort', 1000)).dataKey);
   await ensureDefaultGroups();
   [staff, visitors] = (await listGroups()) as [Group, Group];
 });
@@ -175,6 +179,19 @@ describe('Scan-Verarbeitung', () => {
   });
 });
 
+describe('Löschfrist', () => {
+  it('entfernt Protokolleinträge, die älter als die Frist sind', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = Date.UTC(2026, 5, 15);
+    for (const age of [1, 89, 91, 400]) {
+      await db.events.add({ timestamp: now - age * day, outcome: 'denied', reason: 'INVALID_CODE', source: 'test' });
+    }
+    expect(await purgeOldEvents(0, now)).toBe(0); // 0 = nie löschen
+    expect(await purgeOldEvents(90, now)).toBe(2);
+    expect(await db.events.count()).toBe(2);
+  });
+});
+
 describe('Testdaten', () => {
   it('legt fiktive Testkarten an und entfernt sie wieder', async () => {
     const today = new Date(2026, 5, 15);
@@ -182,10 +199,11 @@ describe('Testdaten', () => {
     expect(await seedTestCards(today)).toBe(0); // idempotent
     const [own] = await createCards({ groupId: staff.id, count: 1 });
 
-    const all = await db.cards.toArray();
+    const all = (await listCards()).map((x) => x.card);
     expect(all.filter((c) => c.blocked).map((c) => c.holder?.lastName)).toEqual(['Platzhalter']);
-    expect(all.filter((c) => c.groupId === visitors.id && !c.holder).length).toBe(3);
+    expect(all.filter((c) => c.groupId === visitors.id && !c.hasHolder).length).toBe(3);
     expect(all.find((c) => c.holder?.lastName === 'Demo')?.validUntil).toBe('2026-06-14');
+    expect((await db.cards.toArray()).every((c) => c.holder === undefined)).toBe(true); // nur verschlüsselt
 
     expect(await removeTestCards()).toBe(14);
     expect((await db.cards.toArray()).map((c) => c.id)).toEqual([own!.id]);
@@ -196,6 +214,7 @@ describe('Testdaten', () => {
 describe('Einstellungen', () => {
   it('liefert Standardwerte und speichert Änderungen', async () => {
     expect(await loadSettings()).toEqual(DEFAULT_SETTINGS);
+    expect(DEFAULT_SETTINGS.testMode).toBe(false);
     await saveSettings({ cooldownSec: 60, camera: 'device:abc' });
     expect(await loadSettings()).toMatchObject({ cooldownSec: 60, camera: 'device:abc', scanMode: 'auto' });
   });

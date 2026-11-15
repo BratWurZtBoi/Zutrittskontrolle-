@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
@@ -13,7 +14,7 @@ import { holderName } from '../domain/texts';
 type Assignment = 'all' | 'assigned' | 'free';
 
 export function CardListPage() {
-  const cards = useLiveQuery(listCards, []);
+  const cards = useSecureLiveQuery(listCards, []);
   const groups = useLiveQuery(listGroups, [], []);
   const presentIds = useLiveQuery(
     async () => new Set((await db.presence.where('status').equals('in').toArray()).map((p) => p.cardId)),

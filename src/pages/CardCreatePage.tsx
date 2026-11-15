@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
+import { NumberField } from '../components/NumberField';
 import { MAX_BATCH, createCards, suggestNumbers } from '../db/cards';
 import { ValidationError } from '../db/db';
 import { listGroups } from '../db/groups';
@@ -25,8 +26,7 @@ export function CardCreatePage() {
   // Vorschau der Kartennummern
   useEffect(() => {
     if (!groupId) return;
-    const n = Math.min(Math.max(count, 1), MAX_BATCH);
-    void suggestNumbers(groupId, n).then((nums) => {
+    void suggestNumbers(groupId, count).then((nums) => {
       setPreview(nums);
       setNumber(nums[0] ?? '');
     });
@@ -109,13 +109,7 @@ export function CardCreatePage() {
           <div className="form-grid">
             <label>
               Anzahl
-              <input
-                type="number"
-                min={1}
-                max={MAX_BATCH}
-                value={count}
-                onChange={(e) => setCount(Math.min(MAX_BATCH, Math.max(1, Math.round(e.target.valueAsNumber || 1))))}
-              />
+              <NumberField value={count} min={1} max={MAX_BATCH} onChange={setCount} />
             </label>
             {count === 1 && (
               <label>

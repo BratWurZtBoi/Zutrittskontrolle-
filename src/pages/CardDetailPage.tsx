@@ -1,11 +1,11 @@
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { QrImage } from '../components/QrImage';
 import { StatusBadge } from '../components/StatusBadge';
-import { deleteCard, getCard, reissueToken, returnCard, setCardBlocked, updateCard } from '../db/cards';
+import { deleteCard, reissueToken, returnCard, setCardBlocked, toCard, updateCard } from '../db/cards';
 import { ValidationError, db } from '../db/db';
 import { formatDateTime, formatTime, toLocalDateString } from '../domain/dates';
 import type { Card, CardHolder, CardUpdate, Group } from '../domain/types';
@@ -25,10 +25,12 @@ export function CardDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   // Hülle, damit „lädt noch“ (undefined) von „nicht gefunden“ unterscheidbar ist
-  const loaded = useLiveQuery(async () => {
-    const card = await getCard(id);
-    const group = card ? await db.groups.get(card.groupId) : undefined;
-    const presence = card ? await db.presence.get(card.id) : undefined;
+  const loaded = useSecureLiveQuery(async () => {
+    // erst alle Datenbankzugriffe, dann entschlüsseln (getCard)
+    const record = await db.cards.get(id);
+    const group = record ? await db.groups.get(record.groupId) : undefined;
+    const presence = record ? await db.presence.get(record.id) : undefined;
+    const card = record ? await toCard(record) : undefined;
     return { card, group, presence };
   }, [id]);
   const [form, setForm] = useState<CardUpdate | null>(null);

@@ -76,6 +76,13 @@ export const AlertIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const LockIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="4" y="11" width="16" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </svg>
+);
+
 export const CameraSwitchIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M20 16V7a2 2 0 0 0-2-2h-3l-2-2h-2L9 5H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2z" />

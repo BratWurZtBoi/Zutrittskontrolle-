@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraSelect } from '../components/CameraSelect';
 import { GroupBadge } from '../components/GroupBadge';
 import { HolderPhoto } from '../components/HolderPhoto';
-import { AlertIcon, CheckIcon, CrossIcon, ExitIcon } from '../components/Icons';
+import { AlertIcon, CheckIcon, CrossIcon, ExitIcon, LockIcon } from '../components/Icons';
+import { Link } from 'react-router';
 import { listCards } from '../db/cards';
 import { db } from '../db/db';
 import { processScan, type ScanOutcome } from '../db/scans';
@@ -13,7 +14,9 @@ import { formatTime } from '../domain/dates';
 import { ScanDeduper } from '../domain/scanDeduper';
 import { directionText, holderName, reasonText } from '../domain/texts';
 import type { AccessEvent, ScanMode } from '../domain/types';
+import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useSettings } from '../hooks/useSettings';
+import { useSecurity } from '../security/useSecurity';
 import { setKeepScreenOn } from '../lib/device';
 import { playFeedback, type FeedbackKind } from '../lib/feedback';
 import { CameraScanner } from '../scanner/CameraScanner';
@@ -35,6 +38,7 @@ function feedbackKind(o: ScanOutcome): FeedbackKind {
 
 export function ScannerPage() {
   const settings = useSettings();
+  const security = useSecurity();
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
@@ -78,6 +82,24 @@ export function ScannerPage() {
 
   return (
     <div className="scanner-page">
+      {security.vault === 'locked' && (
+        <div className="lock-banner no-print">
+          <LockIcon />
+          <span>Daten gesperrt – Namen und Fotos werden nicht angezeigt. Der Zutritt wird trotzdem geprüft.</span>
+          <Link className="btn btn-small" to="/anmelden?ziel=%2F">
+            Entsperren
+          </Link>
+        </div>
+      )}
+      {security.vault === 'setup' && (
+        <div className="lock-banner no-print">
+          <LockIcon />
+          <span>Noch kein Admin-Passwort eingerichtet.</span>
+          <Link className="btn btn-small" to="/einrichtung?ziel=%2F">
+            Jetzt einrichten
+          </Link>
+        </div>
+      )}
       <div className="scanner-stage">
         <CameraScanner camera={settings.camera} mirror={mirror} onCode={onCamera} onStarted={onStarted} />
         <div className="scanner-hint">Karte mit QR-Code vor die Kamera halten</div>
@@ -109,7 +131,7 @@ export function ScannerPage() {
         </span>
       </div>
 
-      {settings.testMode && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
+      {settings.testMode && security.admin && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
 
       {result && <ResultOverlay result={result} onClose={() => setResult(null)} />}
     </div>
@@ -154,8 +176,13 @@ function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClose: () =
         <Icon className="result-icon" />
         <span className="result-title">{title}</span>
       </div>
-      {card && <HolderPhoto holder={holder} fallback={card.number} className="result-photo" />}
+      {card && <HolderPhoto holder={holder} fallback={group?.prefix ?? "?"} className="result-photo" />}
       {card && <div className="result-name">{holder ? holderName(holder) : `Karte ${card.number}`}</div>}
+      {card && card.hasHolder && !holder && (
+        <div className="result-locked">
+          <LockIcon /> Name gesperrt
+        </div>
+      )}
       {card && (
         <div className="result-id">
           <GroupBadge group={group} className="result-group" /> {holder ? `Karte ${card.number}` : ''}
@@ -170,7 +197,7 @@ function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClose: () =
 
 /** Nur im Testmodus: Scans ohne zweiten Bildschirm oder gedruckten Ausweis simulieren. */
 function TestScanPanel({ onScan }: { onScan: (text: string) => void }) {
-  const cards = useLiveQuery(listCards, [], []);
+  const cards = useSecureLiveQuery(listCards, [], []);
   const [selected, setSelected] = useState('');
   const current = cards.find(({ card }) => card.id === selected) ?? cards[0];
 
