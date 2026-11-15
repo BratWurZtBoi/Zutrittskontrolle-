@@ -69,24 +69,75 @@ const readStore = (page, store) =>
   );
 
 const viewport = { width: 412, height: 915 };
+const PASSWORD = 'Test-Passwort-123';
+const problems = [];
+
+async function openContext(extraArgs = []) {
+  const ctx = await chromium.launchPersistentContext(PROFILE, {
+    viewport,
+    permissions: ['camera'],
+    args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', ...extraArgs],
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => problems.push(`JS-Fehler: ${e.message}`));
+  page.on('console', (m) => {
+    if (/Content Security Policy|Refused to/i.test(m.text())) problems.push(`CSP: ${m.text()}`);
+  });
+  page.on('dialog', (d) => void d.accept()); // Bestätigungsdialoge annehmen
+  return { ctx, page };
+}
+
+async function login(page, target = '') {
+  await page.goto(`${URL}#/anmelden${target ? `?ziel=${encodeURIComponent(target)}` : ''}`);
+  await page.getByLabel('Admin-Passwort').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+}
 
 try {
   await waitForServer();
 
-  console.log('1) Testkarten anlegen');
-  let ctx = await chromium.launchPersistentContext(PROFILE, { viewport });
-  let page = await ctx.newPage();
+  console.log('1) Ersteinrichtung Admin-Passwort');
+  let { ctx, page } = await openContext();
   await page.goto(`${URL}#/karten`);
+  await page.getByRole('heading', { name: 'Admin-Passwort einrichten' }).waitFor();
+  check(page.url().includes('#/einrichtung'), 'Verwaltung ohne Passwort leitet zur Einrichtung');
+  await page.screenshot({ path: `${OUT}/00-einrichtung.png`, fullPage: true });
+  await page.getByLabel('Neues Passwort (mindestens 8 Zeichen)').fill(PASSWORD);
+  await page.getByLabel('Passwort wiederholen').fill(PASSWORD);
+  await page.getByLabel(/Verstanden/).check();
+  await page.getByRole('button', { name: 'Passwort einrichten' }).click();
   await page.getByRole('button', { name: 'Testkarten anlegen' }).click();
   await page.locator('.card-row').nth(13).waitFor();
   check((await page.locator('.card-row').count()) === 14, '14 fiktive Testkarten (9 Personal, 5 Besucher)');
+  check((await page.locator('.card-row').first().textContent()).includes('Mustermann'), 'Liste zeigt entschlüsselte Namen');
   await page.screenshot({ path: `${OUT}/01-karten.png`, fullPage: true });
   const cards = await readStore(page, 'cards');
   const max = cards.find((c) => c.number === 'M-001');
-  check(max?.holder?.lastName === 'Mustermann', 'M-001 gehört Max Mustermann');
+  const raw = JSON.stringify(cards) + JSON.stringify(await readStore(page, 'events'));
+  check(!/Mustermann|Musterfrau|Platzhalter/.test(raw), 'Datenbank enthält keine Namen im Klartext');
+
+  console.log('2) Zahlenfeld frei bearbeitbar');
+  await page.goto(`${URL}#/karten/neu`);
+  const count = page.getByLabel('Anzahl');
+  await count.click();
+  await page.keyboard.press('Backspace');
+  check((await count.inputValue()) === '', 'Feld „Anzahl“ lässt sich leeren');
+  await page.keyboard.type('12');
+  check((await count.inputValue()) === '12', 'Neue Zahl ersetzt die alte');
+  await page.getByText(/bis/).first().waitFor();
+  await count.fill('');
+  await page.getByLabel('Gruppe').click(); // Feld verlassen
+  check((await count.inputValue()) === '12', 'Leeres Feld wird beim Verlassen auf den letzten Wert gesetzt');
+
+  console.log('3) Testmodus einschalten');
+  await page.goto(`${URL}#/einstellungen`);
+  await page.getByLabel(/Testmodus/).click();
+  await page.locator('input[type=checkbox]:checked').filter({ has: page.locator('xpath=self::*') }).first().waitFor();
+  await page.waitForTimeout(300);
+  check(await page.getByLabel(/Testmodus/).isChecked(), 'Testmodus eingeschaltet');
   await ctx.close();
 
-  console.log('2) Kamerabild mit QR-Code erzeugen');
+  console.log('4) Kamerabild mit QR-Code erzeugen');
   const png = `${OUT}/qr.png`;
   const y4m = `${OUT}/camera.y4m`;
   await QRCode.toFile(png, `ZK1:${max.token}`, { errorCorrectionLevel: 'M', margin: 2, width: 420 });
@@ -96,50 +147,42 @@ try {
     '-t', '2', '-r', '10', y4m,
   ]);
 
-  console.log('3) Scanner mit simulierter Kamera');
-  ctx = await chromium.launchPersistentContext(PROFILE, {
-    viewport,
-    permissions: ['camera'],
-    args: [
-      '--use-fake-ui-for-media-stream',
-      '--use-fake-device-for-media-stream',
-      `--use-file-for-fake-video-capture=${y4m}`,
-    ],
-  });
-  page = await ctx.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('dialog', (d) => void d.accept()); // Bestätigungsdialoge annehmen
+  console.log('5) App-Neustart: gesperrt scannen');
+  ({ ctx, page } = await openContext([`--use-file-for-fake-video-capture=${y4m}`]));
   await page.goto(URL);
   let overlay = page.locator('.result-overlay');
   await overlay.waitFor({ timeout: 15000 });
   await page.waitForTimeout(300);
-  await page.screenshot({ path: `${OUT}/02-scan-willkommen.png` });
-  const welcome = await overlay.textContent();
-  check(welcome.includes('Willkommen') && welcome.includes('Max Mustermann'), 'Overlay zeigt „Willkommen“ und den Namen');
-  check(welcome.includes('Bestandspersonal'), 'Overlay zeigt die Gruppe');
-  await page.waitForTimeout(6000); // Code bleibt im Bild → darf nicht erneut buchen
+  await page.screenshot({ path: `${OUT}/02-scan-gesperrt.png` });
+  const lockedScan = await overlay.textContent();
+  check(lockedScan.includes('Willkommen') && lockedScan.includes('Karte M-001'), 'Gesperrt: Zutritt wird geprüft, Kartennummer angezeigt');
+  check(lockedScan.includes('Name gesperrt') && !lockedScan.includes('Mustermann'), 'Gesperrt: Name bleibt verborgen');
+  await page.waitForTimeout(5000); // Code bleibt im Bild → darf nicht erneut buchen
   check((await readStore(page, 'events')).length === 1, 'Code im Dauerbild wird nur einmal gebucht (Doppelscan-Schutz)');
-  check((await overlay.count()) === 0, 'Overlay blendet sich automatisch aus');
-  check((await page.locator('.scanner-bar select option').count()) >= 3, 'Kameraauswahl listet die Kamera(s)');
-  await page.screenshot({ path: `${OUT}/03-scanner-bereit.png` });
+  check(await page.locator('.lock-banner').isVisible(), 'Scanner zeigt Hinweis „Daten gesperrt“');
+  check((await page.locator('.test-panel').count()) === 0, 'Testmodus ohne Anmeldung nicht sichtbar');
+  await page.screenshot({ path: `${OUT}/03-scanner-gesperrt.png` });
+  await page.getByRole('link', { name: 'Entsperren' }).click();
+  await page.getByLabel('Admin-Passwort').fill('falsches-passwort');
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await page.getByText('Das Passwort ist falsch.').waitFor();
+  check(true, 'Falsches Passwort wird abgelehnt');
+  await page.getByLabel('Admin-Passwort').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await page.locator('.scanner-page').waitFor();
+  check((await page.locator('.lock-banner').count()) === 0, 'Nach dem Entsperren zurück im Scanner, Hinweis weg');
   await ctx.close();
 
   // Ab hier eine simulierte Kamera ohne QR-Code, damit nur Testscans buchen
-  ctx = await chromium.launchPersistentContext(PROFILE, {
-    viewport,
-    permissions: ['camera'],
-    args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
-  });
-  page = await ctx.newPage();
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('dialog', (d) => void d.accept());
+  ({ ctx, page } = await openContext());
+  await login(page, '/');
+  await page.locator('.scanner-page').waitFor();
   overlay = page.locator('.result-overlay');
 
   const testScan = async (number) => {
     const card = cards.find((c) => c.number === number);
-    await page.goto(URL);
-    await page.locator('.test-panel summary').click();
+    await page.goto(`${URL}#/`); // nur Hash-Wechsel: kein Neuladen (Neuladen = Neustart = gesperrt)
+    await page.locator('.test-panel').evaluate((d) => (d.open = true));
     await page.locator('.test-panel select').selectOption(card.id);
     await page.getByRole('button', { name: 'Karte scannen' }).click();
     await overlay.waitFor();
@@ -149,13 +192,16 @@ try {
     return text;
   };
 
-  console.log('4) Testscans: gesperrt und nicht zugeordnet');
+  console.log('6) Testscans (angemeldet)');
+  const again = await testScan('M-001');
+  check(again.includes('Max Mustermann'), 'Entsperrt: Name sichtbar');
+  check(again.includes('Bereits erfasst'), 'Doppelscan-Schutz greift auch nach App-Neustart (30 s)');
   const blocked = await testScan('M-006');
   check(blocked.includes('Kein Zutritt') && blocked.includes('gesperrt'), 'Gesperrte Karte wird abgewiesen');
   const free = await testScan('B-003');
   check(free.includes('Kein Zutritt') && free.includes('keiner Person zugeordnet'), 'Freie Besucherkarte wird abgewiesen');
 
-  console.log('5) Gruppe anlegen');
+  console.log('7) Gruppe anlegen');
   await page.goto(`${URL}#/einstellungen/gruppen`);
   await page.getByRole('button', { name: '+ Neue Gruppe' }).click();
   await page.getByLabel('Name', { exact: true }).fill('Dienstleister');
@@ -164,9 +210,8 @@ try {
   await page.getByRole('button', { name: 'Gruppe anlegen' }).click();
   await page.locator('.group-row').nth(2).waitFor();
   check((await page.locator('.group-row').count()) === 3, 'Neue Gruppe „Dienstleister“ angelegt');
-  await page.screenshot({ path: `${OUT}/04-gruppen.png`, fullPage: true });
 
-  console.log('6) Karten in Serie erstellen');
+  console.log('8) Karten in Serie erstellen');
   await page.goto(`${URL}#/karten/neu`);
   await page.getByLabel('Gruppe').selectOption({ label: 'Dienstleister (D)' });
   await page.getByLabel('Anzahl').fill('3');
@@ -175,7 +220,7 @@ try {
   await page.getByText('3 Karten erstellt').waitFor();
   check((await readStore(page, 'cards')).filter((c) => c.number.startsWith('D-')).length === 3, 'D-001 bis D-003 erstellt');
 
-  console.log('7) Besucherkarte zuweisen, scannen, zurückgeben');
+  console.log('9) Besucherkarte zuweisen, scannen, zurückgeben');
   const b3 = cards.find((c) => c.number === 'B-003');
   await page.goto(`${URL}#/karten/${b3.id}`);
   await page.getByRole('button', { name: 'Person zuweisen' }).click();
@@ -193,16 +238,18 @@ try {
   await page.getByRole('button', { name: 'Person zuweisen' }).waitFor();
   const b3after = (await readStore(page, 'cards')).find((c) => c.id === b3.id);
   const presence = (await readStore(page, 'presence')).find((p) => p.cardId === b3.id);
-  check(!b3after.holder && presence?.status === 'out', 'Rückgabe entfernt Personendaten und bucht aus');
+  check(!b3after.holderEnc && presence?.status === 'out', 'Rückgabe entfernt Personendaten und bucht aus');
 
-  console.log('8) Anwesenheit & Historie');
+  console.log('10) Anwesenheit & Historie');
   await page.goto(`${URL}#/anwesenheit`);
-  await page.locator('.present-item').first().waitFor();
+  await page.locator('table.events tbody tr').first().waitFor();
   check((await page.locator('.present-item').count()) === 1, 'Eine Karte anwesend (Max Mustermann)');
-  check((await page.locator('table.events tbody tr').count()) === 5, 'Fünf Einträge in der Historie');
+  const history = await page.locator('table.events').textContent();
+  check(history.includes('Max Mustermann') && history.includes('Berta Besuch'), 'Historie zeigt entschlüsselte Namen (auch vom gesperrten Scan)');
+  check((await page.locator('table.events tbody tr').count()) === 5, 'Fünf Einträge in der Historie (Doppelscan nicht gebucht)');
   await page.screenshot({ path: `${OUT}/06-anwesenheit.png`, fullPage: true });
 
-  console.log('9) Karten drucken');
+  console.log('11) Karten drucken');
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.goto(`${URL}#/karten`);
   await page.getByRole('link', { name: /Drucken \(17\)/ }).click();
@@ -212,9 +259,25 @@ try {
   await page.screenshot({ path: `${OUT}/07-druck.png` });
   await page.emulateMedia({ media: 'print' });
   await page.pdf({ path: `${OUT}/karten.pdf`, format: 'A4', printBackground: true, preferCSSPageSize: true });
+  await page.emulateMedia({ media: 'screen' });
   console.log('  ✓ PDF erzeugt: .e2e/karten.pdf');
 
-  check(errors.length === 0, `keine JavaScript-Fehler${errors.length ? ': ' + errors.join(' | ') : ''}`);
+  console.log('12) Abmelden und Sperren');
+  await page.setViewportSize(viewport);
+  await page.goto(`${URL}#/einstellungen`);
+  await page.screenshot({ path: `${OUT}/08-einstellungen.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Abmelden' }).click();
+  await page.locator('.scanner-page').waitFor();
+  check((await page.locator('.lock-banner').count()) === 0, 'Nach Abmelden bleiben die Daten für den Scanner entsperrt');
+  await page.goto(`${URL}#/karten`);
+  await page.getByRole('heading', { name: 'Anmelden' }).waitFor();
+  check(page.url().includes('#/anmelden'), 'Verwaltung nach Abmelden nur mit Passwort');
+  await login(page, '/einstellungen');
+  await page.getByRole('button', { name: 'Jetzt sperren' }).click();
+  await page.locator('.lock-banner').waitFor();
+  check(true, '„Jetzt sperren“ sperrt die Daten');
+
+  check(problems.length === 0, `keine JavaScript-Fehler und keine CSP-Verstöße${problems.length ? ': ' + problems.join(' | ') : ''}`);
   await ctx.close();
   console.log('\nAlle E2E-Prüfungen bestanden.');
 } catch (err) {

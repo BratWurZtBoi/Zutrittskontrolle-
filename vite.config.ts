@@ -1,11 +1,44 @@
 import { readFileSync } from 'node:fs';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // base './' => relative Pfade: funktioniert in Capacitor (Android), unter
 // beliebigen Unterpfaden und lokal unter http://localhost.
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
+
+/**
+ * Content Security Policy: Der Browser erlaubt der App nur Verbindungen und Skripte
+ * vom eigenen Ursprung – Daten können so nicht an fremde Server abfließen.
+ * Nur im Build (der Entwicklungsserver braucht Inline-Styles und WebSockets).
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "media-src 'self' blob: mediastream:",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'content-security-policy',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace(
+        '<meta charset="UTF-8" />',
+        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`,
+      );
+    },
+  };
+}
 
 export default defineConfig({
   base: './',
@@ -15,6 +48,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    contentSecurityPolicy(),
     VitePWA({
       // Registrierung erfolgt manuell in src/pwa.ts (nicht in der Android-App).
       injectRegister: false,

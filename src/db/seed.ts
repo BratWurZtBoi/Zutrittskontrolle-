@@ -55,7 +55,10 @@ const VISITORS: SeedCard[] = [
   {},
 ];
 
-/** Legt fiktive Testkarten an (nur wenn noch keine Testdaten vorhanden). Liefert die Anzahl. */
+/**
+ * Legt fiktive Testkarten an (nur wenn noch keine Testdaten vorhanden). Liefert die Anzahl.
+ * Die Personendaten werden verschlüsselt gespeichert – die Daten müssen entsperrt sein.
+ */
 export async function seedTestCards(today = new Date()): Promise<number> {
   await ensureDefaultGroups();
   if ((await db.cards.filter((c) => c.testData === true).count()) > 0) return 0;

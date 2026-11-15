@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { AccessEvent, Card, Group, PresenceRecord } from '../domain/types';
+import type { AccessEventRecord, CardRecord, Group, PresenceRecord } from '../domain/types';
 
 export interface SettingRecord {
   key: string;
@@ -18,8 +18,8 @@ const LEGACY_DB_NAME = 'zutrittskontrolle';
  */
 export class ZkDatabase extends Dexie {
   groups!: EntityTable<Group, 'id'>;
-  cards!: EntityTable<Card, 'id'>;
-  events!: EntityTable<AccessEvent, 'seq'>;
+  cards!: EntityTable<CardRecord, 'id'>;
+  events!: EntityTable<AccessEventRecord, 'seq'>;
   presence!: EntityTable<PresenceRecord, 'cardId'>;
   settings!: EntityTable<SettingRecord, 'key'>;
 
@@ -58,9 +58,17 @@ export class ValidationError extends Error {
   }
 }
 
-/** Löscht alle Daten (Karten, Gruppen, Protokoll, Anwesenheit, Einstellungen). */
-export async function clearAllData(): Promise<void> {
+/** Schlüssel des Passwort-Tresors in der Einstellungstabelle. */
+export const VAULT_KEY = 'vault';
+
+/**
+ * Löscht alle Daten (Karten, Gruppen, Protokoll, Anwesenheit, Einstellungen).
+ * Das Admin-Passwort bleibt erhalten, außer `includePassword` ist gesetzt.
+ */
+export async function clearAllData(includePassword = false): Promise<void> {
   await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings], async () => {
-    await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear(), db.settings.clear()]);
+    await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear()]);
+    if (includePassword) await db.settings.clear();
+    else await db.settings.where('key').notEqual(VAULT_KEY).delete();
   });
 }

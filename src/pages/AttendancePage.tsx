@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
@@ -11,8 +12,8 @@ import { directionText, holderName, reasonText } from '../domain/texts';
 type Filter = 'all' | 'granted' | 'denied';
 
 export function AttendancePage() {
-  const present = useLiveQuery(listPresentCards, [], []);
-  const events = useLiveQuery(() => listRecentEvents(200), [], []);
+  const present = useSecureLiveQuery(listPresentCards, [], []);
+  const events = useSecureLiveQuery(() => listRecentEvents(200), [], []);
   const groups = useLiveQuery(listGroups, [], []);
   const [filter, setFilter] = useState<Filter>('all');
   const shown = filter === 'all' ? events : events.filter((e) => e.outcome === filter);

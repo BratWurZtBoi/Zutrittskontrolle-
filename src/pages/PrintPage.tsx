@@ -1,4 +1,4 @@
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { QrImage } from '../components/QrImage';
@@ -15,7 +15,7 @@ export function PrintPage() {
   const navigate = useNavigate();
   const ids = params.get('ids')?.split(',').filter(Boolean);
   const settings = useSettings();
-  const cards = useLiveQuery(listCards, []);
+  const cards = useSecureLiveQuery(listCards, []);
   if (!cards) return null;
 
   const selected = ids ? cards.filter(({ card }) => ids.includes(card.id)) : cards;

@@ -15,8 +15,12 @@ export interface AppSettings {
   camera: CameraChoice;
   mirrorPreview: boolean;
   sound: boolean;
-  /** Zeigt im Scanner ein Feld zum Simulieren von Scans (nur für Tests). */
+  /** Zeigt im Scanner ein Feld zum Simulieren von Scans (nur für angemeldete Admins). */
   testMode: boolean;
+  /** Automatische Admin-Abmeldung nach Minuten ohne Bedienung (0 = nie). */
+  autoLogoutMin: number;
+  /** Löschfrist: Protokolleinträge nach so vielen Tagen löschen (0 = nie). */
+  retentionDays: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -27,7 +31,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   camera: 'user',
   mirrorPreview: true,
   sound: true,
-  testMode: true,
+  testMode: false,
+  autoLogoutMin: 15,
+  retentionDays: 90,
 };
 
 const KEY = 'app';

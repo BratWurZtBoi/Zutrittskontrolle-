@@ -1,8 +1,34 @@
 import { generateCardToken } from '../domain/cardCode';
 import { isValidIsoDate } from '../domain/dates';
 import { holderName } from '../domain/texts';
-import type { AccessEvent, Card, CardHolder, CardUpdate, Group } from '../domain/types';
+import type { AccessEventRecord, Card, CardHolder, CardRecord, CardUpdate, Group } from '../domain/types';
+import { decryptJson, encryptJson, encryptText } from '../security/crypto';
+import { getDataKey } from '../security/session';
 import { ValidationError, db, newId } from './db';
+
+/**
+ * Wandelt einen gespeicherten Datensatz in die Ansicht für die Oberfläche um.
+ * Personendaten werden nur entschlüsselt, wenn die Daten entsperrt sind.
+ * Wichtig: Entschlüsselung immer NACH dem Lesen, nie innerhalb einer Transaktion.
+ */
+export async function toCard(record: CardRecord, key: CryptoKey | null = getDataKey()): Promise<Card> {
+  const { holderEnc, nameEnc: _nameEnc, holder: legacy, ...rest } = record;
+  let holder: CardHolder | undefined = legacy;
+  if (holderEnc && key) {
+    try {
+      holder = await decryptJson<CardHolder>(key, holderEnc);
+    } catch {
+      holder = undefined; // falscher Schlüssel / beschädigt – wie gesperrt behandeln
+    }
+  }
+  return { ...rest, hasHolder: Boolean(holderEnc || legacy), holder };
+}
+
+function requireKey(): CryptoKey {
+  const key = getDataKey();
+  if (!key) throw new ValidationError('Die Daten sind gesperrt. Bitte zuerst mit dem Admin-Passwort entsperren.');
+  return key;
+}
 
 export const MAX_CARDS = 500;
 export const MAX_BATCH = 100;
@@ -68,7 +94,7 @@ export async function createCards(opts: CreateCardsOptions): Promise<Card[]> {
       numbers = Array.from({ length: opts.count }, (_, i) => formatNumber(group.prefix, start + i));
     }
 
-    const cards: Card[] = numbers.map((number) => ({
+    const cards: CardRecord[] = numbers.map((number) => ({
       id: newId(),
       number,
       groupId: group.id,
@@ -82,15 +108,12 @@ export async function createCards(opts: CreateCardsOptions): Promise<Card[]> {
     }));
     await db.cards.bulkAdd(cards);
     return cards;
-  });
+  }).then((records) => Promise.all(records.map((r) => toCard(r))));
 }
 
-export function getCard(id: string): Promise<Card | undefined> {
-  return db.cards.get(id);
-}
-
-export function findCardByToken(token: string): Promise<Card | undefined> {
-  return db.cards.where('token').equals(token).first();
+export async function getCard(id: string): Promise<Card | undefined> {
+  const record = await db.cards.get(id);
+  return record ? toCard(record) : undefined;
 }
 
 export interface CardWithGroup {
@@ -100,7 +123,10 @@ export interface CardWithGroup {
 
 /** Alle Karten, sortiert nach Gruppe und Nummer. */
 export async function listCards(): Promise<CardWithGroup[]> {
-  const [cards, groups] = await Promise.all([db.cards.toArray(), db.groups.toArray()]);
+  // erst alle Datenbankzugriffe, dann entschlüsseln (wichtig für liveQuery)
+  const [records, groups] = await Promise.all([db.cards.toArray(), db.groups.toArray()]);
+  const key = getDataKey();
+  const cards = await Promise.all(records.map((r) => toCard(r, key)));
   const byId = new Map(groups.map((g) => [g.id, g]));
   return cards
     .map((card) => ({ card, group: byId.get(card.groupId) }))
@@ -134,30 +160,41 @@ function validateDates(validFrom?: string, validUntil?: string): void {
   }
 }
 
-/** Speichert Berechtigung und Personendaten einer Karte. */
+/** Speichert Berechtigung und Personendaten einer Karte (nur entsperrt möglich). */
 export async function updateCard(id: string, update: CardUpdate, now = Date.now()): Promise<Card> {
   const validFrom = update.validFrom?.trim() || undefined;
   const validUntil = update.validUntil?.trim() || undefined;
   validateDates(validFrom, validUntil);
   const holder = normalizeHolder(update.holder);
+  const key = requireKey();
 
-  return db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
+  // Vorbereitung außerhalb der Transaktion: bisherige Person ermitteln, neue verschlüsseln
+  const before = await db.cards.get(id);
+  if (!before) throw new ValidationError('Karte nicht gefunden.');
+  const previous = (await toCard(before, key)).holder;
+  const personChanged = holderName(previous) !== holderName(holder);
+  const holderEnc = holder ? await encryptJson(key, holder) : undefined;
+  const nameEnc = holder ? await encryptText(key, holderName(holder) ?? '') : undefined;
+
+  const record = await db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
     const current = await db.cards.get(id);
     if (!current) throw new ValidationError('Karte nicht gefunden.');
-    const personChanged = holderName(current.holder) !== holderName(holder);
-    if (personChanged && current.holder) await checkOutIfPresent(current, now);
-    const updated: Card = {
-      ...current,
+    if (personChanged && (current.holderEnc || current.holder)) await checkOutIfPresent(current, now);
+    const { holder: _legacy, ...rest } = current;
+    const updated: CardRecord = {
+      ...rest,
       accessGranted: update.accessGranted,
       validFrom,
       validUntil,
-      holder,
+      holderEnc,
+      nameEnc,
       holderSince: holder ? (personChanged ? now : current.holderSince) : undefined,
       updatedAt: now,
     };
     await db.cards.put(updated);
     return updated;
   });
+  return toCard(record, key);
 }
 
 /**
@@ -165,13 +202,13 @@ export async function updateCard(id: string, update: CardUpdate, now = Date.now(
  * und Gültigkeit – die Karte ist danach frei für die nächste Person.
  */
 export async function returnCard(id: string, now = Date.now()): Promise<Card> {
-  return db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
+  const record = await db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
     const current = await db.cards.get(id);
     if (!current) throw new ValidationError('Karte nicht gefunden.');
     await checkOutIfPresent(current, now);
-    const updated: Card = {
-      ...current,
-      holder: undefined,
+    const { holder: _legacy, holderEnc: _h, nameEnc: _n, ...rest } = current;
+    const updated: CardRecord = {
+      ...rest,
       holderSince: undefined,
       validFrom: undefined,
       validUntil: undefined,
@@ -180,14 +217,18 @@ export async function returnCard(id: string, now = Date.now()): Promise<Card> {
     await db.cards.put(updated);
     return updated;
   });
+  return toCard(record);
 }
 
-/** Bucht eine anwesende Karte automatisch aus (Protokolleintrag mit Quelle „system“). */
-async function checkOutIfPresent(card: Card, now: number): Promise<void> {
+/**
+ * Bucht eine anwesende Karte automatisch aus (Protokolleintrag mit Quelle „system“).
+ * Der verschlüsselte Name wird unverändert übernommen – kein Schlüssel nötig.
+ */
+async function checkOutIfPresent(card: CardRecord, now: number): Promise<void> {
   const presence = await db.presence.get(card.id);
   if (presence?.status !== 'in') return;
   const group = await db.groups.get(card.groupId);
-  const event: AccessEvent = {
+  const event: AccessEventRecord = {
     timestamp: now,
     outcome: 'granted',
     direction: 'out',
@@ -196,7 +237,8 @@ async function checkOutIfPresent(card: Card, now: number): Promise<void> {
     cardNumber: card.number,
     groupId: card.groupId,
     groupName: group?.name,
-    holderName: holderName(card.holder),
+    holderNameEnc: card.nameEnc,
+    holderName: card.nameEnc ? undefined : holderName(card.holder),
     source: 'system',
   };
   await db.events.add(event);
@@ -210,13 +252,14 @@ export async function setCardBlocked(id: string, blocked: boolean, now = Date.no
 
 /** Neuer QR-Code für die Karte (z. B. bei Verlust). Der bisherige Code wird ungültig. */
 export async function reissueToken(id: string, now = Date.now()): Promise<Card> {
-  return db.transaction('rw', db.cards, async () => {
+  const record = await db.transaction('rw', db.cards, async () => {
     const current = await db.cards.get(id);
     if (!current) throw new ValidationError('Karte nicht gefunden.');
-    const updated: Card = { ...current, token: generateCardToken(), tokenIssuedAt: now, blocked: false, updatedAt: now };
+    const updated: CardRecord = { ...current, token: generateCardToken(), tokenIssuedAt: now, blocked: false, updatedAt: now };
     await db.cards.put(updated);
     return updated;
   });
+  return toCard(record);
 }
 
 /** Löscht die Karte. Das Protokoll bleibt erhalten (enthält Momentaufnahmen). */

@@ -903,3 +903,75 @@ table.events {
     max-width: none;
   }
 }
+
+/* ---------- Anmeldung & Sicherheit ---------- */
+
+.auth-page {
+  max-width: 560px;
+}
+.auth-card {
+  margin-top: 1rem;
+}
+.auth-card h1 {
+  margin-bottom: 0.75rem;
+}
+.form label[for] {
+  margin-bottom: 0.3rem;
+}
+.password-input {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.password-input input {
+  flex: 1;
+}
+.subform {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.subform .btn {
+  margin-top: 0.25rem;
+}
+
+.lock-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: #78350f;
+  color: #fef3c7;
+  font-weight: 600;
+}
+.lock-banner svg {
+  flex: none;
+}
+.lock-banner span {
+  flex: 1;
+  min-width: 180px;
+}
+.lock-banner .btn {
+  background: #fef3c7;
+  color: #78350f;
+  border-color: #fef3c7;
+}
+
+.result-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.nav-button {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
