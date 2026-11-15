@@ -113,12 +113,12 @@ export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisit
         Notfallliste
       </Link>
       {autoBackupError && (
-        <Link to="/einstellungen" className="btn btn-small btn-warn" title={autoBackupError}>
+        <Link to="/einstellungen/datensicherung" className="btn btn-small btn-warn" title={autoBackupError}>
           Auto-Backup: Problem
         </Link>
       )}
       {backupDue && !autoBackupError && (
-        <Link to="/einstellungen" className="btn btn-small btn-warn">
+        <Link to="/einstellungen/datensicherung" className="btn btn-small btn-warn">
           {settings.lastBackupAt ? 'Backup fällig' : 'Noch kein Backup'}
         </Link>
       )}

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router';
 import { PresentationView } from '../components/PresentationView';
+import { SettingsShell } from './settings/SettingsShell';
 import { listGroups } from '../db/groups';
 import { deleteLayout, duplicateLayout, layoutUsage, listLayouts, saveLayout } from '../db/layouts';
 import { placeholderAvatar } from '../db/seed';
@@ -94,18 +95,15 @@ export function LayoutsPage() {
   };
 
   return (
-    <div className="page page-wide">
-      <header className="page-header">
-        <h1>Präsentationslayouts</h1>
-        <div className="button-row">
-          <button type="button" className="btn btn-primary" onClick={() => void create(STANDARD_LAYOUT_ID)}>
-            + Neues Layout
-          </button>
-          <Link className="btn btn-ghost" to="/einstellungen">
-            Zurück
-          </Link>
-        </div>
-      </header>
+    <SettingsShell
+      title="Präsentation"
+      wide
+      actions={
+        <button type="button" className="btn btn-primary" onClick={() => void create(STANDARD_LAYOUT_ID)}>
+          + Neues Layout
+        </button>
+      }
+    >
       <p className="muted">
         Layouts bestimmen Aufbau, Texte und Hintergrund des Gästebildschirms. Zuweisen lassen sie sich ganzen Gruppen
         (<Link to="/einstellungen/gruppen">Gruppen verwalten</Link>) oder einzelnen Karten (Kartenseite). Es gilt: Karte vor Gruppe
@@ -160,7 +158,7 @@ export function LayoutsPage() {
           })}
         </ul>
       )}
-    </div>
+    </SettingsShell>
   );
 }
 

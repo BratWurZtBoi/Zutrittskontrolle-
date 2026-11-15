@@ -134,6 +134,12 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - *Karten* → **Auswählen** → Karten antippen oder „Alle angezeigten“ → **Personendaten entfernen**
   (z. B. alle Besucherkarten des Tages freigeben), **Sperren**, **Entsperren**, **Drucken**, **Löschen**.
 
+### Einstellungen
+
+- *Einstellungen* zeigt eine Übersicht mit allen Bereichen (Allgemein, Scanner, Gruppen,
+  Präsentation, Sicherheit, Bediener & Bestätigung, Datensicherung, Daten, Gerät & App) und dem
+  aktuellen Stand. Am Computer wechselt man über die Seitenleiste, am Handy über „← Einstellungen“.
+
 ### Hell und dunkel
 
 - *Einstellungen → Darstellung*: Automatisch (wie das Gerät), Hell oder Dunkel – je Gerät.

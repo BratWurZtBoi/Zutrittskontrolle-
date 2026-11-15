@@ -2401,3 +2401,94 @@ table.data-table {
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* ---------- Einstellungen: Übersicht und Bereiche ---------- */
+
+.settings-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.settings-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  height: 100%;
+  min-height: 96px;
+  margin: 0;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.settings-tile:hover,
+.settings-tile:focus-visible {
+  border-color: var(--link);
+}
+.settings-tile strong {
+  font-size: 1.05rem;
+}
+.settings-status {
+  margin-top: auto;
+  color: var(--link);
+  font-weight: 600;
+}
+.settings-shell {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.settings-wide {
+  max-width: 1600px;
+}
+.settings-nav {
+  display: none;
+}
+.settings-back {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  min-height: 32px;
+  font-weight: 600;
+}
+.settings-content {
+  min-width: 0;
+}
+@media (min-width: 1000px) {
+  .settings-shell {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+    max-width: 1340px;
+  }
+  .settings-wide {
+    max-width: 1700px;
+  }
+  .settings-nav {
+    position: sticky;
+    top: calc(var(--nav-h) + 1rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .settings-nav-link {
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .settings-nav-link:hover {
+    background: var(--surface-2);
+  }
+  .settings-nav-link.active {
+    background: var(--selected-bg);
+    color: var(--link);
+  }
+  .settings-back {
+    display: none;
+  }
+}

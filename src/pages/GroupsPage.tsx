@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
+import { SettingsShell } from './settings/SettingsShell';
 import { ValidationError, db } from '../db/db';
 import { createGroup, deleteGroup, listGroups, updateGroup } from '../db/groups';
 import { listLayouts } from '../db/layouts';
@@ -33,18 +33,14 @@ export function GroupsPage() {
   if (!groups) return null;
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <h1>Gruppen</h1>
-        <div className="button-row">
-          <button type="button" className="btn btn-primary" onClick={() => setEditing('new')} disabled={editing === 'new'}>
-            + Neue Gruppe
-          </button>
-          <Link className="btn btn-ghost" to="/einstellungen">
-            Zurück
-          </Link>
-        </div>
-      </header>
+    <SettingsShell
+      title="Gruppen"
+      actions={
+        <button type="button" className="btn btn-primary" onClick={() => setEditing('new')} disabled={editing === 'new'}>
+          + Neue Gruppe
+        </button>
+      }
+    >
       <p className="muted">
         Gruppen legen Farbe und Kürzel der Karten fest (z. B. Besucher → orange, B-001). Die Farbe erscheint auf der
         gedruckten Karte, in den Listen und im Scanner.
@@ -78,7 +74,7 @@ export function GroupsPage() {
           </li>
         ))}
       </ul>
-    </div>
+    </SettingsShell>
   );
 }
 

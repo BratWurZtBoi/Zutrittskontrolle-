@@ -130,7 +130,7 @@ try {
   check((await count.inputValue()) === '12', 'Leeres Feld wird beim Verlassen auf den letzten Wert gesetzt');
 
   console.log('3) Testmodus einschalten');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/scanner`);
   await page.getByLabel(/Testmodus/).click();
   await page.locator('input[type=checkbox]:checked').filter({ has: page.locator('xpath=self::*') }).first().waitFor();
   await page.waitForTimeout(300);
@@ -337,7 +337,7 @@ try {
   check(csv.includes('Berta Besuch') && csv.split('\r\n').length === 10, 'CSV-Export: 8 Aktionen mit Namen');
 
   console.log('12) Backup erstellen, Daten löschen, Backup einspielen');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/datensicherung`);
   await page.getByLabel('Backup-Passwort (mindestens 8 Zeichen)').fill('Backup-Test-123');
   await page.getByLabel('Backup-Passwort wiederholen').fill('Backup-Test-123');
   const [backupDownload] = await Promise.all([
@@ -349,9 +349,11 @@ try {
   check(backupDownload.suggestedFilename().endsWith('.zkb'), `Backup-Datei erstellt (${backupDownload.suggestedFilename()})`);
   check(!/Mustermann|Besuch|Musterfirma/.test(readFileSync(backupPath, 'utf8')), 'Backup-Datei enthält keine Klartextdaten');
   await page.getByText('Backup gespeichert:').waitFor();
+  await page.goto(`${URL}#/einstellungen/daten`);
   await page.getByRole('button', { name: 'Alle Daten löschen' }).click();
   await page.getByText(/Alle Daten gelöscht/).waitFor();
   check((await readStore(page, 'cards')).length === 0, 'Alle Daten gelöscht');
+  await page.goto(`${URL}#/einstellungen/datensicherung`);
   // so kommt die Datei per Quick Share an: gleicher Inhalt, Endung .zkb.txt
   const sharedPath = `${backupPath}.txt`;
   writeFileSync(sharedPath, readFileSync(backupPath));
@@ -435,7 +437,7 @@ try {
   check((await presentation.locator('.presentation-org').textContent()).includes('Musterfirma'), 'Präsentation: Wartebildschirm mit Organisationsname');
   await presentation.screenshot({ path: `${OUT}/13-praesentation-warten.png` });
   // „Alle Daten löschen“ im Backup-Schritt hat den Testmodus zurückgesetzt
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/scanner`);
   await page.getByLabel(/Testmodus/).click();
   await page.waitForTimeout(300);
   await page.goto(`${URL}#/dashboard`);
@@ -453,7 +455,7 @@ try {
   check(true, 'Nach dem Schließen bietet das Dashboard „Präsentation öffnen“ an');
 
   console.log('16) Dunkles Layout');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/allgemein`);
   await page.getByLabel('Darstellung').selectOption('dark');
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
   check(true, 'Dunkles Layout aktiv');
@@ -485,12 +487,12 @@ try {
   await page.pdf({ path: `${OUT}/karten.pdf`, format: 'A4', printBackground: true, preferCSSPageSize: true });
   await page.emulateMedia({ media: 'screen' });
   console.log('  ✓ PDF erzeugt: .e2e/karten.pdf');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/allgemein`);
   await page.getByLabel('Darstellung').selectOption('auto');
 
   console.log('17b) Bestätigung von Eintritten und Bediener-PIN');
   await page.setViewportSize({ width: 1536, height: 780 });
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/bediener`);
   await page.getByLabel(/Neue PIN/).fill('482913');
   await page.getByLabel('PIN wiederholen').fill('482913');
   await page.getByRole('button', { name: 'PIN speichern' }).click();
@@ -692,13 +694,26 @@ try {
   check(emergencyRows === presentBefore, `Notfallliste: alle ${emergencyRows} Anwesenden`);
   await page.screenshot({ path: `${OUT}/26-notfallliste.png`, fullPage: true });
 
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/datensicherung`);
   await page.getByRole('heading', { name: 'Automatische Sicherung' }).waitFor();
   check(true, 'Einstellungen: automatische Sicherung angeboten');
+  check(await page.locator('.settings-nav').isVisible(), 'Computer: Seitenleiste mit allen Bereichen');
+  await page.locator('.settings-nav').getByRole('link', { name: 'Scanner' }).click();
+  await page.getByLabel(/Testmodus/).waitFor();
+  check(true, 'Seitenleiste wechselt den Bereich');
+  await page.screenshot({ path: `${OUT}/28-einstellungen-computer.png` });
 
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);
+  await page.locator('.settings-tile').first().waitFor();
+  check((await page.locator('.settings-tile').count()) === 9, 'Einstellungen: aufgeräumte Übersicht mit 9 Bereichen');
+  await page.screenshot({ path: `${OUT}/27-einstellungen-handy.png`, fullPage: true });
+  await page.locator('.settings-tile', { hasText: 'Sicherheit' }).click();
+  await page.getByRole('link', { name: '← Einstellungen' }).waitFor();
+  check(true, 'Handy: Bereich mit „← Einstellungen“ zurück zur Übersicht');
+  await page.getByRole('link', { name: '← Einstellungen' }).click();
+  await page.locator('.settings-tile').first().waitFor();
   
   await page.getByRole('button', { name: 'Abmelden' }).click();
   await page.locator('.scanner-page').waitFor();
@@ -706,7 +721,7 @@ try {
   await page.goto(`${URL}#/karten`);
   await page.getByRole('heading', { name: 'Anmelden' }).waitFor();
   check(page.url().includes('#/anmelden'), 'Verwaltung nach Abmelden nur mit Passwort');
-  await login(page, '/einstellungen');
+  await login(page, '/einstellungen/sicherheit');
   await page.getByRole('button', { name: 'Jetzt sperren' }).click();
   await page.locator('.lock-banner').waitFor();
   check(true, '„Jetzt sperren“ sperrt die Daten');

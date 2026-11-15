@@ -80,6 +80,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   `STANDARD_LAYOUT` nur im Code (nicht gespeichert, nicht änderbar). Platzhalter werden im
   Scanner-Fenster gefüllt (`toPresentationScan`); das Präsentationsfenster liest nur Layouts/Einstellungen.
   `PresentationView` nutzt Container-Einheiten (cqw/cqh) – gleiche Darstellung im Vollbild und in der Vorschau.
+- Einstellungen: Übersicht `#/einstellungen` (Kacheln) + je Bereich eine Seite unter `pages/settings/`
+  mit `SettingsShell` (Seitenleiste ab 1000 px, sonst „← Einstellungen“). Neue Bereiche in
+  `SETTINGS_SECTIONS` eintragen; keine langen Sammelseiten mehr.
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.
 
