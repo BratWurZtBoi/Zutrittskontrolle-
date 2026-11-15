@@ -9,7 +9,7 @@ export function LoginPage() {
   const security = useSecurity();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const target = params.get('ziel') || '/karten';
+  const target = params.get('ziel') || '/dashboard';
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

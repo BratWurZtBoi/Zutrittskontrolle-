@@ -33,6 +33,18 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Server sendet.
 - ⚠️ **Passwort vergessen = verschlüsselte Daten verloren.** Bitte sicher notieren.
 
+### Dashboard und Übersicht
+
+- **Dashboard** (für Laptop oder Tablet quer): links die Kamera mit dem letzten Scan-Ergebnis,
+  rechts die anwesenden Personen und die Aktionen – mit Suche, Filtern und sortierbaren Spalten.
+  Alles aktualisiert sich live bei jedem Scan. Auf dem Handy untereinander.
+- **Übersicht → Anwesenheit:** alle Personen mit Status anwesend/abwesend und „seit wann“,
+  Suche (Name, Firma, Karte), Filter nach Status und Gruppe, Sortierung per Spaltenkopf,
+  **„Alle ausbuchen“** (z. B. am Tagesende).
+- **Übersicht → Aktionen:** Zutrittsprotokoll mit Zeitraum (heute, gestern, 7/30 Tage, frei
+  wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche und Sortierung.
+- Der **Vollbild-Scanner** bleibt als Kiosk-Modus für Geräte am Eingang (ohne Anmeldung nutzbar).
+
 ### Karten, Personen und Gruppen
 
 - **Karten** werden eigenständig erstellt – einzeln oder in Serie (z. B. 20 Besucherkarten).
@@ -74,7 +86,7 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
    danach **Karte zurückgeben**.
 5. Echter Kameratest: *Karten* → **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
    und mit dem Gerät scannen, auf dem die Karten erstellt wurden.
-6. *Anwesenheit* zeigt, wer eingebucht ist, und die Zutrittshistorie.
+6. *Dashboard* und *Übersicht* zeigen, wer eingebucht ist und welche Aktionen es gab.
 
 ## Wichtige Hinweise zum Speicher
 
@@ -95,8 +107,9 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 | Offline-Betrieb (PWA) auf Android und Windows | ✅ |
 | Admin-Passwort, verschlüsselte Personendaten (AES-256), Entsperren beim Start | ✅ |
 | Automatische Abmeldung, Löschfrist fürs Protokoll, Content Security Policy | ✅ |
-| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ⏳ als Nächstes |
-| Export/Import (verschlüsseltes Backup, CSV) | ⏳ geplant |
+| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ✅ |
+| „Alle ausbuchen“ | ✅ |
+| Export/Import (verschlüsseltes Backup, CSV) | ⏳ als Nächstes |
 
 ## Technik
 
@@ -104,13 +117,14 @@ React 19 · TypeScript · Vite · vite-plugin-pwa (Workbox) · Dexie (IndexedDB)
 
 ```
 src/
-  domain/     Reine Logik: Zutrittsentscheidung, QR-Format, Doppelscan-Schutz, Farben (mit Tests)
+  domain/     Reine Logik: Zutrittsentscheidung, QR-Format, Doppelscan-Schutz, Farben,
+              Filter/Sortierung für Übersicht und Dashboard (mit Tests)
   db/         Lokale Datenbank: Gruppen, Karten, Scans/Protokoll, Einstellungen, Testdaten (mit Tests)
   security/   Verschlüsselung (Web Crypto), Passwort-Tresor, Admin-Sitzung (mit Tests)
   scanner/    Kamera-Scanner und QR-Decoder (Web Worker)
   lib/        Kamera (inkl. Geräteauswahl), Fotos, QR-Erzeugung, Ton, Bildschirm-an
   components/ Wiederverwendbare Oberflächenbausteine
-  pages/      Scanner, Anmeldung, Karten, Druck, Gruppen, Anwesenheit, Einstellungen
+  pages/      Scanner, Dashboard, Übersicht, Anmeldung, Karten, Druck, Gruppen, Einstellungen
 ```
 
 **QR-Inhalt:** `ZK1:` + 26 Zeichen Zufallstoken (128 Bit). Der Code enthält keine

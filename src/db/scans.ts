@@ -3,6 +3,7 @@ import { parseCardPayload } from '../domain/cardCode';
 import { holderName } from '../domain/texts';
 import type { AccessEvent, AccessEventRecord, Card, Group, ScanMode } from '../domain/types';
 import { decryptText } from '../security/crypto';
+import { cachedDecrypt } from '../security/decryptCache';
 import { getDataKey } from '../security/session';
 import { toCard } from './cards';
 import { db } from './db';
@@ -88,7 +89,7 @@ export async function toEvent(record: AccessEventRecord, key: CryptoKey | null =
   if (!holderNameEnc) return rest;
   if (!key) return { ...rest, holderLocked: true };
   try {
-    return { ...rest, holderName: await decryptText(key, holderNameEnc) };
+    return { ...rest, holderName: await cachedDecrypt(key, holderNameEnc, () => decryptText(key, holderNameEnc)) };
   } catch {
     return { ...rest, holderLocked: true };
   }
@@ -98,6 +99,17 @@ export async function listRecentEvents(limit = 100): Promise<AccessEvent[]> {
   const records = await db.events.orderBy('timestamp').reverse().limit(limit).toArray();
   const key = getDataKey();
   return Promise.all(records.map((r) => toEvent(r, key)));
+}
+
+/** Protokolleinträge in einem Zeitraum [from, to), neueste zuerst. */
+export async function queryEvents(from: number, to: number): Promise<AccessEvent[]> {
+  const records = await db.events.where('timestamp').between(from, to, true, false).reverse().toArray();
+  const key = getDataKey();
+  return Promise.all(records.map((r) => toEvent(r, key)));
+}
+
+export function listPresence() {
+  return db.presence.toArray();
 }
 
 export interface PresentCard {

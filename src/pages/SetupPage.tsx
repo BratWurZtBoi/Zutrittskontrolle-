@@ -10,7 +10,7 @@ export function SetupPage() {
   const security = useSecurity();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const target = params.get('ziel') || '/karten';
+  const target = params.get('ziel') || '/dashboard';
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [understood, setUnderstood] = useState(false);

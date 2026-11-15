@@ -2,12 +2,13 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { AppServices } from './components/AppServices';
 import { Layout } from './components/Layout';
 import { RequireAdmin } from './components/RequireAdmin';
-import { AttendancePage } from './pages/AttendancePage';
 import { CardCreatePage } from './pages/CardCreatePage';
 import { CardDetailPage } from './pages/CardDetailPage';
 import { CardListPage } from './pages/CardListPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { LoginPage } from './pages/LoginPage';
+import { OverviewPage } from './pages/OverviewPage';
 import { PrintPage } from './pages/PrintPage';
 import { ScannerPage } from './pages/ScannerPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -26,11 +27,13 @@ export function App() {
           <Route path="einrichtung" element={<SetupPage />} />
           {/* nur mit Admin-Anmeldung */}
           <Route element={<RequireAdmin />}>
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="karten" element={<CardListPage />} />
             <Route path="karten/neu" element={<CardCreatePage />} />
             <Route path="karten/:id" element={<CardDetailPage />} />
             <Route path="druck" element={<PrintPage />} />
-            <Route path="anwesenheit" element={<AttendancePage />} />
+            <Route path="uebersicht" element={<OverviewPage />} />
+            <Route path="anwesenheit" element={<Navigate to="/uebersicht" replace />} />
             <Route path="einstellungen" element={<SettingsPage />} />
             <Route path="einstellungen/gruppen" element={<GroupsPage />} />
           </Route>

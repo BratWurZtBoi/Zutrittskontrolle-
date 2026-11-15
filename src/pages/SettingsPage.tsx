@@ -194,7 +194,7 @@ export function SettingsPage() {
             )}
           </li>
         </ul>
-        <p className="muted">Geplant: Übersicht mit Filtern, Dashboard, Export/Import (verschlüsseltes Backup).</p>
+        <p className="muted">Geplant: Export/Import (verschlüsseltes Backup, CSV).</p>
       </section>
     </div>
   );

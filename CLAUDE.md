@@ -52,7 +52,12 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - `src/db/` – Dexie-Datenbank `zutrittskontrolle-daten`. Schemaänderungen nur über neue
   `this.version(n)` in `db.ts` (niemals bestehende Versionen ändern – sonst Datenverlust auf Geräten).
   Die alte Prototyp-DB `zutrittskontrolle` (nur Testdaten) wird beim Start gelöscht.
-- `src/scanner/` – Kamera-Loop + jsQR im Web Worker.
+- `src/scanner/` – Kamera-Loop + jsQR im Web Worker. Scan-Verarbeitung (Doppelerkennung,
+  Buchen, Ton) steckt in `hooks/useScanProcessor.ts` und wird von Kiosk-Scanner und Dashboard
+  gemeinsam genutzt; Ergebnisanzeige in `components/ScanResult.tsx` (Vollbild bzw. Feld).
+- Übersicht/Dashboard: reine Filter-/Sortierfunktionen in `domain/overview.ts`, Daten über
+  `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Entschlüsselte Namen
+  werden pro Schlüssel zwischengespeichert (`security/decryptCache.ts`).
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.
 
@@ -73,6 +78,6 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 2. ✅ Karten statt Personen, Gruppen mit Farbe/Kürzel/Regeln, Kameraauswahl (Windows)
 3. ✅ Sicherheit (Variante A): Admin-Passwort, Verschlüsselung, Entsperren beim Start,
    Auto-Abmeldung, Löschfrist, Testmodus nur Admin, CSP.
-4. Übersicht mit Suche/Filter/Sortierung (Karten + Aktionen) und Dashboard
-   (Kamera + Anwesende + Aktionen); Vollbild-Scanner bleibt als Kiosk-Modus.
+4. ✅ Übersicht (Tabs Anwesenheit/Aktionen) mit Suche/Filter/Sortierung, „Alle ausbuchen“,
+   Dashboard (Kamera + Anwesende + Aktionen); Vollbild-Scanner bleibt als Kiosk-Modus.
 5. Export/Import: verschlüsseltes Voll-Backup (eigenes Passwort), CSV-Export Historie/Karten.

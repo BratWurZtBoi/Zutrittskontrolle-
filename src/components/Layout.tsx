@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { requestExit } from '../security/exit';
 import { useSecurity } from '../security/useSecurity';
-import { CardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon } from './Icons';
+import { CardIcon, DashboardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon } from './Icons';
 
 const ADMIN_NAV = [
+  { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
   { to: '/karten', label: 'Karten', icon: CardIcon },
-  { to: '/anwesenheit', label: 'Anwesenheit', icon: ListIcon },
+  { to: '/uebersicht', label: 'Übersicht', icon: ListIcon },
   { to: '/einstellungen', label: 'Einstellungen', icon: SettingsIcon },
 ];
 
@@ -31,6 +32,8 @@ export function Layout() {
             ))}
             <button
               type="button"
+              aria-label="Abmelden"
+              title="Abmelden"
               className="nav-link nav-button"
               onClick={() => {
                 requestExit('logout');
@@ -38,7 +41,7 @@ export function Layout() {
               }}
             >
               <ExitIcon />
-              <span>Abmelden</span>
+              <span className="nav-label-optional">Abmelden</span>
             </button>
           </>
         ) : (

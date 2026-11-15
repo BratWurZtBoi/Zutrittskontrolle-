@@ -3,6 +3,7 @@ import { encodeCardPayload } from '../domain/cardCode';
 import type { CardHolder, Group } from '../domain/types';
 import {
   MAX_BATCH,
+  checkOutAll,
   createCards,
   deleteCard,
   listCards,
@@ -14,7 +15,7 @@ import {
 } from './cards';
 import { ValidationError, clearAllData, db } from './db';
 import { createGroup, deleteGroup, ensureDefaultGroups, listGroups, updateGroup } from './groups';
-import { listPresentCards, listRecentEvents, processScan, purgeOldEvents } from './scans';
+import { listPresentCards, listRecentEvents, processScan, purgeOldEvents, queryEvents } from './scans';
 import { createVault } from '../security/crypto';
 import { setDataKeyForTests } from '../security/session';
 import { removeTestCards, seedTestCards } from './seed';
@@ -176,6 +177,37 @@ describe('Scan-Verarbeitung', () => {
     await deleteCard(card!.id);
     expect(await listPresentCards()).toEqual([]);
     expect((await listRecentEvents())[0]?.holderName).toBe('Max Mustermann');
+  });
+});
+
+describe('Übersicht', () => {
+  it('fragt Protokolleinträge nach Zeitraum ab (neueste zuerst)', async () => {
+    const [card] = await createCards({ groupId: staff.id, count: 1 });
+    await updateCard(card!.id, { accessGranted: true, holder: max });
+    const code = encodeCardPayload(card!.token);
+    await processScan(code, { ...opts, now: at(0) });
+    await processScan(code, { ...opts, now: at(40) });
+    await processScan(code, { ...opts, now: new Date(2026, 5, 16, 9) });
+    const day = await queryEvents(new Date(2026, 5, 15).getTime(), new Date(2026, 5, 16).getTime());
+    expect(day.map((e) => e.direction)).toEqual(['out', 'in']);
+    expect(day[0]?.holderName).toBe('Max Mustermann');
+  });
+
+  it('„Alle ausbuchen“ bucht alle Anwesenden aus', async () => {
+    const cards = await createCards({ groupId: staff.id, count: 3 });
+    for (const [i, c] of cards.entries()) {
+      await updateCard(c.id, { accessGranted: true, holder: { firstName: 'Person', lastName: String(i) } });
+    }
+    await processScan(encodeCardPayload(cards[0]!.token), opts);
+    await processScan(encodeCardPayload(cards[1]!.token), opts);
+    expect((await listPresentCards()).length).toBe(2);
+    expect(await checkOutAll()).toBe(2);
+    expect(await listPresentCards()).toEqual([]);
+    const events = await listRecentEvents();
+    expect(events.filter((e) => e.source === 'system' && e.direction === 'out').map((e) => e.holderName).sort()).toEqual([
+      'Person 0',
+      'Person 1',
+    ]);
   });
 });
 
