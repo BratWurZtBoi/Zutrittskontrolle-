@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.log
+.DS_Store
+.vscode/
+.idea/
+# lokale Testartefakte
+test-results/
+.e2e/
