@@ -210,6 +210,29 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 
 **Updates:** App schließen und neu öffnen – neue Versionen werden automatisch geladen.
 
+### Windows-Programm (ohne Browser)
+
+Zusätzlich zur Web-App gibt es ein eigenständiges Windows-Programm (Electron) – gleiche Funktionen,
+gleicher Programmcode.
+
+- **Herunterladen:** auf GitHub unter **Releases**
+  (https://github.com/adminzirkel/Zutrittskontrolle-/releases) die Datei
+  `Zutrittskontrolle-Setup-<Version>.exe` (wird bei jedem Merge nach `main` automatisch gebaut,
+  je Version eine Ausgabe).
+- **Installieren:** Datei starten. Windows meldet „Unbekannter Herausgeber“, weil das Programm
+  (noch) nicht signiert ist → **Weitere Informationen** → **Trotzdem ausführen**. Danach gibt es
+  einen Eintrag im Startmenü und auf dem Desktop.
+- **Daten:** liegen im Programmordner `%APPDATA%\Zutrittskontrolle` – unabhängig vom Browser
+  (Aufräumprogramme oder „Browserdaten löschen“ betreffen sie nicht). Sie bleiben bei Updates und
+  beim Deinstallieren erhalten.
+- **Umstieg von der Web-App:** in der Web-App ein Backup erstellen und im Programm einspielen.
+- **Updates:** neue Installationsdatei herunterladen und über die bisherige Version installieren.
+  Vorher zur Sicherheit ein Backup erstellen.
+- **Unterschiede zur Web-App:** die Präsentation öffnet sich ohne Rückfrage im Vollbild auf dem
+  zweiten Bildschirm; Kamera ohne Rückfrage; automatische Sicherung in einen Ordner ohne erneute
+  Freigabe nach dem Neustart; *Einstellungen → Gerät & App*: „Beim Anmelden an Windows automatisch
+  starten“; **F11** = Vollbild. Das Programm baut keine Verbindungen ins Internet auf.
+
 ## Erste Schritte zum Testen
 
 1. *Verwaltung* → Admin-Passwort einrichten.

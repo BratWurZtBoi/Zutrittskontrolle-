@@ -2547,3 +2547,7 @@ table.data-table {
 .element-editor > .btn-danger {
   align-self: flex-start;
 }
+code.path {
+  word-break: break-all;
+  font-size: 0.85rem;
+}

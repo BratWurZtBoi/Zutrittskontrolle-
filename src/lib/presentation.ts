@@ -12,6 +12,7 @@ import {
   type ResultInput,
 } from '../domain/presentationLayout';
 import { reasonText } from '../domain/texts';
+import { getDesktop } from './desktop';
 import { describeOutcome, hideIdentityFor } from './resultText';
 
 const CHANNEL = 'zutrittskontrolle-praesentation';
@@ -205,6 +206,9 @@ export type PresentationOpenResult = 'other-screen' | 'window' | 'blocked';
 
 /** Öffnet die Präsentationsansicht in einem eigenen Fenster – bevorzugt auf dem zweiten Bildschirm. */
 export async function openPresentationWindow(): Promise<PresentationOpenResult> {
+  // Windows-Programm: öffnet selbst auf dem zweiten Bildschirm im Vollbild
+  const desktop = getDesktop();
+  if (desktop) return desktop.openPresentation();
   const url = `${location.pathname}${location.search}#/praesentation`;
   const placed = await otherScreenFeatures();
   const win = window.open(url, WINDOW_NAME, placed ?? 'popup,width=1280,height=720');

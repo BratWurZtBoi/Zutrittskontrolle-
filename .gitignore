@@ -9,3 +9,6 @@ coverage/
 # lokale Testartefakte
 test-results/
 .e2e/
+# Windows-Programm (Electron) – Installationsdateien entstehen in GitHub Actions
+release/
+release-linux/

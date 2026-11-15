@@ -14,6 +14,7 @@ import { getDataKey } from '../security/session';
 import { createBackupFile } from './backup';
 import { AUTO_BACKUP_DIR_KEY, AUTO_BACKUP_KEY, ValidationError, db } from './db';
 import { saveSettings } from './settings';
+import { getDesktop, type DesktopApi } from '../lib/desktop';
 
 /** Ausschnitt aus FileSystemDirectoryHandle, den die Sicherung braucht. */
 export interface BackupDirHandle {
@@ -52,12 +53,50 @@ export function backupFilesToDelete(names: string[], keep: number): string[] {
   return own.slice(Math.max(1, keep));
 }
 
-/** Kann dieser Browser einen Ordner zum Schreiben auswählen? (Chrome/Edge am Computer) */
+/** Kann dieser Browser einen Ordner zum Schreiben auswählen? (Chrome/Edge am Computer, Windows-Programm) */
 export function directoryPickerAvailable(): boolean {
+  if (getDesktop()) return true;
   return typeof (window as Window & { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function';
 }
 
+/** Ordner im Windows-Programm: Dateien schreibt das Programm selbst (nur in den gewählten Ordner). */
+export function desktopDirHandle(api: DesktopApi, name: string): BackupDirHandle {
+  return {
+    name,
+    async getFileHandle(filename) {
+      return {
+        async createWritable() {
+          let data: Blob | undefined;
+          return {
+            async write(d: Blob) {
+              data = d;
+            },
+            async close() {
+              if (data) await api.backupWrite(filename, await data.text());
+            },
+          };
+        },
+      };
+    },
+    async removeEntry(filename) {
+      await api.backupRemove(filename);
+    },
+    async *values() {
+      for (const filename of await api.backupList()) yield { kind: 'file' as const, name: filename };
+    },
+    async queryPermission() {
+      return (await api.backupFolder()) ? 'granted' : 'denied';
+    },
+  };
+}
+
 export async function pickBackupDirectory(): Promise<BackupDirHandle> {
+  const desktop = getDesktop();
+  if (desktop) {
+    const folder = await desktop.chooseBackupFolder();
+    if (!folder) throw new DOMException('Abgebrochen', 'AbortError');
+    return desktopDirHandle(desktop, folder.name);
+  }
   const w = window as Window & { showDirectoryPicker?: (o: object) => Promise<BackupDirHandle> };
   if (!w.showDirectoryPicker) throw new ValidationError('Ordnerauswahl wird von diesem Browser nicht unterstützt.');
   return w.showDirectoryPicker({ id: 'zutrittskontrolle-backup', mode: 'readwrite', startIn: 'documents' });
@@ -81,11 +120,28 @@ const indexedDbDirStore: DirStore = {
     await db.settings.delete(AUTO_BACKUP_DIR_KEY);
   },
 };
-let dirStore: DirStore = indexedDbDirStore;
+/** Windows-Programm: den Ordner merkt sich das Programm (nur dort darf es schreiben). */
+function desktopDirStore(api: DesktopApi): DirStore {
+  return {
+    async get() {
+      const folder = await api.backupFolder();
+      return folder ? desktopDirHandle(api, folder.name) : undefined;
+    },
+    async put() {
+      /* bereits beim Auswählen gespeichert */
+    },
+    async remove() {
+      await api.clearBackupFolder();
+    },
+  };
+}
+
+const desktopApi = getDesktop();
+let dirStore: DirStore = desktopApi ? desktopDirStore(desktopApi) : indexedDbDirStore;
 
 /** Nur für Tests: Ordner-Zugriffe im Speicher halten (die Test-Datenbank kann sie nicht speichern). */
 export function setDirStoreForTests(store: DirStore | null): void {
-  dirStore = store ?? indexedDbDirStore;
+  dirStore = store ?? (desktopApi ? desktopDirStore(desktopApi) : indexedDbDirStore);
 }
 
 export function loadAutoBackupDir(): Promise<BackupDirHandle | undefined> {

@@ -1,0 +1,35 @@
+# Windows-Programm (Electron) – Installationsdatei erzeugen: npm run desktop:build
+# Gebaut wird in GitHub Actions auf einem Windows-Rechner (.github/workflows/desktop.yml).
+appId: app.zutrittskontrolle.desktop
+productName: Zutrittskontrolle
+copyright: Zutrittskontrolle
+directories:
+  output: release
+# Nur die fertig gebaute App und das Programm – keine Entwicklungsdateien
+files:
+  - dist/**/*
+  - desktop/main.cjs
+  - desktop/preload.cjs
+  - desktop/icon.png
+  - package.json
+  - "!**/node_modules/**/*"
+asar: true
+win:
+  icon: desktop/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: Zutrittskontrolle-Setup-${version}.${ext}
+  # ohne Signaturzertifikat (Windows zeigt beim Installieren „Unbekannter Herausgeber“)
+  signAndEditExecutable: true
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Zutrittskontrolle
+  # Daten (Karten, Protokoll …) bleiben beim Deinstallieren erhalten
+  deleteAppDataOnUninstall: false
+  installerLanguages: [de_DE]
+  language: "1031"

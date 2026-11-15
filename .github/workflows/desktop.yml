@@ -1,0 +1,60 @@
+# Windows-Programm (Electron): baut bei jedem Push die Installationsdatei auf einem
+# Windows-Rechner (Prüfung, Download beim Lauf). Nur Pushes auf "main" werden zusätzlich
+# unter „Releases“ veröffentlicht (je Version eine Ausgabe, z. B. v0.9.0 – ein erneuter
+# Build derselben Version ersetzt die Datei).
+name: Windows-Programm
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Installationsdatei bauen
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Installationsdatei bauen (ohne Signatur)
+        run: npm run desktop:build
+        env:
+          BUILD_ID: ${{ github.run_number }} · ${{ github.ref_name }} · Windows
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Als Download beim Lauf bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zutrittskontrolle-Windows
+          path: release/*.exe
+          retention-days: 30
+
+      - name: Unter „Releases“ veröffentlichen
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Zutrittskontrolle $VERSION (Windows)" \
+              --notes "Windows-Programm. Installation: Datei herunterladen und starten. Windows meldet „Unbekannter Herausgeber“ (keine Signatur) – über „Weitere Informationen“ → „Trotzdem ausführen“ installieren. Update: neue Version einfach über die alte installieren, die Daten bleiben erhalten."
+          fi
+          gh release upload "$TAG" release/*.exe --clobber
