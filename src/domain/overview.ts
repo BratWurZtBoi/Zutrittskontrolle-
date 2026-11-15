@@ -183,3 +183,55 @@ export function rangeLabel(f: Pick<EventFilter, 'range' | 'from' | 'to'>, now: D
       return `${f.from ?? '…'} bis ${f.to ?? toLocalDateString(now)}`;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Kennzahlen für die Statusleiste im Dashboard
+// ---------------------------------------------------------------------------
+
+export interface DayStats {
+  /** Erfolgreiche Buchungen (Ein- und Ausgang, auch automatische). */
+  granted: number;
+  denied: number;
+}
+
+export function summarizeEvents(events: Pick<AccessEvent, 'outcome'>[]): DayStats {
+  let granted = 0;
+  let denied = 0;
+  for (const e of events) {
+    if (e.outcome === 'granted') granted++;
+    else denied++;
+  }
+  return { granted, denied };
+}
+
+/** Anzahl je Gruppe (z. B. Anwesende), in der Reihenfolge der Gruppen; Gruppen ohne Treffer entfallen. */
+export function countPerGroup(groupIds: string[], groups: Group[]): { group: Group; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const id of groupIds) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return groups.filter((g) => counts.has(g.id)).map((group) => ({ group, count: counts.get(group.id) ?? 0 }));
+}
+
+// ---------------------------------------------------------------------------
+// Korrekturen
+// ---------------------------------------------------------------------------
+
+/** Kann diese Buchung grundsätzlich rückgängig gemacht werden? (echte Buchung, noch nicht korrigiert) */
+export function isCorrectable(e: Pick<AccessEvent, 'outcome' | 'source' | 'reason' | 'correctedBy' | 'cardId'>): boolean {
+  return e.outcome === 'granted' && e.source !== 'system' && e.reason !== 'CORRECTION' && !e.correctedBy && Boolean(e.cardId);
+}
+
+/**
+ * Nummern der Buchungen, die rückgängig gemacht werden können: je Karte nur die
+ * letzte erfolgreiche Buchung (sonst würde die Anwesenheit falsch).
+ */
+export function undoableSeqs(events: AccessEvent[]): Set<number> {
+  const latest = new Map<string, AccessEvent>();
+  for (const e of events) {
+    if (e.outcome !== 'granted' || !e.cardId || e.seq === undefined) continue;
+    const cur = latest.get(e.cardId);
+    if (!cur || (cur.seq ?? 0) < e.seq) latest.set(e.cardId, e);
+  }
+  const result = new Set<number>();
+  for (const e of latest.values()) if (isCorrectable(e) && e.seq !== undefined) result.add(e.seq);
+  return result;
+}

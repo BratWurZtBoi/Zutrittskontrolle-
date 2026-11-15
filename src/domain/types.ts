@@ -19,12 +19,19 @@ export interface Group {
   allowUnassigned: boolean;
   /** Name und Foto der Person werden auf die Karte gedruckt. */
   printHolder: boolean;
+  /** Eintritt muss am Dashboard vom Admin/Bediener bestätigt werden (sonst automatisch). */
+  requireConfirmation?: boolean;
+  /** Präsentationslayout für den Gästebildschirm (leer = Standard). */
+  presentationLayoutId?: string;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;
 }
 
-export type GroupInput = Pick<Group, 'name' | 'color' | 'prefix' | 'accessGranted' | 'allowUnassigned' | 'printHolder'>;
+export type GroupInput = Pick<
+  Group,
+  'name' | 'color' | 'prefix' | 'accessGranted' | 'allowUnassigned' | 'printHolder' | 'requireConfirmation' | 'presentationLayoutId'
+>;
 
 /** Personendaten hinter einer Karte – jederzeit änderbar oder entfernbar. */
 export interface CardHolder {
@@ -67,6 +74,14 @@ export interface CardRecord {
   holder?: CardHolder;
   /** Seit wann die aktuelle Person der Karte zugeordnet ist. */
   holderSince?: number;
+  /** Als verloren gemeldet (Zeitpunkt) – die Karte ist dann auch gesperrt. */
+  lostAt?: number;
+  /** Diese (verlorene) Karte wurde durch eine Ersatzkarte ersetzt. */
+  replacedBy?: string;
+  /** Diese Karte ist Ersatz für eine verlorene Karte. */
+  replaces?: string;
+  /** Eigenes Präsentationslayout für diese Karte (überschreibt das der Gruppe). */
+  presentationLayoutId?: string;
   /** Markiert fiktive Testdaten, damit sie gezielt gelöscht werden können. */
   testData?: boolean;
   createdAt: number;
@@ -94,14 +109,28 @@ export type ReasonCode =
   | 'INVALID_CODE'
   | 'UNKNOWN_CARD'
   | 'CARD_BLOCKED'
+  /** Karte als verloren gemeldet. */
+  | 'CARD_LOST'
   | 'GROUP_DISABLED'
   | 'NO_PERMISSION'
   | 'UNASSIGNED'
   | 'NOT_YET_VALID'
   | 'EXPIRED'
-  | 'DUPLICATE';
+  | 'DUPLICATE'
+  /** Eintritt muss bestätigt werden, aber hier ist niemand zum Bestätigen (Kiosk-Scanner). */
+  | 'CONFIRMATION_REQUIRED'
+  /** Vom Admin/Bediener abgewiesen. */
+  | 'REJECTED'
+  /** Nicht rechtzeitig bestätigt. */
+  | 'CONFIRMATION_TIMEOUT'
+  /** Korrektur: macht eine Fehlbuchung rückgängig (Gegenbuchung). */
+  | 'CORRECTION';
 
-export type Outcome = 'granted' | 'denied' | 'duplicate';
+/** 'pending' = wartet auf Bestätigung durch den Bediener (noch nicht gebucht). */
+export type Outcome = 'granted' | 'denied' | 'duplicate' | 'pending';
+
+/** Wer eine Bestätigung erteilt bzw. abgelehnt hat. */
+export type StaffRole = 'admin' | 'operator';
 
 /** Protokolleintrag, wie er in der Datenbank liegt. */
 export interface AccessEventRecord {
@@ -120,8 +149,17 @@ export interface AccessEventRecord {
   holderNameEnc?: EncryptedData;
   /** Altbestand vor der Verschlüsselung (Klartext). */
   holderName?: string;
-  /** 'system' = automatische Buchung, z. B. beim Zurückgeben einer Karte. */
-  source: 'camera' | 'test' | 'system';
+  /**
+   * 'system' = automatische Buchung, z. B. beim Zurückgeben einer Karte;
+   * 'manual' = vom Admin/Bediener gebucht (Karte vergessen) oder korrigiert.
+   */
+  source: 'camera' | 'test' | 'system' | 'manual';
+  /** Eintritt wurde vom Admin/Bediener bestätigt bzw. abgewiesen – oder manuell gebucht/korrigiert. */
+  confirmedBy?: StaffRole;
+  /** Diese Buchung korrigiert die Buchung mit dieser Nummer. */
+  correctionOf?: number;
+  /** Diese Buchung wurde durch die Buchung mit dieser Nummer rückgängig gemacht. */
+  correctedBy?: number;
 }
 
 /** Protokolleintrag für die Oberfläche. */

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router';
+import { runAutoBackup } from '../db/autoBackup';
 import { purgeOldEvents } from '../db/scans';
 import { useSettings } from '../hooks/useSettings';
 import { applyTheme } from '../lib/theme';
@@ -33,13 +34,25 @@ export function AppServices() {
   }, []);
 
   useEffect(() => {
-    const t = window.setInterval(() => checkAutoLogout(settings.autoLogoutMin), 20_000);
+    const t = window.setInterval(() => checkAutoLogout(settings.autoLogoutMin, Date.now(), settings.operatorAutoLogoutMin), 20_000);
     return () => window.clearInterval(t);
-  }, [settings.autoLogoutMin]);
+  }, [settings.autoLogoutMin, settings.operatorAutoLogoutMin]);
 
   useEffect(() => {
     applyTheme(settings.theme);
   }, [settings.theme]);
+
+  // Automatische Sicherung in einen Ordner: regelmäßig prüfen, ob sie fällig ist
+  // (läuft nur, wenn eingerichtet und die Daten entsperrt sind)
+  useEffect(() => {
+    const check = () => void runAutoBackup(__APP_VERSION__).catch(() => undefined);
+    const first = window.setTimeout(check, 30_000);
+    const t = window.setInterval(check, 5 * 60_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(t);
+    };
+  }, []);
 
   useEffect(() => {
     void purgeOldEvents(settings.retentionDays);

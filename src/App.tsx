@@ -1,13 +1,15 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { AppServices } from './components/AppServices';
 import { Layout } from './components/Layout';
-import { RequireAdmin } from './components/RequireAdmin';
+import { RequireRole } from './components/RequireAdmin';
 import { CardCreatePage } from './pages/CardCreatePage';
 import { CardDetailPage } from './pages/CardDetailPage';
 import { CardListPage } from './pages/CardListPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { EmergencyListPage } from './pages/EmergencyListPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { ImportPage } from './pages/ImportPage';
+import { LayoutsPage } from './pages/LayoutsPage';
 import { LoginPage } from './pages/LoginPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PresentationPage } from './pages/PresentationPage';
@@ -29,18 +31,23 @@ export function App() {
           <Route index element={<ScannerPage />} />
           <Route path="anmelden" element={<LoginPage />} />
           <Route path="einrichtung" element={<SetupPage />} />
-          {/* nur mit Admin-Anmeldung */}
-          <Route element={<RequireAdmin />}>
+          {/* Admin oder Bediener (PIN) */}
+          <Route element={<RequireRole allow="staff" />}>
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="uebersicht" element={<OverviewPage />} />
+            <Route path="anwesenheit" element={<Navigate to="/uebersicht" replace />} />
+            <Route path="notfallliste" element={<EmergencyListPage />} />
+          </Route>
+          {/* nur mit Admin-Anmeldung */}
+          <Route element={<RequireRole allow="admin" />}>
             <Route path="karten" element={<CardListPage />} />
             <Route path="karten/neu" element={<CardCreatePage />} />
             <Route path="karten/import" element={<ImportPage />} />
             <Route path="karten/:id" element={<CardDetailPage />} />
             <Route path="druck" element={<PrintPage />} />
-            <Route path="uebersicht" element={<OverviewPage />} />
-            <Route path="anwesenheit" element={<Navigate to="/uebersicht" replace />} />
             <Route path="einstellungen" element={<SettingsPage />} />
             <Route path="einstellungen/gruppen" element={<GroupsPage />} />
+            <Route path="einstellungen/praesentation" element={<LayoutsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

@@ -5,6 +5,9 @@ import { db } from './db';
 
 export type ThemeChoice = 'auto' | 'light' | 'dark';
 
+/** Größe der Kameravorschau im Dashboard (die Erkennung läuft immer in voller Auflösung). */
+export type DashCameraSize = 'small' | 'large' | 'hidden';
+
 export interface AppSettings {
   /** Darstellung: automatisch nach Systemeinstellung, hell oder dunkel (je Gerät). */
   theme: ThemeChoice;
@@ -23,10 +26,18 @@ export interface AppSettings {
   testMode: boolean;
   /** Automatische Admin-Abmeldung nach Minuten ohne Bedienung (0 = nie). */
   autoLogoutMin: number;
+  /** Automatische Abmeldung des Bedieners nach Minuten ohne Bedienung (0 = nie). */
+  operatorAutoLogoutMin: number;
+  /** Wartende Eintritte verfallen nach so vielen Sekunden ohne Bestätigung. */
+  confirmTimeoutSec: number;
   /** Löschfrist: Protokolleinträge nach so vielen Tagen löschen (0 = nie). */
   retentionDays: number;
   /** Zeitpunkt des letzten Backups auf diesem Gerät. */
   lastBackupAt?: number;
+  /** Kameravorschau im Dashboard: klein, groß oder ausgeblendet (Scannen läuft weiter). */
+  dashCamera: DashCameraSize;
+  /** Layout für den Ruhebildschirm und alle Gruppen/Karten ohne eigenes Layout. */
+  defaultLayoutId: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -40,7 +51,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sound: true,
   testMode: false,
   autoLogoutMin: 15,
+  operatorAutoLogoutMin: 0,
+  confirmTimeoutSec: 90,
   retentionDays: 90,
+  dashCamera: 'small',
+  defaultLayoutId: 'standard',
 };
 
 const KEY = 'app';

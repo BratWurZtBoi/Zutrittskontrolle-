@@ -23,6 +23,10 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - **Karte** (`Card`): Nummer (`B-001`), Gruppe (fest), QR-Token, gesperrt, Berechtigung,
   Gültigkeit, optional **Inhaber** (`CardHolder`: Name, Firma, Foto, Notiz) – frei änderbar.
   Personenwechsel/Rückgabe bucht die bisherige Person automatisch aus (Quelle `system`).
+  Verlust: `lostAt` (+ `blocked`), Grund `CARD_LOST` geht vor `CARD_BLOCKED`; Ersatzkarte
+  (`issueReplacementCard`) übernimmt verschlüsselte Personendaten + Anwesenheit, Verweis
+  `replacedBy`/`replaces`. Gäste (Kiosk, Präsentation: `Audience 'guest'`) sehen bei verlorenen
+  Karten weder Grund noch Person.
 - **Ereignis** (`AccessEvent`): enthält Momentaufnahmen (Kartennummer, Gruppe, Name), damit
   die Historie nach Änderungen lesbar bleibt. **Anwesenheit** je Karte.
 - Gespeichert werden `CardRecord`/`AccessEventRecord` (Personendaten verschlüsselt), die
@@ -38,9 +42,17 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   vorzeitig): erst lesen, dann (ent)schlüsseln, dann schreiben. In liveQuery-Abfragen alle
   DB-Zugriffe vor dem Entschlüsseln. Anzeige-Abfragen mit `useSecureLiveQuery` (lädt bei
   Sperren/Entsperren neu).
-- `src/security/session.ts`: Zustand im Arbeitsspeicher (`setup`/`locked`/`unlocked`, `admin`).
-  Neu laden = Neustart = gesperrt. Abmelden/Sperren über `requestExit()` + Navigation zu `/`.
-- Alle Routen außer `/`, `/anmelden`, `/einrichtung` liegen hinter `RequireAdmin`.
+- `src/security/session.ts`: Zustand im Arbeitsspeicher (`setup`/`locked`/`unlocked`, `admin`,
+  `operator`). Neu laden = Neustart = gesperrt. Abmelden/Sperren über `requestExit()` + Navigation zu `/`.
+- **Bediener-PIN** (`loginOperator`): nur Prüfwert (PBKDF2) unter `settings.operatorPin`, entschlüsselt
+  nichts – nur möglich, solange der Datenschlüssel geladen ist. `DEVICE_SECRET_KEYS` (Tresor + PIN)
+  bleiben bei „Alle Daten löschen“ und Backup-Wiederherstellung erhalten.
+- Routen: `RequireRole allow="staff"` (Admin oder Bediener) für `/dashboard`, `/uebersicht`
+  (Liste in `lib/roles.ts`), alles andere `allow="admin"`. Frei: `/`, `/anmelden`, `/einrichtung`, `/praesentation`.
+- **Bestätigung je Gruppe** (`Group.requireConfirmation`): `decideAccess` liefert `pending`
+  (Dashboard, `confirmation: 'operator'`) bzw. `denied/CONFIRMATION_REQUIRED` (Kiosk). Wartende Scans
+  werden nicht gebucht; `resolvePendingScan` (accept prüft erneut / reject / timeout) schreibt das
+  Ereignis mit `confirmedBy`. Warteschlange im Speicher in `useScanProcessor({ confirm: true })`.
 - CSP-Meta-Tag wird nur im Build eingefügt (`vite.config.ts`); keine Inline-Skripte/-Styles
   im HTML verwenden (React-`style`-Props sind erlaubt).
 - E2E: Testpasswort `Test-Passwort-123`; Navigation in Tests per Hash (`#/…`), nicht per Reload.
@@ -56,8 +68,18 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   Buchen, Ton) steckt in `hooks/useScanProcessor.ts` und wird von Kiosk-Scanner und Dashboard
   gemeinsam genutzt; Ergebnisanzeige in `components/ScanResult.tsx` (Vollbild bzw. Feld).
 - Übersicht/Dashboard: reine Filter-/Sortierfunktionen in `domain/overview.ts`, Daten über
-  `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Entschlüsselte Namen
+  `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Dashboard-Kennzahlen ohne
+  Entschlüsseln in `hooks/useDashboardData.ts`. Dashboard-Layout: Statusleiste, linke Spalte
+  sticky, rechts **eine** Liste mit Reitern – keine Scrollbereiche in Kacheln (E2E prüft das).
+  Kameravorschau „Aus“ deckt das Video nur ab (Video muss sichtbar bleiben, sonst pausiert es).
+  Präsentation: Herzschlag per BroadcastChannel (`announcePresentation`/`watchPresentation`),
+  Öffnen auf dem zweiten Bildschirm über `getScreenDetails()` (Fensterverwaltung). Entschlüsselte Namen
   werden pro Schlüssel zwischengespeichert (`security/decryptCache.ts`).
+- Präsentationslayouts: reine Logik in `domain/presentationLayout.ts` (`pickLayout` Karte > Gruppe >
+  Standard, `fillPlaceholders`, `buildLayoutResult`), Tabelle `layouts` (DB-Version 2), Standardlayout
+  `STANDARD_LAYOUT` nur im Code (nicht gespeichert, nicht änderbar). Platzhalter werden im
+  Scanner-Fenster gefüllt (`toPresentationScan`); das Präsentationsfenster liest nur Layouts/Einstellungen.
+  `PresentationView` nutzt Container-Einheiten (cqw/cqh) – gleiche Darstellung im Vollbild und in der Vorschau.
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.
 
@@ -93,8 +115,20 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    `data-theme` auf `<html>`, Spiegelung in localStorage `zk-theme`; Karten/Druck immer hell).
    Automatische Buchungen (`bySystem`) zählen nicht für den Doppelscan-Schutz.
 
+7. ✅ Dashboard neu (Statusleiste, kleine Kamera, Liste mit Reitern), Eintritt bestätigen je Gruppe,
+   Bediener-PIN, verlorene Karten (Ersatzkarte), Präsentationslayouts (Aufbau, Texte, Hintergrund),
+   manuell buchen (`bookManually`, Quelle `manual`), Korrektur (`undoBooking`: Gegenbuchung
+   `CORRECTION`, nur letzte Buchung je Karte), Besucher-Schnellerfassung (`assignHolderToFreeCard`
+   prüft „noch frei“ in der Transaktion; Kamera-Scans gehen bei offenem Fenster an den Dialog),
+   Notfallliste `#/notfallliste`, automatische Sicherung in einen Ordner (`db/autoBackup.ts`,
+   File System Access API, Passwort mit Datenschlüssel verschlüsselt, Ordner-Zugriff separat gespeichert).
+
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
 
-Mögliche nächste Schritte (mit dem Nutzer abstimmen): Test auf echten Geräten und Feinschliff,
-Backup zusammenführen statt ersetzen, Kiosk-Hinweise für Android („App anheften“), Logo auf der Karte.
+Teilen (`lib/download.ts`): Chrome teilt nur bestimmte Endungen – `shareableFile()` hängt sonst
+`.txt` an (Backup → `….zkb.txt`, Inhalt unverändert); Fehler werden angezeigt, nicht verschluckt.
+
+Mögliche nächste Schritte (mit dem Nutzer abstimmen): Fremdkarten (QR/Strichcode einlernen,
+zurückgestellt), Musik/Animationen in Layouts (zurückgestellt), USB-Handscanner, Test auf echten
+Geräten und Feinschliff, Backup zusammenführen statt ersetzen, Logo auf der Karte.

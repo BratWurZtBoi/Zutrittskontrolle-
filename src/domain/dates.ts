@@ -24,6 +24,12 @@ export function formatTime(ts: number): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Datum eines Zeitstempels, z. B. „12.11.2026“. */
+export function formatDate(ts: number): string {
+  const d = new Date(ts);
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
 export function formatDateTime(ts: number): string {
   const d = new Date(ts);
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${formatTime(ts)}`;

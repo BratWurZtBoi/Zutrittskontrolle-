@@ -24,15 +24,27 @@ import {
 } from '../security/crypto';
 import { getDataKey } from '../security/session';
 import { toCard } from './cards';
-import { ValidationError, VAULT_KEY, db } from './db';
+import { DEVICE_SECRET_KEYS, ValidationError, db } from './db';
 import { toEvent } from './scans';
 import { loadSettings, type AppSettings } from './settings';
+import { normalizeLayout, type PresentationLayout } from '../domain/presentationLayout';
 
 export const BACKUP_FORMAT = 'zutrittskontrolle-backup';
 export const BACKUP_VERSION = 1;
 
 /** Einstellungen, die mitgesichert werden (gerätebezogene wie Kamera bleiben auf dem Gerät). */
-const PORTABLE_SETTINGS = ['orgName', 'scanMode', 'cooldownSec', 'resultDisplaySec', 'sound', 'autoLogoutMin', 'retentionDays'] as const;
+const PORTABLE_SETTINGS = [
+  'orgName',
+  'scanMode',
+  'cooldownSec',
+  'resultDisplaySec',
+  'sound',
+  'autoLogoutMin',
+  'operatorAutoLogoutMin',
+  'confirmTimeoutSec',
+  'retentionDays',
+  'defaultLayoutId',
+] as const;
 type PortableSettings = Partial<Pick<AppSettings, (typeof PORTABLE_SETTINGS)[number]>>;
 
 export type BackupCard = Omit<CardRecord, 'holderEnc' | 'nameEnc' | 'holder'> & { holder?: CardHolder };
@@ -46,6 +58,8 @@ export interface BackupPayload {
   events: BackupEvent[];
   presence: PresenceRecord[];
   settings: PortableSettings;
+  /** Präsentationslayouts (ab App-Version 0.7; fehlt in älteren Backups). */
+  layouts?: PresentationLayout[];
 }
 
 /** Äußere Hülle der Datei (JSON). */
@@ -88,12 +102,13 @@ export async function collectBackup(appVersion = 'unbekannt', now = Date.now()):
   const key = getDataKey();
   if (!key) throw new ValidationError('Die Daten sind gesperrt. Bitte zuerst anmelden.');
   // erst lesen, dann entschlüsseln
-  const [groups, cardRecords, eventRecords, presence, settings] = await Promise.all([
+  const [groups, cardRecords, eventRecords, presence, settings, layouts] = await Promise.all([
     db.groups.toArray(),
     db.cards.toArray(),
     db.events.toArray(),
     db.presence.toArray(),
     loadSettings(),
+    db.layouts.toArray(),
   ]);
   const cards: BackupCard[] = await Promise.all(
     cardRecords.map(async (r) => {
@@ -110,7 +125,7 @@ export async function collectBackup(appVersion = 'unbekannt', now = Date.now()):
   );
   const portable: PortableSettings = {};
   for (const k of PORTABLE_SETTINGS) (portable as Record<string, unknown>)[k] = settings[k];
-  return { exportedAt: now, appVersion, groups, cards, events, presence, settings: portable };
+  return { exportedAt: now, appVersion, groups, cards, events, presence, settings: portable, layouts };
 }
 
 /** Erstellt die verschlüsselte Backup-Datei. */
@@ -198,6 +213,7 @@ export function validatePayload(p: unknown): BackupPayload {
     events: x.events!,
     presence: x.presence!,
     settings: typeof x.settings === 'object' && x.settings ? x.settings : {},
+    layouts: Array.isArray(x.layouts) ? x.layouts.filter((l) => isStr(l?.id)).map(normalizeLayout) : [],
   };
 }
 
@@ -269,9 +285,10 @@ export async function restoreBackup(payload: BackupPayload): Promise<BackupSumma
   }
 
   // 2. Alles in einer Transaktion ersetzen
-  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings], async () => {
-    await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear()]);
-    await db.settings.where('key').notEqual(VAULT_KEY).delete();
+  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings, db.layouts], async () => {
+    await Promise.all([db.groups.clear(), db.cards.clear(), db.events.clear(), db.presence.clear(), db.layouts.clear()]);
+    await db.settings.where('key').noneOf(DEVICE_SECRET_KEYS).delete();
+    await db.layouts.bulkAdd(payload.layouts ?? []);
     await db.groups.bulkAdd(payload.groups);
     await db.cards.bulkAdd(cards);
     await db.events.bulkAdd(events);

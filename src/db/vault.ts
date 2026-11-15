@@ -1,7 +1,7 @@
-import type { VaultRecord } from '../security/crypto';
+import type { PinRecord, VaultRecord } from '../security/crypto';
 import { encryptJson, encryptText } from '../security/crypto';
 import { holderName } from '../domain/texts';
-import { VAULT_KEY, db } from './db';
+import { OPERATOR_PIN_KEY, VAULT_KEY, db } from './db';
 
 export async function loadVault(): Promise<VaultRecord | undefined> {
   const rec = await db.settings.get(VAULT_KEY);
@@ -44,4 +44,19 @@ export async function migratePlaintext(key: CryptoKey): Promise<number> {
     await db.events.bulkPut(eventUpdates);
   });
   return cardUpdates.length + eventUpdates.length;
+}
+
+// --- Bediener-PIN -------------------------------------------------------------
+
+export async function loadOperatorPin(): Promise<PinRecord | undefined> {
+  const rec = await db.settings.get(OPERATOR_PIN_KEY);
+  return rec?.value as PinRecord | undefined;
+}
+
+export async function saveOperatorPin(record: PinRecord): Promise<void> {
+  await db.settings.put({ key: OPERATOR_PIN_KEY, value: record });
+}
+
+export async function removeOperatorPin(): Promise<void> {
+  await db.settings.delete(OPERATOR_PIN_KEY);
 }

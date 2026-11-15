@@ -4,6 +4,7 @@ import { saveSettings } from '../db/settings';
 import { formatDateTime } from '../domain/dates';
 import { passwordProblem } from '../security/crypto';
 import { canShareFile, downloadBlob, formatBytes, shareFile } from '../lib/download';
+import { AutoBackupSection } from './AutoBackupSection';
 import { PasswordInput } from './PasswordInput';
 
 function SummaryText({ s }: { s: BackupSummary }) {
@@ -26,6 +27,7 @@ export function BackupSection({ lastBackupAt }: { lastBackupAt?: number }) {
       <p className={lastBackupAt ? 'muted' : 'hint'}>
         Letztes Backup auf diesem Gerät: {lastBackupAt ? formatDateTime(lastBackupAt) : 'noch nie'}
       </p>
+      <AutoBackupSection />
       <ExportForm />
       <ImportForm />
     </section>
@@ -38,6 +40,7 @@ function ExportForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ blob: Blob; filename: string; summary: BackupSummary } | null>(null);
+  const [shareMessage, setShareMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -51,6 +54,7 @@ function ExportForm() {
       downloadBlob(file.blob, file.filename);
       await saveSettings({ lastBackupAt: Date.now() });
       setResult(file);
+      setShareMessage(null);
       setPassword('');
       setRepeat('');
     } catch (err) {
@@ -79,17 +83,36 @@ function ExportForm() {
             <br />
             <SummaryText s={result.summary} />
           </p>
-          <p className="muted small">Die Datei liegt im Download-Ordner. Zum Übertragen z. B. per Quick Share, USB-Kabel oder E-Mail an das andere Gerät senden.</p>
+          <p className="muted small">
+            Die Datei liegt im Download-Ordner. Zum Übertragen z. B. per Quick Share, USB-Stick oder E-Mail an das andere Gerät
+            senden. Beim Teilen heißt sie „{result.filename}.txt“ – der Inhalt bleibt verschlüsselt und lässt sich genauso
+            einspielen.
+          </p>
           <div className="button-row">
             <button type="button" className="btn" onClick={() => downloadBlob(result.blob, result.filename)}>
               Erneut herunterladen
             </button>
             {canShareFile(result.blob, result.filename) && (
-              <button type="button" className="btn" onClick={() => void shareFile(result.blob, result.filename, 'Zutrittskontrolle-Backup')}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() =>
+                  void shareFile(result.blob, result.filename, 'Zutrittskontrolle-Backup').then((r) =>
+                    setShareMessage(
+                      r.status === 'shared'
+                        ? { ok: true, text: 'Backup geteilt.' }
+                        : r.status === 'failed'
+                          ? { ok: false, text: `${r.message} Die Datei liegt außerdem im Download-Ordner.` }
+                          : null,
+                    ),
+                  )
+                }
+              >
                 Teilen …
               </button>
             )}
           </div>
+          {shareMessage && <p className={shareMessage.ok ? 'form-success' : 'form-error'}>{shareMessage.text}</p>}
         </div>
       )}
     </form>
@@ -147,7 +170,7 @@ function ImportForm() {
   return (
     <form className="subform" onSubmit={(e) => void onOpen(e)}>
       <h3>Backup einspielen</h3>
-      <label htmlFor="bk-file">Backup-Datei (.zkb)</label>
+      <label htmlFor="bk-file">Backup-Datei (.zkb – geteilte Dateien heißen .zkb.txt)</label>
       <input
         id="bk-file"
         type="file"

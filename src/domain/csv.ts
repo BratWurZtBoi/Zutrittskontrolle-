@@ -28,11 +28,11 @@ const time = (ts: number) => {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-const SOURCE: Record<AccessEvent['source'], string> = { camera: 'Kamera', test: 'Test', system: 'automatisch' };
+const SOURCE: Record<AccessEvent['source'], string> = { camera: 'Kamera', test: 'Test', system: 'automatisch', manual: 'manuell' };
 
 export function eventsToCsv(events: AccessEvent[]): string {
   return toCsv([
-    ['Datum', 'Uhrzeit', 'Karte', 'Name', 'Gruppe', 'Richtung', 'Ergebnis', 'Grund', 'Quelle'],
+    ['Datum', 'Uhrzeit', 'Karte', 'Name', 'Gruppe', 'Richtung', 'Ergebnis', 'Grund', 'Quelle', 'Bestätigt von'],
     ...events.map((e) => [
       date(e.timestamp),
       time(e.timestamp),
@@ -40,16 +40,17 @@ export function eventsToCsv(events: AccessEvent[]): string {
       e.holderName ?? (e.holderLocked ? '(gesperrt)' : ''),
       e.groupName ?? '',
       e.direction ? directionText(e.direction) : '',
-      e.outcome === 'granted' ? 'erfasst' : 'abgewiesen',
+      e.reason === 'CORRECTION' ? 'Korrektur' : e.outcome === 'granted' ? (e.correctedBy ? 'rückgängig gemacht' : 'erfasst') : 'abgewiesen',
       e.outcome === 'granted' ? '' : reasonText(e.reason),
       SOURCE[e.source],
+      e.confirmedBy === 'admin' ? 'Admin' : e.confirmedBy === 'operator' ? 'Bediener' : '',
     ]),
   ]);
 }
 
 export function statusToCsv(rows: StatusRow[]): string {
   return toCsv([
-    ['Karte', 'Gruppe', 'Nachname', 'Vorname', 'Firma/Abteilung', 'Status', 'Seit/zuletzt', 'Zutritt erlaubt', 'Gesperrt', 'Gültig ab', 'Gültig bis'],
+    ['Karte', 'Gruppe', 'Nachname', 'Vorname', 'Firma/Abteilung', 'Status', 'Seit/zuletzt', 'Zutritt erlaubt', 'Gesperrt', 'Gültig ab', 'Gültig bis', 'Verloren gemeldet'],
     ...rows.map(({ card, group, present, lastBookingAt }) => [
       card.number,
       group?.name ?? '',
@@ -62,6 +63,7 @@ export function statusToCsv(rows: StatusRow[]): string {
       card.blocked ? 'ja' : 'nein',
       formatIsoDate(card.validFrom),
       formatIsoDate(card.validUntil),
+      card.lostAt ? date(card.lostAt) : '',
     ]),
   ]);
 }

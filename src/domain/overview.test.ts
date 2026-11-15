@@ -3,11 +3,13 @@ import {
   DEFAULT_EVENT_FILTER,
   DEFAULT_STATUS_FILTER,
   buildStatusRows,
+  countPerGroup,
   filterEvents,
   filterStatusRows,
   rangeBounds,
   sortEvents,
   sortStatusRows,
+  summarizeEvents,
 } from './overview';
 import type { AccessEvent, Card, Group } from './types';
 
@@ -118,6 +120,21 @@ describe('Aktionen', () => {
       'Felix Gast',
       'Max Mustermann',
       'Paul Platzhalter',
+    ]);
+  });
+});
+
+describe('Kennzahlen', () => {
+  it('zählt erfolgreiche und abgewiesene Aktionen', () => {
+    expect(summarizeEvents([{ outcome: 'granted' }, { outcome: 'denied' }, { outcome: 'granted' }])).toEqual({ granted: 2, denied: 1 });
+    expect(summarizeEvents([])).toEqual({ granted: 0, denied: 0 });
+  });
+
+  it('zählt je Gruppe in Gruppenreihenfolge und lässt leere Gruppen weg', () => {
+    const third = { id: 'g3', name: 'Dienstleister' } as Group;
+    expect(countPerGroup(['g2', 'g1', 'g2'], [staff, visitors, third])).toEqual([
+      { group: staff, count: 1 },
+      { group: visitors, count: 2 },
     ]);
   });
 });

@@ -269,14 +269,148 @@ export async function setCardBlocked(id: string, blocked: boolean, now = Date.no
   if (!changed) throw new ValidationError('Karte nicht gefunden.');
 }
 
-/** Neuer QR-Code für die Karte (z. B. bei Verlust). Der bisherige Code wird ungültig. */
+/**
+ * Neuer QR-Code für die Karte (z. B. bei Verlust: gleiche Nummer, neu drucken).
+ * Der bisherige Code wird ungültig, eine Verlustmeldung ist damit erledigt.
+ */
 export async function reissueToken(id: string, now = Date.now()): Promise<Card> {
   const record = await db.transaction('rw', db.cards, async () => {
     const current = await db.cards.get(id);
     if (!current) throw new ValidationError('Karte nicht gefunden.');
-    const updated: CardRecord = { ...current, token: generateCardToken(), tokenIssuedAt: now, blocked: false, updatedAt: now };
+    const { lostAt: _lost, ...rest } = current;
+    const updated: CardRecord = { ...rest, token: generateCardToken(), tokenIssuedAt: now, blocked: false, updatedAt: now };
     await db.cards.put(updated);
     return updated;
+  });
+  return toCard(record);
+}
+
+// ---------------------------------------------------------------------------
+// Besucher-Schnellerfassung
+// ---------------------------------------------------------------------------
+
+/** Freie Karten einer Gruppe (ohne Person, nicht gesperrt/verloren), nach Nummer sortiert. */
+export async function listFreeCards(groupId: string): Promise<{ id: string; number: string }[]> {
+  const records = await db.cards.where('groupId').equals(groupId).toArray();
+  return records
+    .filter((c) => !c.holderEnc && !c.holder && !c.blocked && !c.lostAt)
+    .map((c) => ({ id: c.id, number: c.number }))
+    .sort((a, b) => a.number.localeCompare(b.number, 'de', { numeric: true }));
+}
+
+/**
+ * Person einer FREIEN Karte zuweisen (Besucher-Schnellerfassung am Empfang).
+ * Prüft in der Transaktion, dass die Karte noch frei ist – so wird nie versehentlich
+ * die Person einer bereits ausgegebenen Karte überschrieben.
+ */
+export async function assignHolderToFreeCard(
+  id: string,
+  data: { holder: CardHolder; validFrom?: string; validUntil?: string },
+  now = Date.now(),
+): Promise<Card> {
+  const holder = normalizeHolder(data.holder);
+  if (!holder) throw new ValidationError('Bitte mindestens Vor- oder Nachnamen eingeben.');
+  validateDates(data.validFrom, data.validUntil);
+  const key = requireKey();
+  // verschlüsseln außerhalb der Transaktion
+  const holderEnc = await encryptJson(key, holder);
+  const nameEnc = await encryptText(key, holderName(holder) ?? '');
+  const record = await db.transaction('rw', db.cards, async () => {
+    const current = await db.cards.get(id);
+    if (!current) throw new ValidationError('Karte nicht gefunden.');
+    if (current.holderEnc || current.holder) throw new ValidationError(`Karte ${current.number} ist bereits vergeben.`);
+    if (current.blocked || current.lostAt) throw new ValidationError(`Karte ${current.number} ist gesperrt.`);
+    const updated: CardRecord = {
+      ...current,
+      accessGranted: true,
+      validFrom: data.validFrom,
+      validUntil: data.validUntil,
+      holderEnc,
+      nameEnc,
+      holderSince: now,
+      updatedAt: now,
+    };
+    await db.cards.put(updated);
+    return updated;
+  });
+  return toCard(record, key);
+}
+
+// ---------------------------------------------------------------------------
+// Verlorene Karten
+// ---------------------------------------------------------------------------
+
+/** Karte als verloren melden: wird sofort gesperrt; beim Scan erscheint eine Warnung. */
+export async function reportCardLost(id: string, now = Date.now()): Promise<void> {
+  const changed = await db.cards.update(id, { blocked: true, lostAt: now, updatedAt: now });
+  if (!changed) throw new ValidationError('Karte nicht gefunden.');
+}
+
+/** Verlorene Karte wiedergefunden: Verlustmeldung aufheben und entsperren. */
+export async function markCardFound(id: string, now = Date.now()): Promise<void> {
+  await db.transaction('rw', db.cards, async () => {
+    const current = await db.cards.get(id);
+    if (!current) throw new ValidationError('Karte nicht gefunden.');
+    const { lostAt: _lost, replacedBy: _r, ...rest } = current;
+    await db.cards.put({ ...rest, blocked: false, updatedAt: now });
+  });
+}
+
+/**
+ * Ersatzkarte für eine verlorene Karte: neue Karte (nächste Nummer der Gruppe) mit
+ * Person, Berechtigung, Gültigkeit und Anwesenheit der alten Karte. Die alte Karte
+ * bleibt gesperrt als „verloren“ (ohne Person) mit Verweis auf die Ersatzkarte.
+ * Die verschlüsselten Personendaten werden unverändert übernommen – kein Schlüssel nötig.
+ */
+export async function issueReplacementCard(lostId: string, now = Date.now()): Promise<Card> {
+  const record = await db.transaction('rw', [db.cards, db.groups, db.presence], async () => {
+    const old = await db.cards.get(lostId);
+    if (!old) throw new ValidationError('Karte nicht gefunden.');
+    if (old.replacedBy) throw new ValidationError('Für diese Karte wurde bereits eine Ersatzkarte ausgestellt.');
+    const group = await db.groups.get(old.groupId);
+    if (!group) throw new ValidationError('Die Gruppe der Karte gibt es nicht mehr.');
+    if ((await db.cards.count()) >= MAX_CARDS) throw new ValidationError(`Es sind höchstens ${MAX_CARDS} Karten möglich.`);
+
+    const replacement: CardRecord = {
+      id: newId(),
+      number: formatNumber(group.prefix, (await highestNumber(group.prefix)) + 1),
+      groupId: old.groupId,
+      token: generateCardToken(),
+      tokenIssuedAt: now,
+      blocked: false,
+      accessGranted: old.accessGranted,
+      validFrom: old.validFrom,
+      validUntil: old.validUntil,
+      holderEnc: old.holderEnc,
+      nameEnc: old.nameEnc,
+      holder: old.holder,
+      holderSince: old.holderSince,
+      replaces: old.id,
+      testData: old.testData,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const { holder: _l, holderEnc: _h, nameEnc: _n, ...oldRest } = old;
+    const lost: CardRecord = {
+      ...oldRest,
+      blocked: true,
+      lostAt: old.lostAt ?? now,
+      replacedBy: replacement.id,
+      holderSince: undefined,
+      validFrom: undefined,
+      validUntil: undefined,
+      updatedAt: now,
+    };
+    await db.cards.add(replacement);
+    await db.cards.put(lost);
+
+    // Anwesenheit geht auf die Ersatzkarte über (die Person ist ja noch da)
+    const presence = await db.presence.get(old.id);
+    if (presence) {
+      await db.presence.put({ ...presence, cardId: replacement.id });
+      await db.presence.delete(old.id);
+    }
+    return replacement;
   });
   return toCard(record);
 }

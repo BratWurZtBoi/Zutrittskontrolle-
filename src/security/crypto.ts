@@ -102,6 +102,49 @@ export async function createVault(
   return { vault, dataKey: await unwrapWith(kek, vault, false) };
 }
 
+// ---------------------------------------------------------------------------
+// Bediener-PIN: nur ein Prüfwert (PBKDF2) wird gespeichert, nie die PIN selbst.
+// Die PIN schützt die Bedienoberfläche – die Daten bleiben mit dem
+// Admin-Passwort verschlüsselt.
+// ---------------------------------------------------------------------------
+
+export const PIN_ITERATIONS = 200_000;
+
+export interface PinRecord {
+  version: 1;
+  salt: Uint8Array;
+  iterations: number;
+  hash: Uint8Array;
+  updatedAt: number;
+}
+
+export function pinProblem(pin: string): string | null {
+  if (!/^\d{4,12}$/.test(pin)) return 'Die PIN muss aus 4 bis 12 Ziffern bestehen.';
+  return null;
+}
+
+async function pinHash(pin: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+  const material = await subtle().importKey('raw', encoder.encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await subtle().deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: bytes(salt), iterations }, material, 256);
+  return new Uint8Array(bits);
+}
+
+export async function createPinRecord(pin: string, iterations = PIN_ITERATIONS, now = Date.now()): Promise<PinRecord> {
+  const problem = pinProblem(pin);
+  if (problem) throw new Error(problem);
+  const salt = randomBytes(16);
+  return { version: 1, salt, iterations, hash: await pinHash(pin, salt, iterations), updatedAt: now };
+}
+
+export async function verifyPinRecord(record: PinRecord, pin: string): Promise<boolean> {
+  const actual = await pinHash(pin, record.salt, record.iterations);
+  const expected = new Uint8Array(record.hash);
+  if (actual.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < actual.length; i++) diff |= (actual[i] ?? 0) ^ (expected[i] ?? 0);
+  return diff === 0;
+}
+
 /** Entsperrt den Tresor. Wirft WrongPasswordError bei falschem Passwort. */
 export async function unlockVault(vault: VaultRecord, password: string, extractable = false): Promise<CryptoKey> {
   const kek = await deriveWrappingKey(password, vault.salt, vault.iterations);

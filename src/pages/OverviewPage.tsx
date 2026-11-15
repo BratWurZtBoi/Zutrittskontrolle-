@@ -22,6 +22,7 @@ import {
 } from '../domain/overview';
 import { useFilteredEvents, useStatusRows } from '../hooks/useOverviewData';
 import { useSort } from '../hooks/useSort';
+import { useSecurity } from '../security/useSecurity';
 
 type Tab = 'anwesenheit' | 'aktionen';
 
@@ -29,6 +30,8 @@ export function OverviewPage() {
   const [params, setParams] = useSearchParams();
   const tab: Tab = params.get('ansicht') === 'aktionen' ? 'aktionen' : 'anwesenheit';
   const groups = useLiveQuery(listGroups, [], []);
+  // Bediener: ansehen und „Alle ausbuchen“ ja – Export und Kartendetails nur für den Admin
+  const { admin } = useSecurity();
 
   return (
     <div className="page page-wide">
@@ -55,12 +58,12 @@ export function OverviewPage() {
           Aktionen
         </button>
       </div>
-      {tab === 'anwesenheit' ? <PresenceTab groups={groups} /> : <EventsTab groups={groups} />}
+      {tab === 'anwesenheit' ? <PresenceTab groups={groups} admin={admin} /> : <EventsTab groups={groups} admin={admin} />}
     </div>
   );
 }
 
-function PresenceTab({ groups }: { groups: Awaited<ReturnType<typeof listGroups>> }) {
+function PresenceTab({ groups, admin }: { groups: Awaited<ReturnType<typeof listGroups>>; admin: boolean }) {
   const rows = useStatusRows();
   const [filter, setFilter] = useState<StatusFilter>(DEFAULT_STATUS_FILTER);
   const sort = useSort<StatusSortKey>('status', 'asc', { time: 'desc' });
@@ -95,18 +98,22 @@ function PresenceTab({ groups }: { groups: Awaited<ReturnType<typeof listGroups>
       {message && <p className="form-success">{message}</p>}
       <StatusFilters value={filter} onChange={setFilter} groups={groups} />
       <div className="list-toolbar">
-        <p className="muted small">{filtered.length} Person(en) · Spaltenköpfe antippen zum Sortieren · Zeile antippen öffnet die Karte</p>
-        <CsvButton
-          disabled={filtered.length === 0}
-          onExport={() => downloadText(statusToCsv(sortStatusRows(filtered, sort.key, sort.dir)), csvFilename('anwesenheit'))}
-        />
+        <p className="muted small">
+          {filtered.length} Person(en) · Spaltenköpfe antippen zum Sortieren{admin ? ' · Zeile antippen öffnet die Karte' : ''}
+        </p>
+        {admin && (
+          <CsvButton
+            disabled={filtered.length === 0}
+            onExport={() => downloadText(statusToCsv(sortStatusRows(filtered, sort.key, sort.dir)), csvFilename('anwesenheit'))}
+          />
+        )}
       </div>
-      <StatusTable rows={filtered} sort={sort} />
+      <StatusTable rows={filtered} sort={sort} linkRows={admin} />
     </section>
   );
 }
 
-function EventsTab({ groups }: { groups: Awaited<ReturnType<typeof listGroups>> }) {
+function EventsTab({ groups, admin }: { groups: Awaited<ReturnType<typeof listGroups>>; admin: boolean }) {
   const [filter, setFilter] = useState<EventFilter>(DEFAULT_EVENT_FILTER);
   const sort = useSort<EventSortKey>('time', 'desc', { time: 'desc' });
   const [limit, setLimit] = useState(100);
@@ -127,10 +134,12 @@ function EventsTab({ groups }: { groups: Awaited<ReturnType<typeof listGroups>> 
         <p className="muted small">
           {loading ? 'Lädt …' : `${events.length} Aktion(en) · ${rangeLabel(filter, new Date())}${denied ? ` · davon ${denied} abgewiesen` : ''}`}
         </p>
-        <CsvButton
-          disabled={events.length === 0}
-          onExport={() => downloadText(eventsToCsv(sortEvents(events, sort.key, sort.dir)), csvFilename('aktionen'))}
-        />
+        {admin && (
+          <CsvButton
+            disabled={events.length === 0}
+            onExport={() => downloadText(eventsToCsv(sortEvents(events, sort.key, sort.dir)), csvFilename('aktionen'))}
+          />
+        )}
       </div>
       {!loading && <EventTable events={events} groups={groups} sort={sort} limit={limit} onMore={() => setLimit((l) => l + 100)} />}
     </section>

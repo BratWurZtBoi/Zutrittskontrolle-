@@ -41,7 +41,7 @@ const STAFF: SeedCard[] = [
   { firstName: 'Hans', lastName: 'Beispiel', company: 'Technik' },
   { firstName: 'Lena', lastName: 'Probe', company: 'Technik' },
   { firstName: 'Tom', lastName: 'Testmann', company: 'Lager' },
-  { firstName: 'Paul', lastName: 'Platzhalter', company: 'Lager', blocked: true, note: 'Karte als verloren gemeldet' },
+  { firstName: 'Paul', lastName: 'Platzhalter', company: 'Lager', blocked: true, note: 'Vorübergehend gesperrt' },
   { firstName: 'Clara', lastName: 'Fiktiv', company: 'Vertrieb', accessGranted: false, note: 'Keine Berechtigung' },
   { firstName: 'Jonas', lastName: 'Demo', company: 'Aushilfe', validFromDays: -90, validUntilDays: -1, note: 'Vertrag beendet' },
   { firstName: 'Sophie', lastName: 'Zukunft', company: 'Technik', validFromDays: 30, note: 'Beginnt in 30 Tagen' },

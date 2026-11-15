@@ -28,7 +28,7 @@ function tone(freq: number, startOffset: number, duration: number, type: Oscilla
   osc.stop(t0 + duration + 0.02);
 }
 
-export type FeedbackKind = 'granted-in' | 'granted-out' | 'denied' | 'duplicate';
+export type FeedbackKind = 'granted-in' | 'granted-out' | 'denied' | 'duplicate' | 'attention' | 'alert';
 
 export function playFeedback(kind: FeedbackKind, sound: boolean): void {
   if (sound) {
@@ -47,10 +47,22 @@ export function playFeedback(kind: FeedbackKind, sound: boolean): void {
       case 'duplicate':
         tone(660, 0, 0.1);
         break;
+      case 'alert':
+        // verlorene Karte: auffällige Tonfolge für den Bediener
+        tone(330, 0, 0.2, 'square');
+        tone(330, 0.3, 0.2, 'square');
+        tone(330, 0.6, 0.4, 'square');
+        break;
+      case 'attention':
+        // Bediener aufmerksam machen: Bestätigung erforderlich
+        tone(740, 0, 0.12);
+        tone(740, 0.2, 0.12);
+        tone(988, 0.4, 0.18);
+        break;
     }
   }
   try {
-    navigator.vibrate?.(kind === 'denied' ? [200, 100, 200] : 80);
+    navigator.vibrate?.(kind === 'denied' || kind === 'alert' ? [200, 100, 200] : 80);
   } catch {
     /* nicht unterstützt */
   }

@@ -4,6 +4,8 @@ import { Link } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
 import { ValidationError, db } from '../db/db';
 import { createGroup, deleteGroup, listGroups, updateGroup } from '../db/groups';
+import { listLayouts } from '../db/layouts';
+import { STANDARD_LAYOUT } from '../domain/presentationLayout';
 import { GROUP_COLOR_PRESETS } from '../domain/color';
 import type { Group, GroupInput } from '../domain/types';
 
@@ -14,6 +16,7 @@ const NEW_GROUP: GroupInput = {
   accessGranted: true,
   allowUnassigned: false,
   printHolder: true,
+  requireConfirmation: false,
 };
 
 export function GroupsPage() {
@@ -24,6 +27,8 @@ export function GroupsPage() {
     return map;
   }, []);
   const [editing, setEditing] = useState<string | 'new' | null>(null);
+  const allLayouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const layoutName = (id?: string) => allLayouts.find((l) => l.id === id)?.name;
 
   if (!groups) return null;
 
@@ -61,6 +66,8 @@ export function GroupsPage() {
                     {counts?.get(g.id) ?? 0} Karte(n) · {g.accessGranted ? 'Zutritt erlaubt' : 'Zutritt gesperrt'} ·{' '}
                     {g.printHolder ? 'mit Name/Foto auf der Karte' : 'ohne Name/Foto auf der Karte'}
                     {g.allowUnassigned && ' · Zutritt auch ohne Person'}
+                    {g.requireConfirmation ? ' · Eintritt wird bestätigt' : ' · Eintritt automatisch'}
+                    {layoutName(g.presentationLayoutId) && ` · Layout „${layoutName(g.presentationLayoutId)}“`}
                   </div>
                 </div>
                 <button type="button" className="btn" onClick={() => setEditing(g.id)}>
@@ -84,6 +91,7 @@ interface FormProps {
 
 function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
   const [form, setForm] = useState<GroupInput>({ ...initial });
+  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<GroupInput>) => setForm({ ...form, ...patch });
 
@@ -159,6 +167,32 @@ function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
       <label className="checkbox">
         <input type="checkbox" checked={form.allowUnassigned} onChange={(e) => set({ allowUnassigned: e.target.checked })} />
         Zutritt auch für Karten ohne zugeordnete Person
+      </label>
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={Boolean(form.requireConfirmation)}
+          onChange={(e) => set({ requireConfirmation: e.target.checked })}
+        />
+        Eintritt muss bestätigt werden (Admin/Bediener im Dashboard)
+      </label>
+      <p className="muted small checkbox-hint">
+        Ohne Häkchen wird automatisch eingelassen. Mit Häkchen erscheint beim Scan im Dashboard eine Anfrage mit Foto
+        – „Einlassen“ (Enter) oder „Abweisen“ (Esc). Am Kiosk-Scanner ohne Bediener wird abgewiesen („Bitte am Empfang
+        melden“). Das Ausbuchen bleibt immer automatisch.
+      </p>
+      <label>
+        Präsentationslayout (Gästebildschirm)
+        <select value={form.presentationLayoutId ?? ''} onChange={(e) => set({ presentationLayoutId: e.target.value || undefined })}>
+          <option value="">Standardlayout</option>
+          {layouts
+            .filter((l) => !l.builtIn)
+            .map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+        </select>
       </label>
       {error && <p className="form-error">{error}</p>}
       <div className="button-row">

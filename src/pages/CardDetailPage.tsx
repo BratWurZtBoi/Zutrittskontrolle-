@@ -1,13 +1,26 @@
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { QrImage } from '../components/QrImage';
 import { StatusBadge } from '../components/StatusBadge';
-import { deleteCard, reissueToken, returnCard, setCardBlocked, toCard, updateCard } from '../db/cards';
+import {
+  deleteCard,
+  issueReplacementCard,
+  markCardFound,
+  reissueToken,
+  reportCardLost,
+  returnCard,
+  setCardBlocked,
+  toCard,
+  updateCard,
+} from '../db/cards';
 import { ValidationError, db } from '../db/db';
-import { formatDateTime, formatTime, toLocalDateString } from '../domain/dates';
+import { listLayouts, setCardLayout } from '../db/layouts';
+import { STANDARD_LAYOUT } from '../domain/presentationLayout';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { formatDate, formatDateTime, formatTime, toLocalDateString } from '../domain/dates';
 import type { Card, CardHolder, CardUpdate, Group } from '../domain/types';
 
 const EMPTY_HOLDER: CardHolder = { firstName: '', lastName: '' };
@@ -24,14 +37,19 @@ function toForm(card: Card): CardUpdate {
 export function CardDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const justReplaced = params.get('ersatz') === '1';
   // Hülle, damit „lädt noch“ (undefined) von „nicht gefunden“ unterscheidbar ist
   const loaded = useSecureLiveQuery(async () => {
     // erst alle Datenbankzugriffe, dann entschlüsseln (getCard)
     const record = await db.cards.get(id);
     const group = record ? await db.groups.get(record.groupId) : undefined;
     const presence = record ? await db.presence.get(record.id) : undefined;
+    // verknüpfte Karten (verloren ↔ Ersatz) nur mit Nummer anzeigen
+    const linkedId = record?.replacedBy ?? record?.replaces;
+    const linked = linkedId ? await db.cards.get(linkedId) : undefined;
     const card = record ? await toCard(record) : undefined;
-    return { card, group, presence };
+    return { card, group, presence, linked: linked ? { id: linked.id, number: linked.number } : undefined };
   }, [id]);
   const [form, setForm] = useState<CardUpdate | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +106,15 @@ export function CardDetailPage() {
           Zurück
         </Link>
       </header>
+      {justReplaced && (
+        <div className="success-box card" role="status">
+          <strong>Ersatzkarte {card.number} ausgestellt.</strong> Person, Berechtigung und Anwesenheit wurden übernommen.
+          Bitte die Karte drucken und übergeben.{' '}
+          <Link className="btn btn-small btn-primary" to={`/druck?ids=${card.id}`}>
+            Jetzt drucken
+          </Link>
+        </div>
+      )}
 
       <div className="edit-layout">
         <form className="card form" onSubmit={(e) => void onSubmit(e)}>
@@ -167,8 +194,13 @@ export function CardDetailPage() {
           card={card}
           group={loaded.group}
           presentSince={loaded.presence?.status === 'in' ? loaded.presence.lastBookingAt : undefined}
+          linked={loaded.linked}
           onReturned={() => setDirty(false)}
           onDeleted={() => navigate('/karten', { replace: true })}
+          onReplaced={(newId) => {
+            setDirty(false);
+            navigate(`/karten/${newId}?ersatz=1`);
+          }}
         />
       </div>
     </div>
@@ -179,11 +211,37 @@ interface CardSectionProps {
   card: Card;
   group: Group | undefined;
   presentSince?: number;
+  /** Verlorene Karte bzw. Ersatzkarte, die mit dieser verknüpft ist. */
+  linked?: { id: string; number: string };
   onReturned: () => void;
   onDeleted: () => void;
+  onReplaced: (newCardId: string) => void;
 }
 
-function CardSection({ card, group, presentSince, onReturned, onDeleted }: CardSectionProps) {
+function CardSection({ card, group, presentSince, linked, onReturned, onDeleted, onReplaced }: CardSectionProps) {
+  const [lostError, setLostError] = useState<string | null>(null);
+  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const groupLayout = layouts.find((l) => l.id === group?.presentationLayoutId);
+  const reportLost = async () => {
+    const msg = `Karte ${card.number} als verloren melden?\n\nSie wird sofort gesperrt. Wird sie gescannt, erscheint im Dashboard eine Warnung. Danach kann eine Ersatzkarte ausgestellt werden.`;
+    if (window.confirm(msg)) await reportCardLost(card.id);
+  };
+  const replace = async () => {
+    const msg = `Ersatzkarte für ${card.number} ausstellen?\n\nEine neue Karte (neue Nummer) übernimmt Person, Berechtigung und Anwesenheit. Die verlorene Karte bleibt gesperrt.`;
+    if (!window.confirm(msg)) return;
+    setLostError(null);
+    try {
+      onReplaced((await issueReplacementCard(card.id)).id);
+    } catch (err) {
+      setLostError(err instanceof Error ? err.message : 'Ersatzkarte konnte nicht ausgestellt werden.');
+    }
+  };
+  const found = async () => {
+    const msg = linked && card.replacedBy
+      ? `Karte ${card.number} wiedergefunden? Sie wird entsperrt und ist danach eine freie Karte (die Person hat bereits die Ersatzkarte ${linked.number}).`
+      : `Karte ${card.number} wiedergefunden? Die Verlustmeldung wird aufgehoben und die Karte entsperrt.`;
+    if (window.confirm(msg)) await markCardFound(card.id);
+  };
   const toggleBlock = async () => {
     const msg = card.blocked ? 'Karte wieder entsperren?' : 'Karte sperren? Sie wird beim Scannen abgewiesen.';
     if (window.confirm(msg)) await setCardBlocked(card.id, !card.blocked);
@@ -215,18 +273,55 @@ function CardSection({ card, group, presentSince, onReturned, onDeleted }: CardS
         {presentSince !== undefined && <span className="badge badge-present">anwesend seit {formatTime(presentSince)}</span>}
       </p>
       <p className="muted">QR-Code erzeugt am {formatDateTime(card.tokenIssuedAt)}</p>
+      {card.replaces && linked && (
+        <p className="hint">
+          Ersatz für die verlorene Karte <Link to={`/karten/${linked.id}`}>{linked.number}</Link>.
+        </p>
+      )}
+      {card.lostAt && (
+        <div className="lost-box" role="status">
+          <strong>Verloren gemeldet am {formatDate(card.lostAt)}.</strong> Die Karte ist gesperrt. Wird sie gescannt,
+          erscheint im Dashboard eine Warnung – der Gast sieht nur „Bitte wenden Sie sich an den Empfang“.
+          {card.replacedBy && linked && (
+            <>
+              {' '}
+              Ersetzt durch Karte <Link to={`/karten/${linked.id}`}>{linked.number}</Link>.
+            </>
+          )}
+          <div className="button-row">
+            {!card.replacedBy && card.hasHolder && (
+              <button type="button" className="btn btn-primary" onClick={() => void replace()}>
+                Ersatzkarte ausstellen
+              </button>
+            )}
+            <button type="button" className="btn" onClick={() => void found()}>
+              Wiedergefunden – entsperren
+            </button>
+          </div>
+          {lostError && <p className="form-error">{lostError}</p>}
+        </div>
+      )}
       <div className="button-row">
-        <Link className="btn btn-primary" to={`/druck?ids=${card.id}`}>
-          Karte drucken
-        </Link>
-        {card.holder && (
+        {!card.lostAt && (
+          <Link className="btn btn-primary" to={`/druck?ids=${card.id}`}>
+            Karte drucken
+          </Link>
+        )}
+        {card.holder && !card.lostAt && (
           <button type="button" className="btn" onClick={() => void giveBack()}>
             Karte zurückgeben
           </button>
         )}
-        <button type="button" className={card.blocked ? 'btn' : 'btn btn-danger'} onClick={() => void toggleBlock()}>
-          {card.blocked ? 'Entsperren' : 'Sperren'}
-        </button>
+        {!card.lostAt && (
+          <button type="button" className="btn btn-danger" onClick={() => void reportLost()}>
+            Als verloren melden
+          </button>
+        )}
+        {!card.lostAt && (
+          <button type="button" className={card.blocked ? 'btn' : 'btn btn-danger'} onClick={() => void toggleBlock()}>
+            {card.blocked ? 'Entsperren' : 'Sperren'}
+          </button>
+        )}
         <button type="button" className="btn" onClick={() => void reissue()}>
           Neuer QR-Code
         </button>
@@ -234,6 +329,24 @@ function CardSection({ card, group, presentSince, onReturned, onDeleted }: CardS
           Karte löschen
         </button>
       </div>
+      {!card.lostAt && (
+        <label className="card-layout-select">
+          Präsentationslayout für diese Karte
+          <select value={card.presentationLayoutId ?? ''} onChange={(e) => void setCardLayout(card.id, e.target.value || undefined)}>
+            <option value="">wie die Gruppe ({groupLayout?.name ?? 'Standardlayout'})</option>
+            {layouts
+              .filter((l) => !l.builtIn)
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+          </select>
+          <span className="muted small">
+            Z. B. ein besonderer Begrüßungsbildschirm für einzelne Gäste. <Link to="/einstellungen/praesentation">Layouts verwalten</Link>
+          </span>
+        </label>
+      )}
     </section>
   );
 }

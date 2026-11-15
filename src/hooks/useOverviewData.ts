@@ -4,6 +4,7 @@ import { listPresence, queryEvents } from '../db/scans';
 import { buildStatusRows, filterEvents, rangeBounds, type EventFilter, type StatusRow } from '../domain/overview';
 import type { AccessEvent } from '../domain/types';
 import { useSecureLiveQuery } from './useSecureLiveQuery';
+import { useToday } from './useToday';
 
 /** Alle Karten mit Anwesenheitsstatus (aktualisiert sich live). */
 export function useStatusRows(): StatusRow[] | undefined {
@@ -15,15 +16,21 @@ export function useStatusRows(): StatusRow[] | undefined {
   }, []);
 }
 
-/** Protokolleinträge passend zum Filter (Zeitraum per Index, Rest im Speicher). */
-export function useFilteredEvents(filter: EventFilter): { events: AccessEvent[]; loading: boolean } {
-  const raw = useSecureLiveQuery(
+/** Alle Protokolleinträge im Zeitraum des Filters (per Index, entschlüsselt). */
+export function useRangeEvents(range: Pick<EventFilter, 'range' | 'from' | 'to'>): AccessEvent[] | undefined {
+  const today = useToday(); // „heute“ nach Mitternacht neu laden
+  return useSecureLiveQuery(
     () => {
-      const { from, to } = rangeBounds(filter, new Date());
+      const { from, to } = rangeBounds(range, new Date());
       return queryEvents(from, to);
     },
-    [filter.range, filter.from, filter.to],
+    [range.range, range.from, range.to, today],
   );
+}
+
+/** Protokolleinträge passend zum Filter (Zeitraum per Index, Rest im Speicher). */
+export function useFilteredEvents(filter: EventFilter): { events: AccessEvent[]; loading: boolean } {
+  const raw = useRangeEvents(filter);
   const events = useMemo(() => (raw ? filterEvents(raw, filter, new Date()) : []), [raw, filter]);
   return { events, loading: raw === undefined };
 }

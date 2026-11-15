@@ -1,9 +1,9 @@
 /** Deutsche Anzeigetexte für Entscheidungen und Status. */
 import type { CardStatus } from './access';
-import { formatIsoDate } from './dates';
+import { formatDate, formatIsoDate } from './dates';
 import type { Card, CardHolder, Direction, ReasonCode } from './types';
 
-export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | 'validUntil'>): string {
+export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | 'validUntil' | 'lostAt'>): string {
   switch (reason) {
     case 'OK':
       return 'Buchung erfasst';
@@ -13,6 +13,10 @@ export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | '
       return 'Karte unbekannt oder durch einen neuen QR-Code ersetzt.';
     case 'CARD_BLOCKED':
       return 'Diese Karte ist gesperrt.';
+    case 'CARD_LOST':
+      return card?.lostAt
+        ? `Karte wurde am ${formatDate(card.lostAt)} als verloren gemeldet.`
+        : 'Karte wurde als verloren gemeldet.';
     case 'GROUP_DISABLED':
       return 'Zutritt für diese Gruppe ist derzeit gesperrt.';
     case 'NO_PERMISSION':
@@ -29,6 +33,14 @@ export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | '
         : 'Berechtigung abgelaufen.';
     case 'DUPLICATE':
       return 'Bereits erfasst.';
+    case 'CONFIRMATION_REQUIRED':
+      return 'Eintritt muss bestätigt werden – bitte am Empfang melden.';
+    case 'REJECTED':
+      return 'Vom Empfang abgewiesen.';
+    case 'CONFIRMATION_TIMEOUT':
+      return 'Nicht rechtzeitig bestätigt.';
+    case 'CORRECTION':
+      return 'Fehlbuchung rückgängig gemacht.';
   }
 }
 
@@ -40,6 +52,7 @@ export function directionText(direction: Direction | undefined): string {
 
 export const STATUS_LABEL: Record<CardStatus, string> = {
   active: 'Zutritt erlaubt',
+  lost: 'Verloren',
   blocked: 'Gesperrt',
   'group-disabled': 'Gruppe gesperrt',
   'no-permission': 'Kein Zutritt',

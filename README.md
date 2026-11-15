@@ -27,6 +27,11 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   (verschlüsseltem) Namen protokolliert.
 - **Abmelden** beendet die Verwaltung, der Scanner zeigt weiter Namen. **Jetzt sperren** blendet
   auch im Scanner Namen und Fotos aus. Automatische Abmeldung nach Inaktivität (Standard 15 Min.).
+- **Bediener-PIN** (*Einstellungen → Bediener & Bestätigung*): eingeschränkter Zugang für den
+  Empfang – nur Dashboard und Übersicht, Eintritte bestätigen, „Alle ausbuchen“. Karten, Gruppen,
+  CSV-Export, Testmodus und Einstellungen bleiben dem Admin vorbehalten. Die PIN entschlüsselt
+  nichts: Nach einem Neustart entsperrt der Admin die Daten einmal mit dem Passwort, danach kann
+  sich der Bediener mit der PIN anmelden. Eigene automatische Abmeldung (Standard: nie).
 - **Löschfrist:** Protokolleinträge werden automatisch gelöscht (Standard 90 Tage, einstellbar).
 - **Testmodus** (Scans simulieren) ist standardmäßig aus und nur für angemeldete Admins sichtbar.
 - **Content Security Policy:** Der Browser verhindert technisch, dass die App Daten an fremde
@@ -35,9 +40,17 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 ### Dashboard und Übersicht
 
-- **Dashboard** (für Laptop oder Tablet quer): links die Kamera mit dem letzten Scan-Ergebnis,
-  rechts die anwesenden Personen und die Aktionen – mit Suche, Filtern und sortierbaren Spalten.
-  Alles aktualisiert sich live bei jedem Scan. Auf dem Handy untereinander.
+- **Dashboard** (für den Windows-Rechner am Empfang, auch Tablet quer):
+  - **Statusleiste** oben: Scan-Modus, Anwesende je Gruppe, Buchungen und Abweisungen von heute
+    (antippen öffnet die passende Liste), Präsentation öffnen bzw. „Präsentation läuft“,
+    Backup-Erinnerung.
+  - **Links** eine kleine Kameravorschau (**Klein / Groß / Aus** – bei „Aus“ wird weiter
+    gescannt), darunter das letzte Ergebnis mit Foto und die letzten Scans. Die Spalte bleibt
+    beim Scrollen stehen.
+  - **Rechts eine Liste mit Reitern:** *Anwesend*, *Aktionen heute*, *Abgewiesen* – eine Zeile pro
+    Eintrag, Gruppenfarbe als Balken, Suche und Gruppen-Schaltflächen für alle Reiter,
+    **Weitere Filter** (Zeitraum, Richtung, Ergebnis, auch Abwesende) bei Bedarf.
+  - Nur die Seite scrollt, keine Scrollbereiche innerhalb der Kacheln. Auf dem Handy untereinander.
 - **Übersicht → Anwesenheit:** alle Personen mit Status anwesend/abwesend und „seit wann“,
   Suche (Name, Firma, Karte), Filter nach Status und Gruppe, Sortierung per Spaltenkopf,
   **„Alle ausbuchen“** (z. B. am Tagesende).
@@ -45,13 +58,65 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche und Sortierung.
 - Der **Vollbild-Scanner** bleibt als Kiosk-Modus für Geräte am Eingang (ohne Anmeldung nutzbar).
 
+### Am Empfang: manuell buchen, korrigieren, Besucher anmelden
+
+- **Karte vergessen:** Im Dashboard den Namen suchen – die Suche zeigt auch Abwesende – und
+  **Einbuchen** bzw. **Ausbuchen** klicken. Es gelten dieselben Regeln wie beim Scan (gesperrt,
+  abgelaufen …). Im Protokoll steht „manuell“.
+- **Fehlbuchung korrigieren:** **↺ Rückgängig** am letzten Ergebnis oder im Reiter *Aktionen*
+  (je Karte die letzte Buchung). Es wird eine Gegenbuchung „Korrektur“ eingetragen, nichts gelöscht.
+- **+ Besucher anmelden** (Statusleiste): freie Karte wählen – oder die ausgegebene Karte einfach
+  vor die Kamera halten –, Name, Firma, Notiz und optional Foto eintragen, gültig „nur heute“,
+  auf Wunsch gleich einbuchen. Vergebene Karten werden nie überschrieben.
+- **Zurückgeben** (bei Besucherkarten in der Anwesenheitsliste): ausbuchen und Personendaten
+  entfernen – die Karte ist wieder frei.
+- **Notfallliste** (Statusleiste): alle Anwesenden nach Gruppen mit Kästchen zum Abhaken am
+  Sammelplatz, zum Ausdrucken (optional mit Fotos). Auch für Bediener.
+
+### Eintritt bestätigen (je Gruppe)
+
+- *Einstellungen → Gruppen verwalten → Bearbeiten*: **„Eintritt muss bestätigt werden“**.
+  Ohne Häkchen wird wie bisher automatisch eingelassen.
+- Mit Häkchen erscheint beim Scan im Dashboard eine Anfrage mit großem Foto, Name, Firma und
+  Notiz: **Einlassen** (Taste **Enter**) oder **Abweisen** (Taste **Esc**). Der Gast sieht auf dem
+  Präsentationsbildschirm „Bitte kurz warten“. Gebucht wird erst nach der Bestätigung.
+- Mehrere Anfragen werden der Reihe nach angezeigt. Unbeantwortete Anfragen verfallen nach
+  90 Sekunden (einstellbar). Bestätigen, Abweisen und Verfallen stehen im Protokoll
+  („bestätigt“, CSV-Spalte „Bestätigt von“).
+- Am Kiosk-Scanner (ohne Bediener) werden solche Karten abgewiesen: „Bitte am Empfang melden“.
+- Das Ausbuchen bleibt immer automatisch.
+
 ### Präsentationsansicht für Gäste (2. Bildschirm)
 
-- Im *Dashboard* auf **„Präsentation für Gäste öffnen“** tippen – es öffnet sich ein eigenes Fenster.
-- Dieses Fenster auf den zweiten Bildschirm (Monitor/Fernseher) ziehen und **F11** (Vollbild) drücken.
+- Im *Dashboard* auf **„Präsentation öffnen“** klicken. Ist ein zweiter Bildschirm angeschlossen,
+  öffnet sich das Fenster direkt dort (Chrome/Edge fragen beim ersten Mal nach der Erlaubnis zur
+  **Fensterverwaltung** – erlauben). Sonst das Fenster auf den zweiten Bildschirm ziehen.
+- Im Präsentationsfenster einmal **„Vollbild“** anklicken (oder **F11**).
+- Das Dashboard zeigt **„Präsentation läuft“**, solange das Fenster geöffnet ist.
 - Bei jedem Scan sieht der Gast groß „Willkommen“, „Auf Wiedersehen“ oder „Kein Zutritt“ mit Name,
   Foto und Gruppe; dazwischen einen Begrüßungsbildschirm mit Uhrzeit und Organisationsname.
 - Funktioniert ohne Internet: Die Ergebnisse gehen direkt von Fenster zu Fenster im selben Browser.
+
+### Präsentationslayouts (Aufbau, Texte, Hintergrund)
+
+- *Einstellungen → Präsentation → Layouts verwalten*. Das mitgelieferte Layout **„Standard“** ist
+  der bisherige Bildschirm; es bleibt unverändert und dient als Vorlage (**„+ Neues Layout“** / **„Kopieren“**).
+- Je Layout einstellbar, mit **Live-Vorschau** (fiktive Beispieldaten) für Ruhebildschirm,
+  Willkommen, Auf Wiedersehen, Kein Zutritt und Bitte warten:
+  - **Aufbau:** Zentriert, Foto links oder Nur Text
+  - **Hintergrund:** einfarbig, Farbverlauf oder eigenes Bild (wird verkleinert, nur lokal
+    gespeichert, abdunkelbar), Schriftfarbe hell/dunkel; bei Ergebnissen wahlweise die
+    Ergebnisfarbe (grün/blau/rot) oder der eigene Hintergrund mit farbigem Streifen
+  - **Logo** (optional)
+  - **Anzeigen:** Foto, Gruppe, Firma, Uhr/Datum, Organisationsname; Name voll, **nur Vorname**
+    oder **gar nicht** (Datenschutz)
+  - **Texte** mit Platzhaltern: `{vorname}`, `{nachname}`, `{name}`, `{firma}`, `{gruppe}`,
+    `{uhrzeit}`, `{datum}`, `{organisation}`, `{grund}`
+- **Zuweisen:** an ganze Gruppen (*Gruppen verwalten*) oder einzelne Karten (Kartenseite).
+  Es gilt: Karte vor Gruppe vor Standard. Ein Layout lässt sich als Standard für den
+  Ruhebildschirm und alle ohne Zuweisung festlegen.
+- Layouts sind im Backup enthalten. Texte werden unverschlüsselt gespeichert – Namen daher nur über
+  Platzhalter einsetzen.
 
 ### Personenlisten importieren (CSV)
 
@@ -78,11 +143,18 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 - **Backup erstellen** (*Einstellungen → Datensicherung*): eine Datei (`.zkb`) mit allen Karten,
   Personendaten, Fotos, Gruppen, dem Protokoll und den Einstellungen – verschlüsselt mit einem
-  eigenen **Backup-Passwort** (AES-256). Sie landet im Download-Ordner; auf Android kann sie auch
-  direkt geteilt werden (z. B. Quick Share zum Laptop).
+  eigenen **Backup-Passwort** (AES-256). Sie landet im Download-Ordner und kann auch direkt
+  geteilt werden (**Teilen …**, z. B. Quick Share zum Laptop). Beim Teilen heißt sie `….zkb.txt`,
+  weil Chrome die Endung `.zkb` nicht teilen lässt – der Inhalt bleibt verschlüsselt, „Backup
+  einspielen“ nimmt beide Varianten an.
 - **Backup einspielen:** Datei wählen, Passwort eingeben, Vorschau prüfen, bestätigen. Die Daten
   auf dem Gerät werden **ersetzt**; das Admin-Passwort des Geräts bleibt. So lassen sich Daten
   z. B. vom Handy auf den Windows-Rechner übertragen.
+- **Automatische Sicherung** (*Einstellungen → Datensicherung*, Chrome/Edge am Computer): Ordner
+  wählen (z. B. USB-Stick oder Netzlaufwerk), eigenes Passwort, täglich bis stündlich; die letzten
+  7/14/30 Sicherungen bleiben. Läuft, solange die App geöffnet und entsperrt ist. Fragt der
+  Browser nach einem Neustart erneut nach dem Ordnerzugriff, zeigt das Dashboard
+  „Auto-Backup: Problem“ – „Jetzt sichern“ erlaubt ihn wieder.
 - **CSV-Export für Excel** (*Übersicht*): die gerade gefilterte und sortierte Liste der Anwesenheit
   bzw. der Aktionen. ⚠️ CSV-Dateien sind **nicht** verschlüsselt.
 - Das Dashboard erinnert, wenn das letzte Backup länger als 7 Tage zurückliegt.
@@ -98,6 +170,18 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   *Einstellungen → Gruppen verwalten* angelegt: Name, Farbe, Kürzel für die Kartennummern und
   Regeln (Zutritt für die Gruppe, Name/Foto auf die Karte drucken, Zutritt ohne zugeordnete Person).
 - Die Gruppenfarbe erscheint auf der gedruckten Karte, in den Listen und im Scanner.
+
+### Verlorene Karten
+
+- Kartenseite → **„Als verloren melden“**: Die Karte ist sofort gesperrt (Status „Verloren“,
+  Filter „Nur verlorene Karten“ in der Kartenliste).
+- Wird sie gescannt, zeigt das Dashboard **„Verlorene Karte!“** mit Name und Datum der Meldung
+  (gelb umrandet, eigener Warnton). Der Gast sieht nur neutral „Kein Zutritt – Bitte wenden Sie sich
+  an den Empfang“, ohne Name oder Foto.
+- **„Ersatzkarte ausstellen“**: neue Karte (nächste Nummer) mit Person, Berechtigung, Gültigkeit und
+  Anwesenheit; danach direkt drucken. Die verlorene Karte bleibt gesperrt und verweist auf den Ersatz.
+- Alternativ **„Neuer QR-Code“**: gleiche Kartennummer, neu drucken – der alte Code ist ungültig.
+- **„Wiedergefunden – entsperren“** hebt die Meldung auf.
 
 ## Einmalige Einrichtung (im Browser auf github.com)
 

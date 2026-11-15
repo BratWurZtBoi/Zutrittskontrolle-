@@ -9,6 +9,8 @@ const ADMIN_NAV = [
   { to: '/uebersicht', label: 'Übersicht', icon: ListIcon },
   { to: '/einstellungen', label: 'Einstellungen', icon: SettingsIcon },
 ];
+/** Bediener (PIN): nur Empfangsaufgaben. */
+const OPERATOR_NAV = ADMIN_NAV.filter((n) => n.to === '/dashboard' || n.to === '/uebersicht');
 
 export function Layout() {
   const security = useSecurity();
@@ -17,14 +19,17 @@ export function Layout() {
   return (
     <div className="app">
       <nav className="app-nav no-print" aria-label="Hauptnavigation">
-        <span className="app-title">Zutrittskontrolle</span>
+        <span className="app-title">
+          Zutrittskontrolle
+          {security.operator && <span className="role-badge">Bediener</span>}
+        </span>
         <NavLink to="/" end className="nav-link">
           <ScanIcon />
           <span>Scanner</span>
         </NavLink>
-        {security.admin ? (
+        {security.admin || security.operator ? (
           <>
-            {ADMIN_NAV.map(({ to, label, icon: Icon }) => (
+            {(security.admin ? ADMIN_NAV : OPERATOR_NAV).map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} className="nav-link">
                 <Icon />
                 <span>{label}</span>
