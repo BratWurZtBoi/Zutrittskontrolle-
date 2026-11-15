@@ -180,6 +180,27 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Regeln (Zutritt für die Gruppe, Name/Foto auf die Karte drucken, Zutritt ohne zugeordnete Person).
 - Die Gruppenfarbe erscheint auf der gedruckten Karte, in den Listen und im Scanner.
 
+### Kartenlayout (gedruckte Karten)
+
+- *Einstellungen → Kartenlayout*. Mitgeliefert ist „Standard“ (bisheriges Aussehen, unverändert,
+  als Vorlage kopierbar). Vorlagen: **Querformat**, **Hochformat** (für Kartenhalter am Band),
+  **Schlicht** (QR-Code und Nummer).
+- **Elemente frei platzieren:** Textfeld, QR-Code, Foto, Logo, Farbfläche – hinzufügen, entfernen,
+  in der Vorschau ziehen oder per Pfeiltasten/Zahl verschieben. Größen werden in Millimetern
+  angezeigt; der QR-Code bleibt mindestens 18 mm groß, damit er sicher gelesen wird.
+- **Platzhalter:** `{vorname}`, `{nachname}`, `{name}`, `{firma}`, `{karte}`, `{gruppe}`,
+  `{organisation}`, `{gueltig_ab}`, `{gueltig_bis}`; „ausblenden, wenn leer“ z. B. für
+  „gültig bis …“ ohne Datum.
+- **Farben:** Gruppenfarbe, Schwarz/Weiß passend zur Gruppenfarbe oder eigene; Hintergrund weiß,
+  Gruppenfarbe, eigene Farbe oder Bild.
+- **Mit/ohne Person:** Elemente „immer“, „nur mit Person“ oder „nur ohne Person (anonyme
+  Karte)“. Name und Foto werden nur gedruckt, wenn die Gruppe „Name und Foto auf die Karte
+  drucken“ erlaubt (z. B. anonyme Besucherkarten).
+- **Zuweisen** je Gruppe (*Gruppen verwalten → Kartenlayout*), sonst gilt das Standardlayout.
+- **Drucken:** *A4-Bogen* zum Ausschneiden (quer 8, hoch 9 je Seite) oder *Kartendrucker* – jede
+  Karte auf einer eigenen Seite in Kartengröße (im Druckdialog den Kartendrucker und „Ränder:
+  keine“ wählen).
+
 ### Verlorene Karten
 
 - Kartenseite → **„Als verloren melden“**: Die Karte ist sofort gesperrt (Status „Verloren“,

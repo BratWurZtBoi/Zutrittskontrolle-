@@ -5,6 +5,8 @@ import { SettingsShell } from './settings/SettingsShell';
 import { ValidationError, db } from '../db/db';
 import { createGroup, deleteGroup, listGroups, updateGroup } from '../db/groups';
 import { listLayouts } from '../db/layouts';
+import { listCardLayouts } from '../db/cardLayouts';
+import { STANDARD_CARD_LAYOUT } from '../domain/cardLayout';
 import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { GROUP_COLOR_PRESETS } from '../domain/color';
 import type { Group, GroupInput } from '../domain/types';
@@ -88,6 +90,7 @@ interface FormProps {
 function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
   const [form, setForm] = useState<GroupInput>({ ...initial });
   const layouts = useLiveQuery(listLayouts, [], BUILT_IN_LAYOUTS);
+  const cardLayouts = useLiveQuery(listCardLayouts, [], [STANDARD_CARD_LAYOUT]);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<GroupInput>) => setForm({ ...form, ...patch });
 
@@ -183,6 +186,19 @@ function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
           <option value="">Standardlayout</option>
           {layouts
             .filter((l) => !l.builtIn && l.kind === 'result')
+            .map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+        </select>
+      </label>
+      <label>
+        Kartenlayout (gedruckte Karte)
+        <select value={form.cardLayoutId ?? ''} onChange={(e) => set({ cardLayoutId: e.target.value || undefined })}>
+          <option value="">Standardlayout</option>
+          {cardLayouts
+            .filter((l) => !l.builtIn)
             .map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}

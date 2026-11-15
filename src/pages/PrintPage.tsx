@@ -1,29 +1,49 @@
-import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { HolderPhoto } from '../components/HolderPhoto';
-import { QrImage } from '../components/QrImage';
+import { CardView } from '../components/CardView';
+import { listCardLayouts } from '../db/cardLayouts';
 import { listCards } from '../db/cards';
-import { textColorOn } from '../domain/color';
-import { formatIsoDate } from '../domain/dates';
+import { saveSettings } from '../db/settings';
+import { STANDARD_CARD_LAYOUT, pickCardLayout, type CardData } from '../domain/cardLayout';
 import type { Card, Group } from '../domain/types';
+import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useSettings } from '../hooks/useSettings';
 import { printCurrentPage } from '../lib/device';
 
-/** Druckansicht für Karten im Scheckkartenformat (85,6 × 54 mm), 8 pro A4-Seite. */
+/** Daten für den Druck: Name/Foto nur, wenn die Gruppe das erlaubt und eine Person zugeordnet ist. */
+export function cardDataFor(card: Card, group: Group | undefined, orgName: string): CardData {
+  const holder = group?.printHolder && card.holder ? card.holder : undefined;
+  return {
+    number: card.number,
+    groupName: group?.name ?? 'Karte',
+    groupColor: group?.color ?? '#0f172a',
+    orgName,
+    validFrom: card.validFrom,
+    validUntil: card.validUntil,
+    holder: holder ? { firstName: holder.firstName, lastName: holder.lastName, company: holder.company, photo: holder.photo } : undefined,
+  };
+}
+
+/**
+ * Druckansicht für Karten im Scheckkartenformat (85,6 × 54 mm) nach dem Kartenlayout der
+ * Gruppe – auf A4-Bögen (zum Ausschneiden) oder je Karte eine Seite für Kartendrucker.
+ */
 export function PrintPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const ids = params.get('ids')?.split(',').filter(Boolean);
   const settings = useSettings();
   const cards = useSecureLiveQuery(listCards, []);
+  const layouts = useLiveQuery(listCardLayouts, [], [STANDARD_CARD_LAYOUT]);
   if (!cards) return null;
+  const cardPrinter = settings.cardPrintFormat === 'card-printer';
 
   const selected = ids ? cards.filter(({ card }) => ids.includes(card.id)) : cards;
   const printable = selected.filter(({ card }) => !card.blocked);
   const skipped = selected.length - printable.length;
 
   return (
-    <div className="page print-page">
+    <div className={`page print-page${cardPrinter ? ' print-card-printer' : ''}`}>
       <header className="page-header no-print">
         <h1>Karten drucken</h1>
         <div className="button-row">
@@ -35,9 +55,37 @@ export function PrintPage() {
           </button>
         </div>
       </header>
+      <div className="print-options no-print">
+        <div className="segmented segmented-light" role="radiogroup" aria-label="Druckformat">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!cardPrinter}
+            className={cardPrinter ? '' : 'active'}
+            onClick={() => void saveSettings({ cardPrintFormat: 'sheet' })}
+          >
+            A4-Bogen
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={cardPrinter}
+            className={cardPrinter ? 'active' : ''}
+            onClick={() => void saveSettings({ cardPrintFormat: 'card-printer' })}
+          >
+            Kartendrucker
+          </button>
+        </div>
+        <Link to="/einstellungen/karten" className="btn btn-small">
+          Kartenlayout anpassen
+        </Link>
+      </div>
       <p className="muted no-print">
-        {printable.length} Karte(n) im Scheckkartenformat, 8 pro A4-Seite. Auf Android im Druckdialog „Als PDF speichern“
-        wählen, um z. B. am Laptop zu drucken.
+        {printable.length} Karte(n) im Scheckkartenformat.{' '}
+        {cardPrinter
+          ? 'Kartendrucker: jede Karte auf einer eigenen Seite in Kartengröße – im Druckdialog den Kartendrucker und „Ränder: keine“ wählen.'
+          : 'A4-Bogen zum Ausschneiden (Querformat 8, Hochformat 9 je Seite).'}{' '}
+        Auf Android im Druckdialog „Als PDF speichern“ wählen, um z. B. am Laptop zu drucken.
         {skipped > 0 && ` ${skipped} gesperrte Karte(n) werden nicht gedruckt.`}
         {printable.length === 0 && (
           <>
@@ -48,45 +96,14 @@ export function PrintPage() {
       </p>
       <div className="cards-grid">
         {printable.map(({ card, group }) => (
-          <IdCard key={card.id} card={card} group={group} orgName={settings.orgName} />
+          <CardView
+            key={card.id}
+            layout={pickCardLayout(layouts, { group: group?.cardLayoutId, fallback: settings.defaultCardLayoutId })}
+            data={cardDataFor(card, group, settings.orgName)}
+            token={card.token}
+          />
         ))}
       </div>
     </div>
-  );
-}
-
-function IdCard({ card, group, orgName }: { card: Card; group: Group | undefined; orgName: string }) {
-  const color = group?.color ?? '#0f172a';
-  const showHolder = Boolean(group?.printHolder && card.holder);
-  return (
-    <article className="id-card" style={{ borderColor: color }}>
-      <header className="id-card-head" style={{ background: color, color: textColorOn(color) }}>
-        <span className="id-card-group">{group?.name ?? 'Karte'}</span>
-        <span className="id-card-org">{orgName}</span>
-      </header>
-      <div className="id-card-body">
-        {showHolder ? (
-          <>
-            <HolderPhoto holder={card.holder} className="id-card-photo" />
-            <div className="id-card-info">
-              <div className="id-card-first">{card.holder?.firstName}</div>
-              <div className="id-card-last">{card.holder?.lastName}</div>
-              {card.holder?.company && <div className="id-card-meta">{card.holder.company}</div>}
-              <div className="id-card-meta">Nr. {card.number}</div>
-              {card.validUntil && <div className="id-card-meta">gültig bis {formatIsoDate(card.validUntil)}</div>}
-            </div>
-          </>
-        ) : (
-          <div className="id-card-info id-card-anon">
-            <div className="id-card-number" style={{ color }}>
-              {card.number}
-            </div>
-            <div className="id-card-meta">{group?.name}</div>
-          </div>
-        )}
-        <QrImage token={card.token} className="id-card-qr" />
-      </div>
-      <footer className="id-card-foot" style={{ background: color }} />
-    </article>
   );
 }

@@ -867,113 +867,13 @@ table.events {
   }
 }
 
-/* ---------- Ausweise (85,6 × 54 mm) ---------- */
+/* ---------- Ausweise (85,6 × 54 mm) – Aussehen siehe „Karten nach Layout“ ---------- */
 
 .cards-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 6mm 8mm;
   justify-content: center;
-}
-
-.id-card {
-  --photo-bg: #e2e8f0;
-  --muted: #64748b;
-  --badge-bg: #e2e8f0;
-  width: 85.6mm;
-  height: 54mm;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  color: #0f172a;
-  border: 0.5mm solid #94a3b8;
-  border-radius: 3mm;
-  overflow: hidden;
-  break-inside: avoid;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
-.id-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2mm;
-  height: 8mm;
-  padding: 0 3mm;
-  background: #0f172a;
-  color: #fff;
-  font-size: 2.6mm;
-  font-weight: 700;
-}
-.id-card-group {
-  font-size: 3.2mm;
-  text-transform: uppercase;
-  letter-spacing: 0.2mm;
-  white-space: nowrap;
-}
-.id-card-org {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 2.3mm;
-  font-weight: 600;
-  opacity: 0.9;
-}
-.id-card-foot {
-  height: 2.5mm;
-}
-.id-card-anon {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding-left: 1mm;
-}
-.id-card-number {
-  font-size: 9mm;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.3mm;
-}
-.id-card-body {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 2.5mm;
-  padding: 2.5mm 3mm;
-}
-.id-card-photo {
-  width: 21mm;
-  height: 28mm;
-  flex: none;
-  border-radius: 1.5mm;
-  font-size: 6mm;
-}
-.id-card-info {
-  flex: 1;
-  min-width: 0;
-}
-.id-card-first,
-.id-card-last {
-  overflow-wrap: break-word;
-  hyphens: auto;
-}
-.id-card-first {
-  font-size: 3.2mm;
-}
-.id-card-last {
-  font-size: 3.8mm;
-  font-weight: 800;
-  line-height: 1.1;
-}
-.id-card-meta {
-  margin-top: 1.2mm;
-  font-size: 2.6mm;
-  color: #334155;
-}
-.id-card-qr {
-  width: 27mm;
-  height: 27mm;
-  flex: none;
 }
 
 @media print {
@@ -2550,4 +2450,165 @@ table.data-table {
 code.path {
   word-break: break-all;
   font-size: 0.85rem;
+}
+
+/* ---------- Karten nach Layout (85,6 × 54 mm, Quer- oder Hochformat) ---------- */
+
+.card-view {
+  position: relative;
+  container-type: size;
+  flex: none;
+  width: 85.6mm;
+  height: 54mm;
+  overflow: hidden;
+  border-radius: 3mm;
+  background: #fff;
+  color: #0f172a;
+  line-height: 1.15;
+  break-inside: avoid;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.card-portrait {
+  width: 54mm;
+  height: 85.6mm;
+}
+/* große Vorschau im Editor: gleiche Proportionen, volle Breite */
+.card-view-large {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 85.6 / 54;
+  border-radius: 3.5cqh;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18);
+}
+.card-view-large.card-portrait {
+  width: min(100%, 360px);
+  aspect-ratio: 54 / 85.6;
+  margin: 0 auto;
+}
+.cv-el {
+  position: absolute;
+  overflow-wrap: anywhere;
+}
+.cv-text {
+  white-space: pre-line;
+}
+.cv-empty {
+  opacity: 0.45;
+  font-style: italic;
+}
+.cv-qr,
+.cv-photo,
+.cv-logo {
+  display: block;
+  width: 100%;
+}
+.cv-qr {
+  aspect-ratio: 1;
+  height: auto;
+}
+.cv-photo {
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 1.5mm;
+}
+.cv-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 8cqh;
+  font-weight: 700;
+}
+.cv-logo {
+  height: auto;
+  object-fit: contain;
+}
+.cv-logo-missing {
+  padding: 1cqh;
+  border: 1px dashed currentColor;
+  font-size: 4cqh;
+  text-align: center;
+  opacity: 0.6;
+}
+.cv-el-qr,
+.cv-el-photo,
+.cv-el-logo {
+  line-height: 0;
+}
+.cv-editable {
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  outline: 1px dashed rgba(100, 116, 139, 0.6);
+  outline-offset: 1px;
+}
+.cv-selected {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+  z-index: 2;
+}
+.cv-hidden-here {
+  opacity: 0.3;
+}
+.card-view:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 3px;
+}
+/* Bogen: dünne Schnittkante */
+.cards-grid .card-view {
+  outline: 0.2mm solid #cbd5e1;
+}
+
+/* Kartendrucker: eine Karte je Seite in Kartengröße */
+@page karte-quer {
+  size: 85.6mm 54mm;
+  margin: 0;
+}
+@page karte-hoch {
+  size: 54mm 85.6mm;
+  margin: 0;
+}
+@media print {
+  .print-card-printer .cards-grid {
+    display: block;
+  }
+  .print-card-printer .card-view {
+    page: karte-quer;
+    break-after: page;
+    border-radius: 0;
+    outline: none;
+  }
+  .print-card-printer .card-view.card-portrait {
+    page: karte-hoch;
+  }
+}
+.print-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.card-thumbs {
+  flex: 0 0 240px;
+  max-width: 100%;
+}
+.card-thumbs .card-view-large.card-portrait {
+  width: 150px;
+}
+.inline-select {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.inline-select select {
+  width: auto;
+  min-height: 36px;
+}
+.card-editor .layout-preview .card-view-large {
+  margin: 0.5rem 0;
 }

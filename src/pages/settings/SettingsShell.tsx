@@ -12,6 +12,7 @@ export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
   { path: '/einstellungen/allgemein', title: 'Allgemein', description: 'Hell/dunkel, Name der Organisation' },
   { path: '/einstellungen/scanner', title: 'Scanner', description: 'Modus, Doppelscan-Schutz, Kamera, Ton, Testmodus' },
   { path: '/einstellungen/gruppen', title: 'Gruppen', description: 'Farbe, Kürzel, Regeln, Bestätigung, Layout' },
+  { path: '/einstellungen/karten', title: 'Kartenlayout', description: 'Aussehen der gedruckten Karten, Quer- oder Hochformat' },
   { path: '/einstellungen/praesentation', title: 'Präsentation', description: 'Ruhebildschirm und Scan-Anzeige für Gäste gestalten' },
   { path: '/einstellungen/sicherheit', title: 'Sicherheit', description: 'Admin-Passwort, automatische Abmeldung, Löschfrist' },
   { path: '/einstellungen/bediener', title: 'Bediener & Bestätigung', description: 'Bediener-PIN, Zeitlimit für Bestätigungen' },

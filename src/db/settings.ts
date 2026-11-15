@@ -40,6 +40,10 @@ export interface AppSettings {
   defaultLayoutId: string;
   /** Aktiver Ruhebildschirm (Gästebildschirm, solange niemand scannt). */
   idleLayoutId: string;
+  /** Kartenlayout für alle Gruppen ohne eigenes. */
+  defaultCardLayoutId: string;
+  /** Druckformat: A4-Bogen (mehrere Karten) oder Kartendrucker (eine Karte je Seite). */
+  cardPrintFormat: 'sheet' | 'card-printer';
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -59,6 +63,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dashCamera: 'small',
   defaultLayoutId: 'standard',
   idleLayoutId: 'standard-idle',
+  defaultCardLayoutId: 'standard-karte',
+  cardPrintFormat: 'sheet',
 };
 
 const KEY = 'app';
