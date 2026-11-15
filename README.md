@@ -215,7 +215,8 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 Zusätzlich zur Web-App gibt es ein eigenständiges Windows-Programm (Electron) – gleiche Funktionen,
 gleicher Programmcode.
 
-- **Herunterladen:** auf GitHub im Repository unter **Releases** die Datei
+- **Herunterladen:** auf GitHub unter **Releases**
+  (https://github.com/adminzirkel/Zutrittskontrolle-/releases) die Datei
   `Zutrittskontrolle-Setup-<Version>.exe` (wird bei jedem Merge nach `main` automatisch gebaut,
   je Version eine Ausgabe).
 - **Installieren:** Datei starten. Windows meldet „Unbekannter Herausgeber“, weil das Programm

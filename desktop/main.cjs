@@ -235,10 +235,10 @@ app.whenReady().then(() => {
     callback(allowed.has(permission) && (details.requestingUrl ?? wc.getURL()).startsWith(`${ORIGIN}/`));
   });
   session.defaultSession.setPermissionCheckHandler((_wc, permission, requestingOrigin) => {
-    return allowed.has(permission) && requestingOrigin.startsWith(ORIGIN);
+    return allowed.has(permission) && (requestingOrigin === ORIGIN || requestingOrigin.startsWith(`${ORIGIN}/`));
   });
   // Keine Verbindungen ins Internet aus der App heraus (nur eigene Dateien, data:, blob:)
-  const distUrl = pathToFileURL(DIST).toString();
+  const distUrl = `${pathToFileURL(DIST).toString()}/`;
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     const { url } = details;
     const ok = url.startsWith(`${ORIGIN}/`) || url.startsWith(distUrl) || url.startsWith('data:') || url.startsWith('blob:');
