@@ -19,7 +19,6 @@ function SummaryText({ s }: { s: BackupSummary }) {
 export function BackupSection({ lastBackupAt }: { lastBackupAt?: number }) {
   return (
     <section className="card form">
-      <h2>Datensicherung</h2>
       <p className="muted">
         Das Backup enthält alle Karten, Personendaten, Fotos, Gruppen und das Protokoll – verschlüsselt mit einem eigenen
         Backup-Passwort (AES-256). Damit lassen sich Daten sichern oder auf ein anderes Gerät übertragen.

@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
+import { SettingsShell } from './settings/SettingsShell';
 import { ValidationError, db } from '../db/db';
 import { createGroup, deleteGroup, listGroups, updateGroup } from '../db/groups';
 import { listLayouts } from '../db/layouts';
-import { STANDARD_LAYOUT } from '../domain/presentationLayout';
+import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { GROUP_COLOR_PRESETS } from '../domain/color';
 import type { Group, GroupInput } from '../domain/types';
 
@@ -27,24 +27,20 @@ export function GroupsPage() {
     return map;
   }, []);
   const [editing, setEditing] = useState<string | 'new' | null>(null);
-  const allLayouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const allLayouts = useLiveQuery(listLayouts, [], BUILT_IN_LAYOUTS);
   const layoutName = (id?: string) => allLayouts.find((l) => l.id === id)?.name;
 
   if (!groups) return null;
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <h1>Gruppen</h1>
-        <div className="button-row">
-          <button type="button" className="btn btn-primary" onClick={() => setEditing('new')} disabled={editing === 'new'}>
-            + Neue Gruppe
-          </button>
-          <Link className="btn btn-ghost" to="/einstellungen">
-            Zurück
-          </Link>
-        </div>
-      </header>
+    <SettingsShell
+      title="Gruppen"
+      actions={
+        <button type="button" className="btn btn-primary" onClick={() => setEditing('new')} disabled={editing === 'new'}>
+          + Neue Gruppe
+        </button>
+      }
+    >
       <p className="muted">
         Gruppen legen Farbe und Kürzel der Karten fest (z. B. Besucher → orange, B-001). Die Farbe erscheint auf der
         gedruckten Karte, in den Listen und im Scanner.
@@ -78,7 +74,7 @@ export function GroupsPage() {
           </li>
         ))}
       </ul>
-    </div>
+    </SettingsShell>
   );
 }
 
@@ -91,7 +87,7 @@ interface FormProps {
 
 function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
   const [form, setForm] = useState<GroupInput>({ ...initial });
-  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const layouts = useLiveQuery(listLayouts, [], BUILT_IN_LAYOUTS);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<GroupInput>) => setForm({ ...form, ...patch });
 
@@ -182,11 +178,11 @@ function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
         melden“). Das Ausbuchen bleibt immer automatisch.
       </p>
       <label>
-        Präsentationslayout (Gästebildschirm)
+        Scan-Anzeige (Gästebildschirm)
         <select value={form.presentationLayoutId ?? ''} onChange={(e) => set({ presentationLayoutId: e.target.value || undefined })}>
           <option value="">Standardlayout</option>
           {layouts
-            .filter((l) => !l.builtIn)
+            .filter((l) => !l.builtIn && l.kind === 'result')
             .map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}

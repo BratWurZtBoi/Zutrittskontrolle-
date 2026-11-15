@@ -1874,7 +1874,7 @@ table.data-table {
 /* ---------- Präsentationsansicht (2. Bildschirm) ---------- */
 
 /* Container: im Vollbild der ganze Bildschirm, im Editor eine 16:9-Vorschau.
-   Alle Größen in cqw/cqh (Container-Einheiten), damit beides gleich aussieht. */
+   Elemente sind in % positioniert, Schriften in cqh (Container-Einheiten). */
 .pv {
   container-type: size;
   width: 100vw;
@@ -1893,15 +1893,9 @@ table.data-table {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5cqh;
-  padding: 4cqh 4cqw;
-  text-align: center;
   color: #fff;
   cursor: none;
+  line-height: 1.1;
 }
 .pv-preview .presentation {
   cursor: default;
@@ -1909,128 +1903,74 @@ table.data-table {
 .presentation-idle {
   background: radial-gradient(circle at 50% 30%, #1e3a8a 0%, #0f172a 70%);
 }
-.pv-logo {
-  max-width: 30cqw;
-  max-height: 14cqh;
-  object-fit: contain;
-}
-.pv-logo-small {
+.pv-el {
   position: absolute;
-  top: 3cqh;
-  left: 3cqw;
-  max-width: 16cqw;
-  max-height: 9cqh;
+  overflow-wrap: anywhere;
 }
-.presentation-org {
-  font-size: clamp(0.6rem, 4cqw, 3.5rem);
-  font-weight: 700;
-  opacity: 0.9;
-}
-.presentation-welcome {
-  font-size: clamp(0.9rem, 8cqw, 7rem);
-  font-weight: 800;
-  line-height: 1.05;
-}
-.presentation-hint {
-  font-size: clamp(0.5rem, 3cqw, 2.5rem);
-  opacity: 0.85;
-}
-.presentation-clock {
-  margin-top: 3cqh;
-  font-size: clamp(1rem, 10cqw, 9rem);
-  font-weight: 300;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.presentation-date {
-  font-size: clamp(0.45rem, 2.5cqw, 2rem);
-  opacity: 0.8;
-}
-.presentation-title {
+.pv-text {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 2cqw;
-  font-size: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
-  font-weight: 800;
-  line-height: 1;
+  gap: 0.25em;
+  white-space: pre-line;
 }
-.presentation-icon {
+.pv-icon {
   flex: none;
-  width: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
-  height: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
+  width: 1em;
+  height: 1em;
   stroke-width: 3;
 }
-.presentation-photo {
-  height: 30cqh;
+.pv-clock {
+  font-variant-numeric: tabular-nums;
+}
+.pv-photo {
+  display: block;
+  width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
   border: max(2px, 0.8cqh) solid rgba(255, 255, 255, 0.9);
   border-radius: 2.4cqh;
 }
-.presentation-name {
-  font-size: clamp(0.8rem, min(7cqw, 10cqh), 7rem);
+.pv-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 8cqh;
   font-weight: 800;
-  line-height: 1.05;
 }
-.presentation-company {
-  font-size: clamp(0.5rem, min(3cqw, 5cqh), 2.5rem);
-  opacity: 0.9;
+.pv-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 30cqh;
+  object-fit: contain;
+}
+.pv-logo-box,
+.pv-photo-box {
+  line-height: 0;
+}
+.pv-logo-missing {
+  padding: 1cqh;
+  border: 2px dashed currentColor;
+  font-size: 2.4cqh;
+  opacity: 0.7;
 }
 .presentation-group {
+  display: inline-block;
   padding: 0.3em 1em;
   border: max(1px, 0.3cqh) solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  font-size: clamp(0.5rem, 2.5cqw, 2.2rem);
   font-weight: 700;
 }
-.presentation-detail {
-  max-width: 80cqw;
-  font-size: clamp(0.5rem, min(3cqw, 5cqh), 3rem);
-  font-weight: 600;
-}
 
-/* Aufbau „Foto links“ */
-.pv-side-row {
-  display: flex;
-  align-items: center;
-  gap: 5cqw;
-  max-width: 90cqw;
-}
-.pv-side-row .presentation-photo {
-  height: 62cqh;
-}
-.pv-side-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2cqh;
-  text-align: left;
-}
-.pv-side-text .presentation-title {
-  justify-content: flex-start;
-}
-
-/* Aufbau „Nur Text“: größer */
-.pv-minimal .presentation-title {
-  font-size: clamp(1rem, min(12cqw, 18cqh), 11rem);
-}
-.pv-minimal .presentation-icon {
-  width: clamp(1rem, min(12cqw, 18cqh), 11rem);
-  height: clamp(1rem, min(12cqw, 18cqh), 11rem);
-}
-.pv-minimal .presentation-name {
-  font-size: clamp(0.9rem, min(9cqw, 13cqh), 9rem);
-}
-
-/* Eigener Hintergrund: Ergebnisfarbe als breiter Streifen und als Symbolfarbe */
+/* Eigener Hintergrund: Ergebnisfarbe als Streifen oben/unten und als Symbolfarbe */
 .pv-tone-band {
   position: absolute;
   inset: 0 0 auto 0;
   height: 3.5cqh;
   background: var(--pv-tone);
 }
-.pv-custom .presentation-icon {
+.pv-custom .pv-icon {
   color: var(--pv-tone);
   background: #fff;
   border-radius: 50%;
@@ -2042,6 +1982,27 @@ table.data-table {
   inset: auto 0 0 0;
   height: 3.5cqh;
   background: var(--pv-tone);
+}
+
+/* Bearbeiten im Editor */
+.pv-editable {
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  outline: 1px dashed rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
+}
+.pv-selected {
+  outline: 2px solid #facc15;
+  outline-offset: 3px;
+  z-index: 2;
+}
+.pv-hidden-here {
+  opacity: 0.3;
+}
+.presentation:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 2px;
 }
 
 .presentation-fs {
@@ -2194,8 +2155,90 @@ table.data-table {
   flex: 1 1 300px;
   min-width: 0;
 }
-.layout-row-main h2 {
-  font-size: 1.1rem;
+.layout-row-main h3 {
+  font-size: 1.05rem;
+}
+.layout-section + .layout-section {
+  margin-top: 1.5rem;
+}
+.layout-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+.layout-section-head h2 {
+  margin-bottom: 0.2rem;
+}
+.layout-section-head p {
+  margin: 0;
+  max-width: 70ch;
+}
+.element-panel {
+  margin: 0.5rem 0 0;
+}
+.element-panel h3 {
+  margin-top: 0;
+}
+.element-list {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.element-list .chip {
+  min-height: 36px;
+  font-weight: 600;
+}
+.add-elements {
+  margin-bottom: 0.75rem;
+}
+.element-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.element-editor h4 {
+  margin: 0;
+}
+.element-editor label:not(.checkbox-inline) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+.element-editor textarea {
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  resize: vertical;
+}
+.element-grid {
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.element-show {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.4rem 0.75rem;
+  margin: 0;
+}
+.element-show legend {
+  font-weight: 700;
+  padding: 0 0.3rem;
 }
 .layout-editor {
   display: grid;
@@ -2400,4 +2443,107 @@ table.data-table {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
+}
+
+/* ---------- Einstellungen: Übersicht und Bereiche ---------- */
+
+.settings-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.settings-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  height: 100%;
+  min-height: 96px;
+  margin: 0;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.settings-tile:hover,
+.settings-tile:focus-visible {
+  border-color: var(--link);
+}
+.settings-tile strong {
+  font-size: 1.05rem;
+}
+.settings-status {
+  margin-top: auto;
+  color: var(--link);
+  font-weight: 600;
+}
+.settings-shell {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.settings-wide {
+  max-width: 1600px;
+}
+.settings-nav {
+  display: none;
+}
+.settings-back {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  min-height: 32px;
+  font-weight: 600;
+}
+.settings-content {
+  min-width: 0;
+}
+@media (min-width: 1000px) {
+  .settings-shell {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+    max-width: 1340px;
+  }
+  .settings-wide {
+    max-width: 1700px;
+  }
+  .settings-nav {
+    position: sticky;
+    top: calc(var(--nav-h) + 1rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .settings-nav-link {
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .settings-nav-link:hover {
+    background: var(--surface-2);
+  }
+  .settings-nav-link.active {
+    background: var(--selected-bg);
+    color: var(--link);
+  }
+  .settings-back {
+    display: none;
+  }
+}
+.layout-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+.layout-side .card {
+  margin: 0;
+}
+.element-editor > .btn-danger {
+  align-self: flex-start;
 }

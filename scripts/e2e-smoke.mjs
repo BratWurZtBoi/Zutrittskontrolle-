@@ -130,7 +130,7 @@ try {
   check((await count.inputValue()) === '12', 'Leeres Feld wird beim Verlassen auf den letzten Wert gesetzt');
 
   console.log('3) Testmodus einschalten');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/scanner`);
   await page.getByLabel(/Testmodus/).click();
   await page.locator('input[type=checkbox]:checked').filter({ has: page.locator('xpath=self::*') }).first().waitFor();
   await page.waitForTimeout(300);
@@ -337,7 +337,7 @@ try {
   check(csv.includes('Berta Besuch') && csv.split('\r\n').length === 10, 'CSV-Export: 8 Aktionen mit Namen');
 
   console.log('12) Backup erstellen, Daten löschen, Backup einspielen');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/datensicherung`);
   await page.getByLabel('Backup-Passwort (mindestens 8 Zeichen)').fill('Backup-Test-123');
   await page.getByLabel('Backup-Passwort wiederholen').fill('Backup-Test-123');
   const [backupDownload] = await Promise.all([
@@ -349,9 +349,11 @@ try {
   check(backupDownload.suggestedFilename().endsWith('.zkb'), `Backup-Datei erstellt (${backupDownload.suggestedFilename()})`);
   check(!/Mustermann|Besuch|Musterfirma/.test(readFileSync(backupPath, 'utf8')), 'Backup-Datei enthält keine Klartextdaten');
   await page.getByText('Backup gespeichert:').waitFor();
+  await page.goto(`${URL}#/einstellungen/daten`);
   await page.getByRole('button', { name: 'Alle Daten löschen' }).click();
   await page.getByText(/Alle Daten gelöscht/).waitFor();
   check((await readStore(page, 'cards')).length === 0, 'Alle Daten gelöscht');
+  await page.goto(`${URL}#/einstellungen/datensicherung`);
   // so kommt die Datei per Quick Share an: gleicher Inhalt, Endung .zkb.txt
   const sharedPath = `${backupPath}.txt`;
   writeFileSync(sharedPath, readFileSync(backupPath));
@@ -432,10 +434,10 @@ try {
   await presentation.setViewportSize({ width: 1280, height: 720 });
   await presentation.goto(`${URL}#/praesentation`);
   await presentation.getByText('Herzlich willkommen').waitFor();
-  check((await presentation.locator('.presentation-org').textContent()).includes('Musterfirma'), 'Präsentation: Wartebildschirm mit Organisationsname');
+  check((await presentation.locator('.presentation-idle').textContent()).includes('Musterfirma'), 'Präsentation: Ruhebildschirm mit Organisationsname');
   await presentation.screenshot({ path: `${OUT}/13-praesentation-warten.png` });
   // „Alle Daten löschen“ im Backup-Schritt hat den Testmodus zurückgesetzt
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/scanner`);
   await page.getByLabel(/Testmodus/).click();
   await page.waitForTimeout(300);
   await page.goto(`${URL}#/dashboard`);
@@ -453,7 +455,7 @@ try {
   check(true, 'Nach dem Schließen bietet das Dashboard „Präsentation öffnen“ an');
 
   console.log('16) Dunkles Layout');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/allgemein`);
   await page.getByLabel('Darstellung').selectOption('dark');
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
   check(true, 'Dunkles Layout aktiv');
@@ -485,12 +487,12 @@ try {
   await page.pdf({ path: `${OUT}/karten.pdf`, format: 'A4', printBackground: true, preferCSSPageSize: true });
   await page.emulateMedia({ media: 'screen' });
   console.log('  ✓ PDF erzeugt: .e2e/karten.pdf');
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/allgemein`);
   await page.getByLabel('Darstellung').selectOption('auto');
 
   console.log('17b) Bestätigung von Eintritten und Bediener-PIN');
   await page.setViewportSize({ width: 1536, height: 780 });
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/bediener`);
   await page.getByLabel(/Neue PIN/).fill('482913');
   await page.getByLabel('PIN wiederholen').fill('482913');
   await page.getByRole('button', { name: 'PIN speichern' }).click();
@@ -598,35 +600,77 @@ try {
   check((await page.getByLabel('Vorname').inputValue()) === 'Ben', 'Ersatzkarte übernimmt die Person');
   check((await page.locator('.card-section .hint').textContent()).includes('Ersatz für die verlorene Karte'), 'Ersatzkarte verweist auf die verlorene Karte');
 
-  console.log('17d) Präsentationslayouts: anlegen, Gruppe zuweisen, Gästebildschirm');
+  console.log('17d) Gästebildschirm gestalten: Scan-Anzeige und Ruhebildschirm getrennt, Elemente frei');
   await page.setViewportSize({ width: 1536, height: 900 });
   await page.goto(`${URL}#/einstellungen/praesentation`);
-  await page.getByRole('button', { name: '+ Neues Layout' }).click();
-  await page.getByLabel('Name des Layouts').fill('Empfang Personal');
-  await page.locator('.choice', { hasText: 'Foto links' }).click();
+  await page.getByRole('button', { name: '+ Neue Scan-Anzeige' }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Empfang Personal');
+  await page.getByLabel('Vorlage anwenden (ersetzt die Elemente)').selectOption('side');
   await page.getByLabel('Hintergrundart').selectOption('color');
   await page.locator('.layout-form input[type="color"]').first().fill('#7c3aed');
-  await page.getByLabel(/eigener Hintergrund mit farbigem Streifen/).check();
+  await page.getByLabel(/Eigener Hintergrund mit farbigem Streifen/).check();
   await page.getByLabel('Eingang – Titel').fill('Hallo {vorname}!');
-  await page.getByLabel('Eingang – Text').fill('Schön, dass Sie da sind · {uhrzeit} Uhr');
-  await page.locator('.layout-preview .presentation-title', { hasText: 'Hallo Erika!' }).waitFor();
+  await page.locator('.layout-preview .pv-text', { hasText: 'Hallo Erika!' }).waitFor();
   check(true, 'Editor: Live-Vorschau mit Platzhaltern (fiktive Beispieldaten)');
+  // neues Textfeld, nur beim Eingang sichtbar
+  await page.getByRole('button', { name: '+ Textfeld' }).click();
+  const elementEditor = page.locator('.element-editor');
+  await elementEditor.getByLabel('Text', { exact: true }).fill('Schön, dass Sie da sind');
+  for (const name of ['Ausgang', 'Kein Zutritt', 'Bitte warten / Hinweis']) await elementEditor.getByLabel(name, { exact: true }).uncheck();
+  const topOf = async () => Number(await elementEditor.getByLabel('Abstand oben (%)').inputValue());
+  const yStart = await topOf();
+  await page.locator('.layout-preview .pv-selected').scrollIntoViewIfNeeded();
+  const dragBox = await page.locator('.layout-preview .pv-selected').boundingBox();
+  await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + dragBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + dragBox.height / 2 - 70, { steps: 10 });
+  await page.mouse.up();
+  const yDragged = await topOf();
+  check(yDragged < yStart - 12, `Textfeld per Ziehen verschoben (oben ${yStart} % → ${yDragged} %)`);
+  await page.locator('.layout-preview .presentation').focus();
+  await page.keyboard.press('Shift+ArrowUp');
+  check((await topOf()) === yDragged - 5, 'Feinschritte mit den Pfeiltasten');
+  const elementCount = await page.locator('.element-list li').count();
+  await page.getByRole('button', { name: '+ Datum' }).click();
+  await page.getByRole('button', { name: 'Element entfernen' }).click();
+  check((await page.locator('.element-list li').count()) === elementCount, 'Element hinzufügen und entfernen');
+  await page.getByRole('tab', { name: 'Ausgang' }).click();
+  check((await page.locator('.layout-preview .pv-hidden-here').count()) === 1, 'Vorschau „Ausgang“: Eingangs-Text ausgeblendet');
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await page.getByText('Gespeichert.').waitFor();
   await page.screenshot({ path: `${OUT}/23-layout-editor.png` });
-  check(true, 'Layout gespeichert');
+  check(true, 'Scan-Anzeige gespeichert');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+
+  // eigener Ruhebildschirm – unabhängig von der Scan-Anzeige
+  await page.getByRole('button', { name: '+ Neuer Ruhebildschirm' }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Betriebsfest');
+  await page.getByRole('button', { name: '+ Textfeld' }).click();
+  await page.locator('.element-editor').getByLabel('Text', { exact: true }).fill('Heute ab 15 Uhr: Sommerfest');
+  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await page.getByText('Gespeichert.').waitFor();
+  await page.screenshot({ path: `${OUT}/23b-ruhebildschirm-editor.png` });
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  const partyRow = page.locator('.layout-row', { hasText: 'Betriebsfest' });
+  await partyRow.getByRole('button', { name: 'Aktivieren' }).click();
+  await partyRow.getByText('aktiv', { exact: true }).waitFor();
+  check(true, 'Eigener Ruhebildschirm aktiviert');
+  await page.screenshot({ path: `${OUT}/23c-praesentation-uebersicht.png`, fullPage: true });
+
   await page.goto(`${URL}#/einstellungen/gruppen`);
   await page.locator('.group-list li', { hasText: 'Bestandspersonal' }).getByRole('button', { name: 'Bearbeiten' }).click();
-  await page.getByLabel('Präsentationslayout (Gästebildschirm)').selectOption({ label: 'Empfang Personal' });
+  await page.getByLabel('Scan-Anzeige (Gästebildschirm)').selectOption({ label: 'Empfang Personal' });
   await page.getByRole('button', { name: 'Speichern' }).click();
   await page.locator('.group-list li', { hasText: 'Bestandspersonal' }).getByText('Layout „Empfang Personal“').waitFor();
-  check(true, 'Layout der Gruppe Bestandspersonal zugewiesen');
+  check(true, 'Scan-Anzeige der Gruppe Bestandspersonal zugewiesen');
 
   const guestScreen = await ctx.newPage();
   guestScreen.on('pageerror', (e) => problems.push(`JS-Fehler (Präsentation): ${e.message}`));
   await guestScreen.setViewportSize({ width: 1280, height: 720 });
   await guestScreen.goto(`${URL}#/praesentation`);
-  await guestScreen.getByText('Herzlich willkommen').waitFor();
+  await guestScreen.getByText('Heute ab 15 Uhr: Sommerfest').waitFor();
+  check(true, 'Gästebildschirm zeigt den eigenen Ruhebildschirm');
+  await guestScreen.screenshot({ path: `${OUT}/24a-ruhebildschirm.png` });
   await page.goto(`${URL}#/dashboard`);
   await page.locator('.dash-status').getByRole('radio', { name: 'Eingang' }).click();
   await page.locator('.dash-side .test-panel').evaluate((d) => (d.open = true));
@@ -636,11 +680,14 @@ try {
   await page.locator('.dash-side').getByRole('button', { name: 'Karte scannen' }).click();
   await guestScreen.locator('.presentation-result').waitFor({ timeout: 5000 });
   const guestShown = await guestScreen.locator('.presentation-result').textContent();
-  check(guestShown.includes('Hallo Hans!') && guestShown.includes('Schön, dass Sie da sind'), `Gästebildschirm zeigt die Texte des Gruppenlayouts (${guestShown})`);
-  check((await guestScreen.locator('.pv-side').count()) === 1, 'Aufbau „Foto links“');
+  check(guestShown.includes('Hallo Hans!') && guestShown.includes('Schön, dass Sie da sind') && !guestShown.includes('Sommerfest'), `Scan-Anzeige mit eigenen Textfeldern, ohne Ruhebildschirm-Inhalt (${guestShown})`);
+  const photoBox = await guestScreen.locator('.pv-photo-box').boundingBox();
+  check(photoBox && photoBox.x < 1280 * 0.25, 'Vorlage „Foto links“');
   const bgColor = await guestScreen.locator('.presentation-result').evaluate((el) => getComputedStyle(el).backgroundColor);
   check(bgColor === 'rgb(124, 58, 237)', `Eigener Hintergrund (${bgColor})`);
   await guestScreen.screenshot({ path: `${OUT}/24-praesentation-layout.png` });
+  await guestScreen.getByText('Heute ab 15 Uhr: Sommerfest').waitFor({ timeout: 10000 });
+  check(true, 'Nach der Anzeige zurück zum Ruhebildschirm');
   await guestScreen.close();
   await page.locator('.dash-status').getByRole('radio', { name: 'Automatisch' }).click();
 
@@ -692,13 +739,26 @@ try {
   check(emergencyRows === presentBefore, `Notfallliste: alle ${emergencyRows} Anwesenden`);
   await page.screenshot({ path: `${OUT}/26-notfallliste.png`, fullPage: true });
 
-  await page.goto(`${URL}#/einstellungen`);
+  await page.goto(`${URL}#/einstellungen/datensicherung`);
   await page.getByRole('heading', { name: 'Automatische Sicherung' }).waitFor();
   check(true, 'Einstellungen: automatische Sicherung angeboten');
+  check(await page.locator('.settings-nav').isVisible(), 'Computer: Seitenleiste mit allen Bereichen');
+  await page.locator('.settings-nav').getByRole('link', { name: 'Scanner' }).click();
+  await page.getByLabel(/Testmodus/).waitFor();
+  check(true, 'Seitenleiste wechselt den Bereich');
+  await page.screenshot({ path: `${OUT}/28-einstellungen-computer.png` });
 
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);
+  await page.locator('.settings-tile').first().waitFor();
+  check((await page.locator('.settings-tile').count()) === 9, 'Einstellungen: aufgeräumte Übersicht mit 9 Bereichen');
+  await page.screenshot({ path: `${OUT}/27-einstellungen-handy.png`, fullPage: true });
+  await page.locator('.settings-tile', { hasText: 'Sicherheit' }).click();
+  await page.getByRole('link', { name: '← Einstellungen' }).waitFor();
+  check(true, 'Handy: Bereich mit „← Einstellungen“ zurück zur Übersicht');
+  await page.getByRole('link', { name: '← Einstellungen' }).click();
+  await page.locator('.settings-tile').first().waitFor();
   
   await page.getByRole('button', { name: 'Abmelden' }).click();
   await page.locator('.scanner-page').waitFor();
@@ -706,7 +766,7 @@ try {
   await page.goto(`${URL}#/karten`);
   await page.getByRole('heading', { name: 'Anmelden' }).waitFor();
   check(page.url().includes('#/anmelden'), 'Verwaltung nach Abmelden nur mit Passwort');
-  await login(page, '/einstellungen');
+  await login(page, '/einstellungen/sicherheit');
   await page.getByRole('button', { name: 'Jetzt sperren' }).click();
   await page.locator('.lock-banner').waitFor();
   check(true, '„Jetzt sperren“ sperrt die Daten');

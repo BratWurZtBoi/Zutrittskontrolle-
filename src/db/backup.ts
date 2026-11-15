@@ -44,6 +44,7 @@ const PORTABLE_SETTINGS = [
   'confirmTimeoutSec',
   'retentionDays',
   'defaultLayoutId',
+  'idleLayoutId',
 ] as const;
 type PortableSettings = Partial<Pick<AppSettings, (typeof PORTABLE_SETTINGS)[number]>>;
 

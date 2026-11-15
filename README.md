@@ -97,26 +97,29 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Foto und Gruppe; dazwischen einen Begrüßungsbildschirm mit Uhrzeit und Organisationsname.
 - Funktioniert ohne Internet: Die Ergebnisse gehen direkt von Fenster zu Fenster im selben Browser.
 
-### Präsentationslayouts (Aufbau, Texte, Hintergrund)
+### Gästebildschirm gestalten (Ruhebildschirm und Scan-Anzeige)
 
-- *Einstellungen → Präsentation → Layouts verwalten*. Das mitgelieferte Layout **„Standard“** ist
-  der bisherige Bildschirm; es bleibt unverändert und dient als Vorlage (**„+ Neues Layout“** / **„Kopieren“**).
-- Je Layout einstellbar, mit **Live-Vorschau** (fiktive Beispieldaten) für Ruhebildschirm,
-  Willkommen, Auf Wiedersehen, Kein Zutritt und Bitte warten:
-  - **Aufbau:** Zentriert, Foto links oder Nur Text
-  - **Hintergrund:** einfarbig, Farbverlauf oder eigenes Bild (wird verkleinert, nur lokal
-    gespeichert, abdunkelbar), Schriftfarbe hell/dunkel; bei Ergebnissen wahlweise die
-    Ergebnisfarbe (grün/blau/rot) oder der eigene Hintergrund mit farbigem Streifen
-  - **Logo** (optional)
-  - **Anzeigen:** Foto, Gruppe, Firma, Uhr/Datum, Organisationsname; Name voll, **nur Vorname**
-    oder **gar nicht** (Datenschutz)
-  - **Texte** mit Platzhaltern: `{vorname}`, `{nachname}`, `{name}`, `{firma}`, `{gruppe}`,
-    `{uhrzeit}`, `{datum}`, `{organisation}`, `{grund}`
-- **Zuweisen:** an ganze Gruppen (*Gruppen verwalten*) oder einzelne Karten (Kartenseite).
-  Es gilt: Karte vor Gruppe vor Standard. Ein Layout lässt sich als Standard für den
-  Ruhebildschirm und alle ohne Zuweisung festlegen.
-- Layouts sind im Backup enthalten. Texte werden unverschlüsselt gespeichert – Namen daher nur über
-  Platzhalter einsetzen.
+- *Einstellungen → Präsentation*. **Ruhebildschirm** (solange niemand scannt) und **Anzeige beim
+  Scannen** werden getrennt gestaltet. Mitgeliefert ist jeweils „Standard“ – unverändert, als
+  Vorlage zum Kopieren.
+- **Ruhebildschirm:** beliebig viele Designs, eines ist **aktiv** (z. B. Alltag und Betriebsfest).
+- **Scan-Anzeige:** zuweisbar an Gruppen (*Gruppen verwalten*) oder einzelne Karten (Kartenseite);
+  es gilt Karte vor Gruppe vor Standard.
+- **Elemente frei platzieren:** Textfeld, Foto, Gruppe, Uhrzeit, Datum, Logo hinzufügen und
+  entfernen; in der Vorschau **anklicken und ziehen** (Maus oder Finger), Feinschritte mit den
+  **Pfeiltasten** (Umschalt = größere Schritte) oder als Zahl. Je Element: Schriftgröße, Breite,
+  Ausrichtung, fett, eigene Farbe; bei der Scan-Anzeige **„Anzeigen bei“** Eingang / Ausgang /
+  Kein Zutritt / Bitte warten.
+- **Vorlagen:** Zentriert, Foto links, Nur Text (Scan-Anzeige); Klassisch, Große Uhr, Nur Text
+  (Ruhebildschirm).
+- **Texte mit Platzhaltern:** `{titel}` und `{meldung}` (je Ergebnis einstellbar, z. B.
+  „Willkommen“), `{vorname}`, `{nachname}`, `{name}`, `{firma}`, `{gruppe}`, `{uhrzeit}`,
+  `{datum}`, `{organisation}`, `{grund}`. Datenschutz: Name voll, nur Vorname oder gar nicht.
+- **Hintergrund:** einfarbig, Verlauf oder eigenes Bild (lokal, abdunkelbar); bei der Scan-Anzeige
+  wahlweise Ergebnisfarbe (grün/blau/rot) oder eigener Hintergrund mit farbigem Streifen.
+- Layouts sind im Backup enthalten. Layouts aus Version 0.7 werden automatisch übernommen
+  (der bisherige Ruhebildschirm wird zu einem eigenen Design). Texte sind unverschlüsselt
+  gespeichert – Namen daher nur über Platzhalter.
 
 ### Personenlisten importieren (CSV)
 
@@ -133,6 +136,12 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 - *Karten* → **Auswählen** → Karten antippen oder „Alle angezeigten“ → **Personendaten entfernen**
   (z. B. alle Besucherkarten des Tages freigeben), **Sperren**, **Entsperren**, **Drucken**, **Löschen**.
+
+### Einstellungen
+
+- *Einstellungen* zeigt eine Übersicht mit allen Bereichen (Allgemein, Scanner, Gruppen,
+  Präsentation, Sicherheit, Bediener & Bestätigung, Datensicherung, Daten, Gerät & App) und dem
+  aktuellen Stand. Am Computer wechselt man über die Seitenleiste, am Handy über „← Einstellungen“.
 
 ### Hell und dunkel
 

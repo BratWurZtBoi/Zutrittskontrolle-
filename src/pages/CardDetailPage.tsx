@@ -18,7 +18,7 @@ import {
 } from '../db/cards';
 import { ValidationError, db } from '../db/db';
 import { listLayouts, setCardLayout } from '../db/layouts';
-import { STANDARD_LAYOUT } from '../domain/presentationLayout';
+import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatDate, formatDateTime, formatTime, toLocalDateString } from '../domain/dates';
 import type { Card, CardHolder, CardUpdate, Group } from '../domain/types';
@@ -220,7 +220,7 @@ interface CardSectionProps {
 
 function CardSection({ card, group, presentSince, linked, onReturned, onDeleted, onReplaced }: CardSectionProps) {
   const [lostError, setLostError] = useState<string | null>(null);
-  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const layouts = useLiveQuery(listLayouts, [], BUILT_IN_LAYOUTS);
   const groupLayout = layouts.find((l) => l.id === group?.presentationLayoutId);
   const reportLost = async () => {
     const msg = `Karte ${card.number} als verloren melden?\n\nSie wird sofort gesperrt. Wird sie gescannt, erscheint im Dashboard eine Warnung. Danach kann eine Ersatzkarte ausgestellt werden.`;
@@ -331,11 +331,11 @@ function CardSection({ card, group, presentSince, linked, onReturned, onDeleted,
       </div>
       {!card.lostAt && (
         <label className="card-layout-select">
-          Präsentationslayout für diese Karte
+          Scan-Anzeige für diese Karte (Gästebildschirm)
           <select value={card.presentationLayoutId ?? ''} onChange={(e) => void setCardLayout(card.id, e.target.value || undefined)}>
             <option value="">wie die Gruppe ({groupLayout?.name ?? 'Standardlayout'})</option>
             {layouts
-              .filter((l) => !l.builtIn)
+              .filter((l) => !l.builtIn && l.kind === 'result')
               .map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}

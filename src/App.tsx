@@ -15,7 +15,14 @@ import { OverviewPage } from './pages/OverviewPage';
 import { PresentationPage } from './pages/PresentationPage';
 import { PrintPage } from './pages/PrintPage';
 import { ScannerPage } from './pages/ScannerPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { BackupSettings } from './pages/settings/BackupSettings';
+import { DataSettings } from './pages/settings/DataSettings';
+import { DeviceSettings } from './pages/settings/DeviceSettings';
+import { GeneralSettings } from './pages/settings/GeneralSettings';
+import { OperatorSettings } from './pages/settings/OperatorSettings';
+import { ScannerSettings } from './pages/settings/ScannerSettings';
+import { SecuritySettings } from './pages/settings/SecuritySettings';
+import { SettingsHome } from './pages/settings/SettingsHome';
 import { SetupPage } from './pages/SetupPage';
 
 // HashRouter: funktioniert ohne Server-Konfiguration (GitHub Pages, offline).
@@ -45,7 +52,14 @@ export function App() {
             <Route path="karten/import" element={<ImportPage />} />
             <Route path="karten/:id" element={<CardDetailPage />} />
             <Route path="druck" element={<PrintPage />} />
-            <Route path="einstellungen" element={<SettingsPage />} />
+            <Route path="einstellungen" element={<SettingsHome />} />
+            <Route path="einstellungen/allgemein" element={<GeneralSettings />} />
+            <Route path="einstellungen/scanner" element={<ScannerSettings />} />
+            <Route path="einstellungen/sicherheit" element={<SecuritySettings />} />
+            <Route path="einstellungen/bediener" element={<OperatorSettings />} />
+            <Route path="einstellungen/datensicherung" element={<BackupSettings />} />
+            <Route path="einstellungen/daten" element={<DataSettings />} />
+            <Route path="einstellungen/geraet" element={<DeviceSettings />} />
             <Route path="einstellungen/gruppen" element={<GroupsPage />} />
             <Route path="einstellungen/praesentation" element={<LayoutsPage />} />
           </Route>
