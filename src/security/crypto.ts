@@ -154,3 +154,84 @@ export function passwordProblem(password: string): string | null {
   if (password.trim() !== password) return 'Das Passwort darf nicht mit Leerzeichen beginnen oder enden.';
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Passwortbasierte Verschlüsselung für Backup-Dateien
+// ---------------------------------------------------------------------------
+
+export interface PasswordEncrypted {
+  salt: Uint8Array;
+  iterations: number;
+  iv: Uint8Array;
+  data: Uint8Array;
+}
+
+async function derivePasswordKey(password: string, salt: Uint8Array, iterations: number): Promise<CryptoKey> {
+  const material = await subtle().importKey('raw', encoder.encode(password.normalize('NFC')), 'PBKDF2', false, [
+    'deriveKey',
+  ]);
+  return subtle().deriveKey(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: bytes(salt), iterations },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+/** Verschlüsselt Daten direkt mit einem Passwort (eigenes Salt, eigener IV). */
+export async function encryptWithPassword(
+  plain: Uint8Array,
+  password: string,
+  iterations = PBKDF2_ITERATIONS,
+): Promise<PasswordEncrypted> {
+  const salt = randomBytes(16);
+  const key = await derivePasswordKey(password, salt, iterations);
+  const { iv, data } = await encryptBytes(key, plain);
+  return { salt, iterations, iv, data };
+}
+
+/** Entschlüsselt passwortverschlüsselte Daten. Wirft WrongPasswordError bei falschem Passwort. */
+export async function decryptWithPassword(enc: PasswordEncrypted, password: string): Promise<Uint8Array> {
+  const key = await derivePasswordKey(password, enc.salt, enc.iterations);
+  try {
+    return await decryptBytes(key, { iv: enc.iv, data: enc.data });
+  } catch {
+    throw new WrongPasswordError();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hilfen: Base64 und Komprimierung
+// ---------------------------------------------------------------------------
+
+export function toBase64(data: Uint8Array): string {
+  let s = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < data.length; i += chunk) {
+    s += String.fromCharCode(...data.subarray(i, i + chunk));
+  }
+  return btoa(s);
+}
+
+export function fromBase64(text: string): Uint8Array<ArrayBuffer> {
+  const s = atob(text);
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+
+async function transform(data: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
+  const result = await new Response(new Blob([bytes(data)]).stream().pipeThrough(stream)).arrayBuffer();
+  return new Uint8Array(result);
+}
+
+export const compressionAvailable = (): boolean => typeof CompressionStream === 'function';
+
+export function gzip(data: Uint8Array): Promise<Uint8Array> {
+  return transform(data, new CompressionStream('gzip'));
+}
+
+export function gunzip(data: Uint8Array): Promise<Uint8Array> {
+  return transform(data, new DecompressionStream('gzip'));
+}

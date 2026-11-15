@@ -5,12 +5,16 @@ import { EventTable } from '../components/EventTable';
 import { EventFilters, StatusFilters } from '../components/Filters';
 import { StatusTable } from '../components/StatusTable';
 import { checkOutAll } from '../db/cards';
+import { csvFilename, eventsToCsv, statusToCsv } from '../domain/csv';
+import { downloadText } from '../lib/download';
 import { listGroups } from '../db/groups';
 import {
   DEFAULT_EVENT_FILTER,
   DEFAULT_STATUS_FILTER,
   filterStatusRows,
   rangeLabel,
+  sortEvents,
+  sortStatusRows,
   type EventFilter,
   type EventSortKey,
   type StatusFilter,
@@ -90,7 +94,13 @@ function PresenceTab({ groups }: { groups: Awaited<ReturnType<typeof listGroups>
       </div>
       {message && <p className="form-success">{message}</p>}
       <StatusFilters value={filter} onChange={setFilter} groups={groups} />
-      <p className="muted small">{filtered.length} Person(en) · Spaltenköpfe antippen zum Sortieren · Zeile antippen öffnet die Karte</p>
+      <div className="list-toolbar">
+        <p className="muted small">{filtered.length} Person(en) · Spaltenköpfe antippen zum Sortieren · Zeile antippen öffnet die Karte</p>
+        <CsvButton
+          disabled={filtered.length === 0}
+          onExport={() => downloadText(statusToCsv(sortStatusRows(filtered, sort.key, sort.dir)), csvFilename('anwesenheit'))}
+        />
+      </div>
       <StatusTable rows={filtered} sort={sort} />
     </section>
   );
@@ -113,10 +123,31 @@ function EventsTab({ groups }: { groups: Awaited<ReturnType<typeof listGroups>> 
         }}
         groups={groups}
       />
-      <p className="muted small">
-        {loading ? 'Lädt …' : `${events.length} Aktion(en) · ${rangeLabel(filter, new Date())}${denied ? ` · davon ${denied} abgewiesen` : ''}`}
-      </p>
+      <div className="list-toolbar">
+        <p className="muted small">
+          {loading ? 'Lädt …' : `${events.length} Aktion(en) · ${rangeLabel(filter, new Date())}${denied ? ` · davon ${denied} abgewiesen` : ''}`}
+        </p>
+        <CsvButton
+          disabled={events.length === 0}
+          onExport={() => downloadText(eventsToCsv(sortEvents(events, sort.key, sort.dir)), csvFilename('aktionen'))}
+        />
+      </div>
       {!loading && <EventTable events={events} groups={groups} sort={sort} limit={limit} onMore={() => setLimit((l) => l + 100)} />}
     </section>
+  );
+}
+
+/** Exportiert die aktuell gefilterte und sortierte Liste als CSV (für Excel). */
+function CsvButton({ onExport, disabled }: { onExport: () => void; disabled: boolean }) {
+  return (
+    <button
+      type="button"
+      className="btn btn-small"
+      disabled={disabled}
+      onClick={onExport}
+      title="Exportiert die angezeigte Liste. Achtung: CSV-Dateien sind nicht verschlüsselt."
+    >
+      CSV-Export (Excel)
+    </button>
   );
 }
