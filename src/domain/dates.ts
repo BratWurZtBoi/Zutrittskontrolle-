@@ -34,3 +34,11 @@ export function isValidIsoDate(value: string): boolean {
   const d = new Date(`${value}T00:00:00`);
   return !Number.isNaN(d.getTime()) && toLocalDateString(d) === value;
 }
+
+/** Kurzform für Tabellen: heute nur Uhrzeit, sonst „14.06. 17:30“ (bzw. mit Jahr). */
+export function formatShortDateTime(ts: number, now = new Date()): string {
+  const d = new Date(ts);
+  if (toLocalDateString(d) === toLocalDateString(now)) return formatTime(ts);
+  const dm = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.`;
+  return d.getFullYear() === now.getFullYear() ? `${dm} ${formatTime(ts)}` : `${dm}${d.getFullYear()} ${formatTime(ts)}`;
+}

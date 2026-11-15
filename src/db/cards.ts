@@ -3,6 +3,7 @@ import { isValidIsoDate } from '../domain/dates';
 import { holderName } from '../domain/texts';
 import type { AccessEventRecord, Card, CardHolder, CardRecord, CardUpdate, Group } from '../domain/types';
 import { decryptJson, encryptJson, encryptText } from '../security/crypto';
+import { cachedDecrypt } from '../security/decryptCache';
 import { getDataKey } from '../security/session';
 import { ValidationError, db, newId } from './db';
 
@@ -16,7 +17,7 @@ export async function toCard(record: CardRecord, key: CryptoKey | null = getData
   let holder: CardHolder | undefined = legacy;
   if (holderEnc && key) {
     try {
-      holder = await decryptJson<CardHolder>(key, holderEnc);
+      holder = await cachedDecrypt(key, holderEnc, () => decryptJson<CardHolder>(key, holderEnc));
     } catch {
       holder = undefined; // falscher Schlüssel / beschädigt – wie gesperrt behandeln
     }
@@ -243,6 +244,24 @@ async function checkOutIfPresent(card: CardRecord, now: number): Promise<void> {
   };
   await db.events.add(event);
   await db.presence.put({ cardId: card.id, status: 'out', lastBookingAt: now });
+}
+
+/** Bucht alle anwesenden Karten aus (z. B. am Tagesende). Liefert die Anzahl. */
+export async function checkOutAll(now = Date.now()): Promise<number> {
+  return db.transaction('rw', [db.cards, db.presence, db.events, db.groups], async () => {
+    const present = await db.presence.where('status').equals('in').toArray();
+    let count = 0;
+    for (const p of present) {
+      const card = await db.cards.get(p.cardId);
+      if (card) {
+        await checkOutIfPresent(card, now);
+        count++;
+      } else {
+        await db.presence.delete(p.cardId);
+      }
+    }
+    return count;
+  });
 }
 
 export async function setCardBlocked(id: string, blocked: boolean, now = Date.now()): Promise<void> {

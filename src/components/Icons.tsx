@@ -76,6 +76,15 @@ export const AlertIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const DashboardIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="8" height="10" rx="1.5" />
+    <rect x="13" y="3" width="8" height="6" rx="1.5" />
+    <rect x="13" y="11" width="8" height="10" rx="1.5" />
+    <rect x="3" y="15" width="8" height="6" rx="1.5" />
+  </svg>
+);
+
 export const LockIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="4" y="11" width="16" height="10" rx="2" />
