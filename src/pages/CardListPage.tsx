@@ -1,15 +1,15 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { StatusBadge } from '../components/StatusBadge';
-import { MAX_CARDS, listCards } from '../db/cards';
+import { MAX_CARDS, deleteCards, listCards, returnCards, setCardsBlocked } from '../db/cards';
 import { db } from '../db/db';
 import { listGroups } from '../db/groups';
 import { seedTestCards } from '../db/seed';
 import { holderName } from '../domain/texts';
+import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 
 type Assignment = 'all' | 'assigned' | 'free';
 
@@ -21,18 +21,22 @@ export function CardListPage() {
     [],
     new Set<string>(),
   );
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const groupFilter = params.get('gruppe') ?? '';
   const [assignment, setAssignment] = useState<Assignment>('all');
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [message, setMessage] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (cards ?? []).filter(({ card }) => {
       if (groupFilter && card.groupId !== groupFilter) return false;
-      if (assignment === 'assigned' && !card.holder) return false;
-      if (assignment === 'free' && card.holder) return false;
+      if (assignment === 'assigned' && !card.hasHolder) return false;
+      if (assignment === 'free' && card.hasHolder) return false;
       if (!q) return true;
       const h = card.holder;
       return `${card.number} ${h?.firstName ?? ''} ${h?.lastName ?? ''} ${h?.company ?? ''}`.toLowerCase().includes(q);
@@ -50,6 +54,42 @@ export function CardListPage() {
     }
   };
 
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  };
+  const allVisibleSelected = filtered.length > 0 && filtered.every(({ card }) => selected.has(card.id));
+  const toggleAllVisible = () => {
+    const next = new Set(selected);
+    for (const { card } of filtered) {
+      if (allVisibleSelected) next.delete(card.id);
+      else next.add(card.id);
+    }
+    setSelected(next);
+  };
+  const endSelection = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const ids = [...selected];
+  const selectedCards = cards.filter(({ card }) => selected.has(card.id));
+  const withHolder = selectedCards.filter(({ card }) => card.hasHolder).length;
+
+  const runBulk = async (confirmText: string, action: () => Promise<number>, done: (n: number) => string) => {
+    if (!window.confirm(confirmText)) return;
+    setBusy(true);
+    try {
+      const n = await action();
+      setMessage(done(n));
+      setSelected(new Set());
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const printIds = filtered.map(({ card }) => card.id).join(',');
 
   return (
@@ -62,19 +102,34 @@ export function CardListPage() {
           <Link className="btn btn-primary" to={`/karten/neu${groupFilter ? `?gruppe=${groupFilter}` : ''}`}>
             + Karten erstellen
           </Link>
-          {filtered.length > 0 && (
+          <Link className="btn" to="/karten/import">
+            CSV-Import
+          </Link>
+          {filtered.length > 0 && !selecting && (
             <Link className="btn" to={`/druck?ids=${printIds}`}>
               Drucken ({filtered.length})
             </Link>
           )}
+          {cards.length > 0 && (
+            <button type="button" className={selecting ? 'btn btn-primary' : 'btn'} onClick={() => (selecting ? endSelection() : setSelecting(true))}>
+              {selecting ? 'Auswahl beenden' : 'Auswählen'}
+            </button>
+          )}
         </div>
       </header>
+
+      {message && (
+        <p className="form-success" role="status">
+          {message}
+        </p>
+      )}
 
       {cards.length === 0 ? (
         <div className="empty">
           <p>Noch keine Karten vorhanden.</p>
           <p className="muted">
             Zum Ausprobieren können fiktive Testkarten erzeugt werden: 9 Personalkarten und 5 Besucherkarten (davon 3 frei).
+            Oder eine Personenliste per <Link to="/karten/import">CSV-Import</Link> einlesen.
           </p>
           <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void seed()}>
             Testkarten anlegen
@@ -88,6 +143,7 @@ export function CardListPage() {
               placeholder="Suchen: Nummer, Name, Firma …"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              aria-label="Karten suchen"
             />
             <select
               value={groupFilter}
@@ -107,10 +163,80 @@ export function CardListPage() {
               <option value="free">Nur freie Karten</option>
             </select>
           </div>
+
+          {selecting && (
+            <div className="selection-bar" role="toolbar" aria-label="Aktionen für ausgewählte Karten">
+              <label className="checkbox-inline">
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} />
+                Alle angezeigten ({filtered.length})
+              </label>
+              <strong className="selection-count">{selected.size} ausgewählt</strong>
+              <div className="button-row">
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  disabled={busy || withHolder === 0}
+                  onClick={() =>
+                    void runBulk(
+                      `Personendaten von ${withHolder} Karte(n) entfernen? Anwesende werden ausgebucht, die Karten sind danach frei.`,
+                      () => returnCards(ids),
+                      (n) => `Personendaten von ${n} Karte(n) entfernt.`,
+                    )
+                  }
+                >
+                  Personendaten entfernen
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  disabled={busy || selected.size === 0}
+                  onClick={() => void runBulk(`${selected.size} Karte(n) sperren?`, () => setCardsBlocked(ids, true), (n) => `${n} Karte(n) gesperrt.`)}
+                >
+                  Sperren
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  disabled={busy || selected.size === 0}
+                  onClick={() => void runBulk(`${selected.size} Karte(n) entsperren?`, () => setCardsBlocked(ids, false), (n) => `${n} Karte(n) entsperrt.`)}
+                >
+                  Entsperren
+                </button>
+                <button type="button" className="btn btn-small" disabled={selected.size === 0} onClick={() => navigate(`/druck?ids=${ids.join(',')}`)}>
+                  Drucken
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-small btn-danger"
+                  disabled={busy || selected.size === 0}
+                  onClick={() =>
+                    void runBulk(
+                      `${selected.size} Karte(n) endgültig löschen? Gedruckte Karten werden damit ungültig. Das Protokoll bleibt erhalten.`,
+                      () => deleteCards(ids),
+                      (n) => `${n} Karte(n) gelöscht.`,
+                    )
+                  }
+                >
+                  Löschen
+                </button>
+              </div>
+            </div>
+          )}
+
           <ul className="card-list">
-            {filtered.map(({ card, group }) => (
-              <li key={card.id}>
-                <Link to={`/karten/${card.id}`} className="card-row" style={{ borderLeftColor: group?.color }}>
+            {filtered.map(({ card, group }) => {
+              const content = (
+                <>
+                  {selecting && (
+                    <input
+                      type="checkbox"
+                      className="row-check"
+                      checked={selected.has(card.id)}
+                      onChange={() => toggle(card.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Karte ${card.number} auswählen`}
+                    />
+                  )}
                   <HolderPhoto holder={card.holder} fallback={group?.prefix} className="thumb" />
                   <div className="card-row-main">
                     <div className="card-row-title">
@@ -123,9 +249,26 @@ export function CardListPage() {
                     <StatusBadge card={card} group={group} />
                     {presentIds.has(card.id) && <span className="badge badge-present">anwesend</span>}
                   </div>
-                </Link>
-              </li>
-            ))}
+                </>
+              );
+              return (
+                <li key={card.id}>
+                  {selecting ? (
+                    <div
+                      className={selected.has(card.id) ? 'card-row selectable selected' : 'card-row selectable'}
+                      style={{ borderLeftColor: group?.color }}
+                      onClick={() => toggle(card.id)}
+                    >
+                      {content}
+                    </div>
+                  ) : (
+                    <Link to={`/karten/${card.id}`} className="card-row" style={{ borderLeftColor: group?.color }}>
+                      {content}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           {filtered.length === 0 && <p className="muted">Keine Treffer.</p>}
         </>

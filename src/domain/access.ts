@@ -13,7 +13,7 @@ export interface AccessInput {
   /** Karte zum gescannten Token, undefined = unbekannter Ausweis. */
   card: CardRules | undefined;
   group: GroupRules | undefined;
-  presence: Pick<PresenceRecord, 'status' | 'lastBookingAt'> | undefined;
+  presence: Pick<PresenceRecord, 'status' | 'lastBookingAt' | 'bySystem'> | undefined;
   mode: ScanMode;
   now: Date;
   /** Doppelscan-Schutz: Mindestabstand zwischen zwei Buchungen derselben Karte. */
@@ -46,7 +46,8 @@ export function decideAccess(input: AccessInput): Decision {
   if (!card) return { outcome: 'denied', reason: 'UNKNOWN_CARD' };
   if (card.blocked) return { outcome: 'denied', reason: 'CARD_BLOCKED' };
 
-  if (presence) {
+  // Doppelscan-Schutz nur gegenüber echten Scans, nicht nach automatischen Buchungen
+  if (presence && !presence.bySystem) {
     const elapsed = now.getTime() - presence.lastBookingAt;
     if (elapsed >= 0 && elapsed < cooldownMs) {
       return {

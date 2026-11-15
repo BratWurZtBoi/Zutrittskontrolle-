@@ -51,6 +51,14 @@ export function SettingsPage() {
       <section className="card form">
         <h2>Allgemein</h2>
         <label>
+          Darstellung
+          <select value={settings.theme} onChange={(e) => save({ theme: e.target.value as AppSettings['theme'] })}>
+            <option value="auto">Automatisch (wie Gerät/System)</option>
+            <option value="light">Hell</option>
+            <option value="dark">Dunkel</option>
+          </select>
+        </label>
+        <label>
           Name der Organisation (erscheint auf den Ausweisen)
           <input
             value={orgName}

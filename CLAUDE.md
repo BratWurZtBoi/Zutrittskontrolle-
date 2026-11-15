@@ -85,6 +85,16 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    verschlüsselt mit dem Geräteschlüssel neu, Tresor bleibt), CSV-Export (`domain/csv.ts`:
    Semikolon, BOM, Formel-Injektion entschärft).
 
+6. ✅ Mehrfachauswahl (Karten: Personendaten entfernen, sperren, drucken, löschen),
+   CSV-Import (`domain/csvImport.ts` Parser inkl. Windows-1252, `db/importCards.ts` Plan +
+   Ausführung, Vorlage in `vorlagen/` – muss mit `importTemplateCsv()` übereinstimmen, Test prüft das),
+   Präsentationsansicht `#/praesentation` (BroadcastChannel `lib/presentation.ts`, ohne
+   Datenbankzugriff auf Personendaten), helles/dunkles Layout (CSS-Variablen in `styles.css`,
+   `data-theme` auf `<html>`, Spiegelung in localStorage `zk-theme`; Karten/Druck immer hell).
+   Automatische Buchungen (`bySystem`) zählen nicht für den Doppelscan-Schutz.
+
+Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
+Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
+
 Mögliche nächste Schritte (mit dem Nutzer abstimmen): Test auf echten Geräten und Feinschliff,
-CSV-Import von Personallisten, Backup zusammenführen statt ersetzen, Kiosk-Hinweise für Android
-(„App anheften“), Druckvorlagen/Logo auf der Karte.
+Backup zusammenführen statt ersetzen, Kiosk-Hinweise für Android („App anheften“), Logo auf der Karte.

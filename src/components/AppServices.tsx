@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { purgeOldEvents } from '../db/scans';
 import { useSettings } from '../hooks/useSettings';
+import { applyTheme } from '../lib/theme';
 import { takePendingExit } from '../security/exit';
 import { checkAutoLogout, initSecurity, lockAll, logout, touchActivity } from '../security/session';
 
@@ -35,6 +36,10 @@ export function AppServices() {
     const t = window.setInterval(() => checkAutoLogout(settings.autoLogoutMin), 20_000);
     return () => window.clearInterval(t);
   }, [settings.autoLogoutMin]);
+
+  useEffect(() => {
+    applyTheme(settings.theme);
+  }, [settings.theme]);
 
   useEffect(() => {
     void purgeOldEvents(settings.retentionDays);

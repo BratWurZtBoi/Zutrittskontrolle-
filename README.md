@@ -45,6 +45,35 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche und Sortierung.
 - Der **Vollbild-Scanner** bleibt als Kiosk-Modus für Geräte am Eingang (ohne Anmeldung nutzbar).
 
+### Präsentationsansicht für Gäste (2. Bildschirm)
+
+- Im *Dashboard* auf **„Präsentation für Gäste öffnen“** tippen – es öffnet sich ein eigenes Fenster.
+- Dieses Fenster auf den zweiten Bildschirm (Monitor/Fernseher) ziehen und **F11** (Vollbild) drücken.
+- Bei jedem Scan sieht der Gast groß „Willkommen“, „Auf Wiedersehen“ oder „Kein Zutritt“ mit Name,
+  Foto und Gruppe; dazwischen einen Begrüßungsbildschirm mit Uhrzeit und Organisationsname.
+- Funktioniert ohne Internet: Die Ergebnisse gehen direkt von Fenster zu Fenster im selben Browser.
+
+### Personenlisten importieren (CSV)
+
+- *Karten* → **CSV-Import** → **Vorlage herunterladen** (liegt auch im Repository unter
+  [`vorlagen/zutritt-import-vorlage.csv`](vorlagen/zutritt-import-vorlage.csv)).
+- In Excel/LibreOffice ausfüllen, als CSV speichern, im Import wählen. Vor dem Import zeigt eine
+  **Vorschau** jede Zeile mit Aktion (neue Karte / Zuweisung) oder Fehlergrund.
+- Spalten: Kartennummer (optional: leer = neue Karte, vorhandene Nummer = Person dieser Karte
+  zuweisen), Gruppe (Name oder Kürzel), Vorname, Nachname, Firma/Abteilung, Notiz,
+  Zutritt erlaubt (ja/nein), Gültig ab, Gültig bis (TT.MM.JJJJ).
+- Bestehende Personendaten werden nur überschrieben, wenn das ausdrücklich angehakt ist.
+
+### Mehrfachauswahl
+
+- *Karten* → **Auswählen** → Karten antippen oder „Alle angezeigten“ → **Personendaten entfernen**
+  (z. B. alle Besucherkarten des Tages freigeben), **Sperren**, **Entsperren**, **Drucken**, **Löschen**.
+
+### Hell und dunkel
+
+- *Einstellungen → Darstellung*: Automatisch (wie das Gerät), Hell oder Dunkel – je Gerät.
+  Gedruckte Karten bleiben immer hell.
+
 ### Datensicherung und Export
 
 - **Backup erstellen** (*Einstellungen → Datensicherung*): eine Datei (`.zkb`) mit allen Karten,
@@ -124,6 +153,10 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 | Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ✅ |
 | „Alle ausbuchen“ | ✅ |
 | Verschlüsseltes Backup (Export/Import), CSV-Export für Excel | ✅ |
+| CSV-Import von Personenlisten mit Vorlage und Vorschau | ✅ |
+| Mehrfachauswahl: Personendaten entfernen, sperren, drucken, löschen | ✅ |
+| Präsentationsansicht für Gäste auf zweitem Bildschirm | ✅ |
+| Helles und dunkles Layout | ✅ |
 
 ## Technik
 
@@ -138,7 +171,9 @@ src/
   scanner/    Kamera-Scanner und QR-Decoder (Web Worker)
   lib/        Kamera (inkl. Geräteauswahl), Fotos, QR-Erzeugung, Ton, Bildschirm-an
   components/ Wiederverwendbare Oberflächenbausteine
-  pages/      Scanner, Dashboard, Übersicht, Anmeldung, Karten, Druck, Gruppen, Einstellungen
+  pages/      Scanner, Dashboard, Übersicht, Präsentation, Anmeldung, Karten, Import, Druck,
+              Gruppen, Einstellungen
+vorlagen/     CSV-Vorlage für den Personenimport
 ```
 
 **QR-Inhalt:** `ZK1:` + 26 Zeichen Zufallstoken (128 Bit). Der Code enthält keine

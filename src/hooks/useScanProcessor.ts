@@ -4,6 +4,7 @@ import { ScanDeduper } from '../domain/scanDeduper';
 import type { AccessEventRecord } from '../domain/types';
 import { setKeepScreenOn } from '../lib/device';
 import { playFeedback, type FeedbackKind } from '../lib/feedback';
+import { broadcastScan } from '../lib/presentation';
 import { useSettings } from './useSettings';
 
 /** Derselbe Code gilt erst wieder als neu, wenn er so lange nicht im Bild war. */
@@ -36,6 +37,7 @@ export function useScanProcessor() {
       const outcome = await processScan(text, { mode: s.scanMode, cooldownMs: s.cooldownSec * 1000, source });
       setResult(outcome);
       playFeedback(feedbackKind(outcome), s.sound);
+      broadcastScan(outcome, s.resultDisplaySec);
     } catch (err) {
       console.error('Scan fehlgeschlagen', err);
     } finally {

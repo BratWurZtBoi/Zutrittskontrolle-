@@ -6,6 +6,9 @@ import {
   checkOutAll,
   createCards,
   deleteCard,
+  deleteCards,
+  returnCards,
+  setCardsBlocked,
   listCards,
   reissueToken,
   returnCard,
@@ -208,6 +211,34 @@ describe('Übersicht', () => {
       'Person 0',
       'Person 1',
     ]);
+  });
+});
+
+describe('Mehrfachauswahl', () => {
+  it('entfernt Personendaten mehrerer Karten und bucht Anwesende aus', async () => {
+    const cards = await createCards({ groupId: visitors.id, count: 3 });
+    for (const [i, c] of cards.entries()) {
+      await updateCard(c.id, { accessGranted: true, validUntil: '2030-01-01', holder: { firstName: 'Gast', lastName: String(i) } });
+    }
+    await processScan(encodeCardPayload(cards[0]!.token), opts);
+    const n = await returnCards([cards[0]!.id, cards[1]!.id]);
+    expect(n).toBe(2);
+    const after = (await listCards()).map((x) => x.card);
+    expect(after.filter((c) => c.hasHolder).map((c) => c.holder?.lastName)).toEqual(['2']);
+    expect(after.find((c) => c.id === cards[0]!.id)?.validUntil).toBeUndefined();
+    expect(await listPresentCards()).toEqual([]);
+    expect((await listRecentEvents())[0]).toMatchObject({ source: 'system', direction: 'out', holderName: 'Gast 0' });
+    expect(await returnCards([cards[0]!.id])).toBe(0); // schon frei
+  });
+
+  it('sperrt und löscht mehrere Karten', async () => {
+    const cards = await createCards({ groupId: visitors.id, count: 3 });
+    const ids = cards.slice(0, 2).map((c) => c.id);
+    expect(await setCardsBlocked(ids, true)).toBe(2);
+    expect((await db.cards.toArray()).filter((c) => c.blocked).length).toBe(2);
+    expect(await setCardsBlocked(ids, false)).toBe(2);
+    expect(await deleteCards([...ids, 'gibt-es-nicht'])).toBe(2);
+    expect((await db.cards.toArray()).map((c) => c.number)).toEqual(['B-003']);
   });
 });
 

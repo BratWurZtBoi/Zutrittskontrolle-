@@ -46,6 +46,11 @@ describe('decideAccess', () => {
     expect(decideAccess(input({ presence: later })).outcome).toBe('granted');
   });
 
+  it('automatische Buchungen (z. B. „Alle ausbuchen“) lösen keinen Doppelscan aus', () => {
+    const presence = { status: 'out' as const, lastBookingAt: now.getTime() - 2000, bySystem: true };
+    expect(decideAccess(input({ presence }))).toEqual({ outcome: 'granted', reason: 'OK', direction: 'in' });
+  });
+
   it('prüft Gruppe, Karte und Zuordnung nur beim Eintritt', () => {
     const present = { status: 'in' as const, lastBookingAt: 0 };
     expect(decideAccess(input({ group: { ...okGroup, accessGranted: false } })).reason).toBe('GROUP_DISABLED');
