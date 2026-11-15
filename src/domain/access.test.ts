@@ -1,24 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { decideAccess, personStatus, type AccessInput } from './access';
+import { cardStatus, decideAccess, type AccessInput, type CardRules, type GroupRules } from './access';
 
 const now = new Date(2026, 5, 15, 9, 0, 0); // 15.06.2026 09:00 lokal
-const okPerson = { accessGranted: true, cardBlocked: false };
+const okCard: CardRules = { accessGranted: true, blocked: false, hasHolder: true };
+const okGroup: GroupRules = { accessGranted: true, allowUnassigned: false };
 
 function input(over: Partial<AccessInput> = {}): AccessInput {
-  return { person: okPerson, presence: undefined, mode: 'auto', now, cooldownMs: 30_000, ...over };
+  return { card: okCard, group: okGroup, presence: undefined, mode: 'auto', now, cooldownMs: 30_000, ...over };
 }
 
 describe('decideAccess', () => {
-  it('lehnt unbekannte Ausweise ab', () => {
-    expect(decideAccess(input({ person: undefined }))).toEqual({ outcome: 'denied', reason: 'UNKNOWN_CARD' });
+  it('lehnt unbekannte Karten ab', () => {
+    expect(decideAccess(input({ card: undefined }))).toEqual({ outcome: 'denied', reason: 'UNKNOWN_CARD' });
   });
 
-  it('lehnt gesperrte Ausweise in beide Richtungen ab', () => {
-    const blocked = { ...okPerson, cardBlocked: true };
-    expect(decideAccess(input({ person: blocked })).reason).toBe('CARD_BLOCKED');
-    expect(
-      decideAccess(input({ person: blocked, presence: { status: 'in', lastBookingAt: 0 } })).reason,
-    ).toBe('CARD_BLOCKED');
+  it('lehnt gesperrte Karten in beide Richtungen ab', () => {
+    const blocked = { ...okCard, blocked: true };
+    expect(decideAccess(input({ card: blocked })).reason).toBe('CARD_BLOCKED');
+    expect(decideAccess(input({ card: blocked, presence: { status: 'in', lastBookingAt: 0 } })).reason).toBe(
+      'CARD_BLOCKED',
+    );
   });
 
   it('bucht im Auto-Modus abwechselnd ein und aus', () => {
@@ -45,30 +46,41 @@ describe('decideAccess', () => {
     expect(decideAccess(input({ presence: later })).outcome).toBe('granted');
   });
 
-  it('prüft Berechtigung und Gültigkeit nur beim Eintritt', () => {
-    const noPerm = { ...okPerson, accessGranted: false };
-    expect(decideAccess(input({ person: noPerm })).reason).toBe('NO_PERMISSION');
+  it('prüft Gruppe, Karte und Zuordnung nur beim Eintritt', () => {
+    const present = { status: 'in' as const, lastBookingAt: 0 };
+    expect(decideAccess(input({ group: { ...okGroup, accessGranted: false } })).reason).toBe('GROUP_DISABLED');
+    expect(decideAccess(input({ card: { ...okCard, accessGranted: false } })).reason).toBe('NO_PERMISSION');
+    expect(decideAccess(input({ card: { ...okCard, hasHolder: false } })).reason).toBe('UNASSIGNED');
     // Ausbuchen bleibt möglich
     expect(
-      decideAccess(input({ person: noPerm, presence: { status: 'in', lastBookingAt: 0 } })),
+      decideAccess(input({ card: { ...okCard, accessGranted: false }, presence: present })),
     ).toEqual({ outcome: 'granted', reason: 'OK', direction: 'out' });
   });
 
+  it('erlaubt Karten ohne Person, wenn die Gruppe das zulässt', () => {
+    const unassigned = { ...okCard, hasHolder: false };
+    expect(decideAccess(input({ card: unassigned, group: { ...okGroup, allowUnassigned: true } })).outcome).toBe(
+      'granted',
+    );
+  });
+
   it('prüft Gültigkeitszeitraum inklusive Rändern', () => {
-    const p = (validFrom?: string, validUntil?: string) => ({ ...okPerson, validFrom, validUntil });
-    expect(decideAccess(input({ person: p('2026-06-16') })).reason).toBe('NOT_YET_VALID');
-    expect(decideAccess(input({ person: p('2026-06-15') })).outcome).toBe('granted');
-    expect(decideAccess(input({ person: p(undefined, '2026-06-15') })).outcome).toBe('granted');
-    expect(decideAccess(input({ person: p(undefined, '2026-06-14') })).reason).toBe('EXPIRED');
+    const c = (validFrom?: string, validUntil?: string) => ({ ...okCard, validFrom, validUntil });
+    expect(decideAccess(input({ card: c('2026-06-16') })).reason).toBe('NOT_YET_VALID');
+    expect(decideAccess(input({ card: c('2026-06-15') })).outcome).toBe('granted');
+    expect(decideAccess(input({ card: c(undefined, '2026-06-15') })).outcome).toBe('granted');
+    expect(decideAccess(input({ card: c(undefined, '2026-06-14') })).reason).toBe('EXPIRED');
   });
 });
 
-describe('personStatus', () => {
+describe('cardStatus', () => {
   it('liefert den passenden Status', () => {
-    expect(personStatus(okPerson, now)).toBe('active');
-    expect(personStatus({ ...okPerson, cardBlocked: true, accessGranted: false }, now)).toBe('blocked');
-    expect(personStatus({ ...okPerson, accessGranted: false }, now)).toBe('no-permission');
-    expect(personStatus({ ...okPerson, validFrom: '2027-01-01' }, now)).toBe('not-yet-valid');
-    expect(personStatus({ ...okPerson, validUntil: '2026-01-01' }, now)).toBe('expired');
+    expect(cardStatus(okCard, okGroup, now)).toBe('active');
+    expect(cardStatus({ ...okCard, blocked: true, accessGranted: false }, okGroup, now)).toBe('blocked');
+    expect(cardStatus(okCard, { ...okGroup, accessGranted: false }, now)).toBe('group-disabled');
+    expect(cardStatus({ ...okCard, accessGranted: false }, okGroup, now)).toBe('no-permission');
+    expect(cardStatus({ ...okCard, hasHolder: false }, okGroup, now)).toBe('unassigned');
+    expect(cardStatus({ ...okCard, validFrom: '2027-01-01' }, okGroup, now)).toBe('not-yet-valid');
+    expect(cardStatus({ ...okCard, validUntil: '2026-01-01' }, okGroup, now)).toBe('expired');
   });
 });

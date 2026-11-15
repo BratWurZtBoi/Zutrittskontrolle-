@@ -1,13 +1,13 @@
 # CLAUDE.md – Projektleitfaden
 
-Offlinefähige Zutritts- und Anwesenheitskontrolle (max. 100 Personen) als PWA.
+Offlinefähige Zutritts- und Anwesenheitskontrolle mit QR-Karten als PWA.
 Der Nutzer entwickelt **ausschließlich über Claude Code auf dem Smartphone** – es gibt keinen
 Entwicklungs-PC. Er testet über die veröffentlichte App (GitHub Pages) auf einem Galaxy S24 Ultra,
-Android-Tablets und einem Windows-Laptop mit Webcam.
+Android-Tablets und einem Windows-Rechner mit Webcam.
 
 ## Grundregeln
 
-- **Nur fiktive Testpersonen** verwenden (siehe `src/db/seed.ts`). Keine echten Namen/Fotos.
+- **Nur fiktive Testdaten** verwenden (siehe `src/db/seed.ts`). Keine echten Namen/Fotos.
 - **Keine Cloud-Abhängigkeit** für Daten: alles bleibt in IndexedDB auf dem Gerät.
   Keine externen Requests zur Laufzeit (keine CDNs, Fonts, Analytics).
 - **Kein APK/Capacitor** – bewusst entschieden: reine PWA.
@@ -16,12 +16,23 @@ Android-Tablets und einem Windows-Laptop mit Webcam.
 - Oberfläche und Doku auf **Deutsch**, Bezeichner im Code auf Englisch.
 - Mobile-first (Touch-Ziele ≥ 44 px), muss auch auf Tablet und Laptop gut aussehen.
 
+## Datenmodell
+
+- **Gruppe** (`Group`): Name, Farbe, Kürzel (fest nach Anlage), Regeln `accessGranted`,
+  `allowUnassigned`, `printHolder`. Standardgruppen: Bestandspersonal (M), Besucher (B).
+- **Karte** (`Card`): Nummer (`B-001`), Gruppe (fest), QR-Token, gesperrt, Berechtigung,
+  Gültigkeit, optional **Inhaber** (`CardHolder`: Name, Firma, Foto, Notiz) – frei änderbar.
+  Personenwechsel/Rückgabe bucht die bisherige Person automatisch aus (Quelle `system`).
+- **Ereignis** (`AccessEvent`): enthält Momentaufnahmen (Kartennummer, Gruppe, Name), damit
+  die Historie nach Änderungen lesbar bleibt. **Anwesenheit** je Karte.
+
 ## Architektur
 
 - `src/domain/` – reine Funktionen ohne DOM/DB (Zutrittsentscheidung `decideAccess`,
-  QR-Format `ZK1:<Token>`, `ScanDeduper`). Hier neue Geschäftslogik zuerst ansiedeln + testen.
-- `src/db/` – Dexie-Datenbank `zutrittskontrolle`. Schemaänderungen nur über neue
+  QR-Format `ZK1:<Token>`, `ScanDeduper`, Farben). Neue Geschäftslogik zuerst hier + testen.
+- `src/db/` – Dexie-Datenbank `zutrittskontrolle-daten`. Schemaänderungen nur über neue
   `this.version(n)` in `db.ts` (niemals bestehende Versionen ändern – sonst Datenverlust auf Geräten).
+  Die alte Prototyp-DB `zutrittskontrolle` (nur Testdaten) wird beim Start gelöscht.
 - `src/scanner/` – Kamera-Loop + jsQR im Web Worker.
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.
@@ -34,12 +45,18 @@ Android-Tablets und einem Windows-Laptop mit Webcam.
   (Merge-Commit empfehlen, kein Squash, damit der Branch weiter nutzbar bleibt).
   Nicht direkt auf `main` pushen.
 - `.github/workflows/deploy.yml`: jeder Push → Typen, Tests, Build. Push auf `main` → GitHub Pages.
-- App-Adresse: https://bratwurztboi.github.io/Zutrittskontrolle-/ – Adresse nicht ändern,
+- App-Adresse: https://adminzirkel.github.io/Zutrittskontrolle-/ – Adresse nicht mehr ändern,
   da die lokalen Daten an die Herkunft (Origin) gebunden sind.
 
-## Roadmap
+## Roadmap (mit dem Nutzer abgestimmt)
 
-1. ✅ Prototyp: Personenverwaltung, Ausweise, Scanner, Protokoll, Anwesenheit
-2. PIN-geschützter Adminbereich (Scanner bleibt offen, Rest geschützt; PBKDF2 über WebCrypto)
-3. Verschlüsselte Backups (AES-GCM, Passwort → PBKDF2), Import/Export als Datei
-4. Historie filtern + CSV-Export, „Alle ausbuchen“, Tagesübersicht
+1. ✅ Prototyp: Ausweise, Scanner, Protokoll, Anwesenheit
+2. ✅ Karten statt Personen, Gruppen mit Farbe/Kürzel/Regeln, Kameraauswahl (Windows)
+3. Sicherheit – **Variante A** (vom Nutzer gewählt): Admin-Passwort schützt alles außer dem
+   Scanner; Personendaten (Inhaber, Namen im Protokoll) AES-GCM-verschlüsselt mit Datenschlüssel,
+   der mit PBKDF2-Schlüssel aus dem Passwort umhüllt wird; nach jedem App-Start einmal entsperren,
+   gesperrt entscheidet der Scanner weiter, zeigt aber nur Kartennummer + Gruppe. Dazu: Testmodus
+   nur für Admin (Standard aus), CSP-Meta-Tag, Löschfrist fürs Protokoll.
+4. Übersicht mit Suche/Filter/Sortierung (Karten + Aktionen) und Dashboard
+   (Kamera + Anwesende + Aktionen); Vollbild-Scanner bleibt als Kiosk-Modus.
+5. Export/Import: verschlüsseltes Voll-Backup (eigenes Passwort), CSV-Export Historie/Karten.

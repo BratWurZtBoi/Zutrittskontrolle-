@@ -1,8 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
+import { CameraSelect } from '../components/CameraSelect';
+import { GroupBadge } from '../components/GroupBadge';
 import { clearAllData, db } from '../db/db';
+import { ensureDefaultGroups, listGroups } from '../db/groups';
 import { clearEvents } from '../db/scans';
-import { removeTestPersons, seedTestPersons } from '../db/seed';
+import { removeTestCards, seedTestCards } from '../db/seed';
 import { saveSettings, type AppSettings } from '../db/settings';
 import type { ScanMode } from '../domain/types';
 import { useSettings } from '../hooks/useSettings';
@@ -15,10 +19,11 @@ function clamp(value: number, min: number, max: number): number {
 export function SettingsPage() {
   const settings = useSettings();
   const counts = useLiveQuery(
-    async () => ({ persons: await db.persons.count(), events: await db.events.count() }),
+    async () => ({ cards: await db.cards.count(), events: await db.events.count() }),
     [],
-    { persons: 0, events: 0 },
+    { cards: 0, events: 0 },
   );
+  const groups = useLiveQuery(listGroups, [], []);
   const [persisted, setPersisted] = useState<boolean | undefined>();
   const [message, setMessage] = useState<string | null>(null);
   const [orgName, setOrgName] = useState(settings.orgName);
@@ -55,6 +60,20 @@ export function SettingsPage() {
       </section>
 
       <section className="card form">
+        <h2>Gruppen</h2>
+        <p className="button-row">
+          {groups.map((g) => (
+            <GroupBadge key={g.id} group={g} />
+          ))}
+        </p>
+        <div className="button-row">
+          <Link className="btn" to="/einstellungen/gruppen">
+            Gruppen verwalten
+          </Link>
+        </div>
+      </section>
+
+      <section className="card form">
         <h2>Scanner</h2>
         <label>
           Modus
@@ -87,18 +106,12 @@ export function SettingsPage() {
           </label>
           <label>
             Kamera
-            <select
-              value={settings.facingMode}
-              onChange={(e) => save({ facingMode: e.target.value as AppSettings['facingMode'] })}
-            >
-              <option value="user">Frontkamera / Webcam</option>
-              <option value="environment">Rückkamera</option>
-            </select>
+            <CameraSelect value={settings.camera} onChange={(camera) => save({ camera })} />
           </label>
         </div>
         <label className="checkbox">
           <input type="checkbox" checked={settings.mirrorPreview} onChange={(e) => save({ mirrorPreview: e.target.checked })} />
-          Vorschau der Frontkamera spiegeln
+          Kameravorschau spiegeln (Front- und Webcam)
         </label>
         <label className="checkbox">
           <input type="checkbox" checked={settings.sound} onChange={(e) => save({ sound: e.target.checked })} />
@@ -113,24 +126,29 @@ export function SettingsPage() {
       <section className="card form">
         <h2>Daten</h2>
         <p className="muted">
-          Alle Daten liegen ausschließlich auf diesem Gerät ({counts.persons} Personen, {counts.events} Protokolleinträge).
+          Alle Daten liegen ausschließlich auf diesem Gerät ({counts.cards} Karten, {counts.events} Protokolleinträge).
         </p>
         <div className="button-row">
           <button
             type="button"
             className="btn"
-            onClick={() => void run(null, async () => `${await seedTestPersons()} Testperson(en) angelegt.`)}
+            onClick={() =>
+              void run(null, async () => {
+                const n = await seedTestCards();
+                return n ? `${n} Testkarten angelegt.` : 'Testkarten sind bereits vorhanden.';
+              })
+            }
           >
-            Testpersonen anlegen
+            Testkarten anlegen
           </button>
           <button
             type="button"
             className="btn"
             onClick={() =>
-              void run('Alle fiktiven Testpersonen und deren Buchungen löschen?', async () => `${await removeTestPersons()} Testperson(en) entfernt.`)
+              void run('Alle Testkarten und deren Buchungen löschen?', async () => `${await removeTestCards()} Testkarte(n) entfernt.`)
             }
           >
-            Testpersonen entfernen
+            Testkarten entfernen
           </button>
           <button
             type="button"
@@ -150,7 +168,8 @@ export function SettingsPage() {
             onClick={() =>
               void run('ALLE Daten auf diesem Gerät unwiderruflich löschen?', async () => {
                 await clearAllData();
-                return 'Alle Daten gelöscht.';
+                await ensureDefaultGroups();
+                return 'Alle Daten gelöscht. Die Standardgruppen wurden neu angelegt.';
               })
             }
           >

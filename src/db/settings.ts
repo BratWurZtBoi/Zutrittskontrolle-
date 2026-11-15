@@ -1,4 +1,6 @@
 import type { ScanMode } from '../domain/types';
+
+export type CameraChoice = 'user' | 'environment' | `device:${string}`;
 import { db } from './db';
 
 export interface AppSettings {
@@ -9,7 +11,8 @@ export interface AppSettings {
   cooldownSec: number;
   /** Wie lange das Ergebnis groß angezeigt wird. */
   resultDisplaySec: number;
-  facingMode: 'user' | 'environment';
+  /** Kamera: 'user' (Front/Webcam), 'environment' (Rückkamera) oder 'device:<id>' (bestimmtes Gerät). */
+  camera: CameraChoice;
   mirrorPreview: boolean;
   sound: boolean;
   /** Zeigt im Scanner ein Feld zum Simulieren von Scans (nur für Tests). */
@@ -21,7 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   scanMode: 'auto',
   cooldownSec: 30,
   resultDisplaySec: 4,
-  facingMode: 'user',
+  camera: 'user',
   mirrorPreview: true,
   sound: true,
   testMode: true,

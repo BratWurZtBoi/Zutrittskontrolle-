@@ -1,18 +1,22 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { PersonPhoto } from '../components/PersonPhoto';
-import { listPresentPersons, listRecentEvents } from '../db/scans';
+import { GroupBadge } from '../components/GroupBadge';
+import { HolderPhoto } from '../components/HolderPhoto';
+import { listGroups } from '../db/groups';
+import { listPresentCards, listRecentEvents } from '../db/scans';
 import { formatDateTime, formatTime } from '../domain/dates';
-import { directionText, reasonText } from '../domain/texts';
+import { directionText, holderName, reasonText } from '../domain/texts';
 
 type Filter = 'all' | 'granted' | 'denied';
 
 export function AttendancePage() {
-  const present = useLiveQuery(listPresentPersons, [], []);
+  const present = useLiveQuery(listPresentCards, [], []);
   const events = useLiveQuery(() => listRecentEvents(200), [], []);
+  const groups = useLiveQuery(listGroups, [], []);
   const [filter, setFilter] = useState<Filter>('all');
   const shown = filter === 'all' ? events : events.filter((e) => e.outcome === filter);
+  const groupById = new Map(groups.map((g) => [g.id, g]));
 
   return (
     <div className="page">
@@ -25,15 +29,16 @@ export function AttendancePage() {
         <p className="muted">Derzeit ist niemand eingebucht.</p>
       ) : (
         <ul className="present-grid">
-          {present.map(({ person, since }) => (
-            <li key={person.id}>
-              <Link to={`/personen/${person.id}`} className="present-item">
-                <PersonPhoto person={person} className="thumb" />
+          {present.map(({ card, group, since }) => (
+            <li key={card.id}>
+              <Link to={`/karten/${card.id}`} className="present-item" style={{ borderLeftColor: group?.color }}>
+                <HolderPhoto holder={card.holder} fallback={group?.prefix} className="thumb" />
                 <div>
-                  <div className="person-row-name">
-                    {person.firstName} {person.lastName}
+                  <div className="card-row-title">{card.holder ? holderName(card.holder) : `Karte ${card.number}`}</div>
+                  <div className="muted">
+                    {card.number} · seit {formatTime(since)} Uhr
                   </div>
-                  <div className="muted">seit {formatTime(since)} Uhr</div>
+                  <GroupBadge group={group} />
                 </div>
               </Link>
             </li>
@@ -57,29 +62,35 @@ export function AttendancePage() {
             <thead>
               <tr>
                 <th>Zeit</th>
-                <th>Person</th>
+                <th>Karte / Person</th>
+                <th>Gruppe</th>
                 <th>Richtung</th>
                 <th>Ergebnis</th>
               </tr>
             </thead>
             <tbody>
-              {shown.map((e) => (
-                <tr key={e.seq} className={e.outcome === 'denied' ? 'row-denied' : ''}>
-                  <td>{formatDateTime(e.timestamp)}</td>
-                  <td>
-                    {e.personName ?? <span className="muted">unbekannt</span>}
-                    {e.personnelNo && <span className="muted"> · {e.personnelNo}</span>}
-                    {e.source === 'test' && <span className="badge badge-test">Test</span>}
-                  </td>
-                  <td>{directionText(e.direction)}</td>
-                  <td>{e.outcome === 'granted' ? '✓ erfasst' : `✕ ${reasonText(e.reason)}`}</td>
-                </tr>
-              ))}
+              {shown.map((e) => {
+                const group = e.groupId ? groupById.get(e.groupId) : undefined;
+                return (
+                  <tr key={e.seq} className={e.outcome === 'denied' ? 'row-denied' : ''}>
+                    <td>{formatDateTime(e.timestamp)}</td>
+                    <td>
+                      {e.cardNumber ? <strong>{e.cardNumber}</strong> : <span className="muted">unbekannt</span>}
+                      {e.holderName && <span> {e.holderName}</span>}
+                      {e.source === 'test' && <span className="badge badge-test">Test</span>}
+                      {e.source === 'system' && <span className="badge badge-test">automatisch</span>}
+                    </td>
+                    <td>{group ? <GroupBadge group={group} /> : (e.groupName ?? '–')}</td>
+                    <td>{directionText(e.direction)}</td>
+                    <td>{e.outcome === 'granted' ? '✓ erfasst' : `✕ ${reasonText(e.reason)}`}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
-      <p className="muted">Es werden die letzten 200 Einträge angezeigt.</p>
+      <p className="muted">Es werden die letzten 200 Einträge angezeigt. Eine ausführliche Übersicht mit Filtern folgt.</p>
     </div>
   );
 }

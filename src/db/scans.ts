@@ -1,6 +1,7 @@
-import { decideAccess, type Decision } from '../domain/access';
+import { decideAccess, toCardRules, type Decision } from '../domain/access';
 import { parseCardPayload } from '../domain/cardCode';
-import type { AccessEvent, Person, ScanMode } from '../domain/types';
+import { holderName } from '../domain/texts';
+import type { AccessEvent, Card, Group, ScanMode } from '../domain/types';
 import { db } from './db';
 
 export interface ScanOptions {
@@ -12,14 +13,15 @@ export interface ScanOptions {
 
 export interface ScanOutcome {
   decision: Decision;
-  person?: Person;
+  card?: Card;
+  group?: Group;
   /** Protokolleintrag (fehlt bei Doppelscans – diese werden nicht gebucht). */
   event?: AccessEvent;
   at: number;
 }
 
 /**
- * Verarbeitet einen gescannten QR-Text: prüft den Ausweis, entscheidet,
+ * Verarbeitet einen gescannten QR-Text: prüft die Karte, entscheidet,
  * protokolliert und aktualisiert die Anwesenheit – alles in einer Transaktion.
  */
 export async function processScan(text: string, opts: ScanOptions): Promise<ScanOutcome> {
@@ -27,35 +29,45 @@ export async function processScan(text: string, opts: ScanOptions): Promise<Scan
   const at = now.getTime();
   const token = parseCardPayload(text);
 
-  return db.transaction('rw', [db.persons, db.presence, db.events], async () => {
+  return db.transaction('rw', [db.cards, db.groups, db.presence, db.events], async () => {
     if (!token) {
       const event: AccessEvent = { timestamp: at, outcome: 'denied', reason: 'INVALID_CODE', source: opts.source };
       event.seq = await db.events.add(event);
       return { decision: { outcome: 'denied', reason: 'INVALID_CODE' }, event, at };
     }
 
-    const person = await db.persons.where('cardToken').equals(token).first();
-    const presence = person ? await db.presence.get(person.id) : undefined;
-    const decision = decideAccess({ person, presence, mode: opts.mode, now, cooldownMs: opts.cooldownMs });
+    const card = await db.cards.where('token').equals(token).first();
+    const group = card ? await db.groups.get(card.groupId) : undefined;
+    const presence = card ? await db.presence.get(card.id) : undefined;
+    const decision = decideAccess({
+      card: card ? toCardRules(card) : undefined,
+      group,
+      presence,
+      mode: opts.mode,
+      now,
+      cooldownMs: opts.cooldownMs,
+    });
 
-    if (decision.outcome === 'duplicate') return { decision, person, at };
+    if (decision.outcome === 'duplicate') return { decision, card, group, at };
 
     const event: AccessEvent = {
       timestamp: at,
       outcome: decision.outcome,
       direction: decision.direction,
       reason: decision.reason,
-      personId: person?.id,
-      personName: person ? `${person.firstName} ${person.lastName}` : undefined,
-      personnelNo: person?.personnelNo,
+      cardId: card?.id,
+      cardNumber: card?.number,
+      groupId: card?.groupId,
+      groupName: group?.name,
+      holderName: holderName(card?.holder),
       source: opts.source,
     };
     event.seq = await db.events.add(event);
 
-    if (person && decision.outcome === 'granted' && decision.direction) {
-      await db.presence.put({ personId: person.id, status: decision.direction, lastBookingAt: at });
+    if (card && decision.outcome === 'granted' && decision.direction) {
+      await db.presence.put({ cardId: card.id, status: decision.direction, lastBookingAt: at });
     }
-    return { decision, person, event, at };
+    return { decision, card, group, event, at };
   });
 }
 
@@ -63,20 +75,22 @@ export function listRecentEvents(limit = 100): Promise<AccessEvent[]> {
   return db.events.orderBy('timestamp').reverse().limit(limit).toArray();
 }
 
-export interface PresentPerson {
-  person: Person;
+export interface PresentCard {
+  card: Card;
+  group: Group | undefined;
   since: number;
 }
 
-export async function listPresentPersons(): Promise<PresentPerson[]> {
+export async function listPresentCards(): Promise<PresentCard[]> {
   const records = await db.presence.where('status').equals('in').toArray();
-  const persons = await db.persons.bulkGet(records.map((r) => r.personId));
-  const result: PresentPerson[] = [];
+  const cards = await db.cards.bulkGet(records.map((r) => r.cardId));
+  const groups = new Map((await db.groups.toArray()).map((g) => [g.id, g]));
+  const result: PresentCard[] = [];
   records.forEach((r, i) => {
-    const person = persons[i];
-    if (person) result.push({ person, since: r.lastBookingAt });
+    const card = cards[i];
+    if (card) result.push({ card, group: groups.get(card.groupId), since: r.lastBookingAt });
   });
-  return result.sort((a, b) => a.person.lastName.localeCompare(b.person.lastName, 'de'));
+  return result.sort((a, b) => b.since - a.since);
 }
 
 export async function clearEvents(): Promise<void> {

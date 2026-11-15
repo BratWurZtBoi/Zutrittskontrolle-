@@ -1,11 +1,12 @@
 /**
- * Fiktive Testpersonen. Alle Namen sind frei erfunden; statt echter Fotos
+ * Fiktive Testkarten. Alle Namen sind frei erfunden; statt echter Fotos
  * werden neutrale Platzhalter-Avatare (Initialen) erzeugt.
  */
 import { addDays, toLocalDateString } from '../domain/dates';
-import type { PersonInput } from '../domain/types';
+import type { CardHolder, CardUpdate } from '../domain/types';
 import { db } from './db';
-import { createPerson, setCardBlocked } from './persons';
+import { createCards, setCardBlocked, updateCard } from './cards';
+import { DEFAULT_GROUPS, ensureDefaultGroups } from './groups';
 
 const COLORS = ['#2563eb', '#16a34a', '#db2777', '#ea580c', '#7c3aed', '#0891b2', '#ca8a04', '#dc2626'];
 
@@ -23,9 +24,10 @@ export function placeholderAvatar(firstName: string, lastName: string, index: nu
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
-interface SeedPerson {
-  firstName: string;
-  lastName: string;
+interface SeedCard {
+  firstName?: string;
+  lastName?: string;
+  company?: string;
   accessGranted?: boolean;
   blocked?: boolean;
   validFromDays?: number;
@@ -33,52 +35,74 @@ interface SeedPerson {
   note?: string;
 }
 
-const SEED: SeedPerson[] = [
-  { firstName: 'Max', lastName: 'Mustermann' },
-  { firstName: 'Erika', lastName: 'Musterfrau' },
-  { firstName: 'Hans', lastName: 'Beispiel' },
-  { firstName: 'Lena', lastName: 'Probe' },
-  { firstName: 'Tom', lastName: 'Testmann' },
-  { firstName: 'Mia', lastName: 'Muster' },
-  { firstName: 'Anna', lastName: 'Exempel' },
-  { firstName: 'Felix', lastName: 'Gast', validUntilDays: 60, note: 'Besucher – befristet' },
-  { firstName: 'Paul', lastName: 'Platzhalter', blocked: true, note: 'Ausweis als verloren gemeldet' },
-  { firstName: 'Clara', lastName: 'Fiktiv', accessGranted: false, note: 'Keine Berechtigung' },
-  { firstName: 'Jonas', lastName: 'Demo', validFromDays: -90, validUntilDays: -1, note: 'Berechtigung abgelaufen' },
-  { firstName: 'Sophie', lastName: 'Zukunft', validFromDays: 30, note: 'Startet erst in 30 Tagen' },
+const STAFF: SeedCard[] = [
+  { firstName: 'Max', lastName: 'Mustermann', company: 'Verwaltung' },
+  { firstName: 'Erika', lastName: 'Musterfrau', company: 'Vertrieb' },
+  { firstName: 'Hans', lastName: 'Beispiel', company: 'Technik' },
+  { firstName: 'Lena', lastName: 'Probe', company: 'Technik' },
+  { firstName: 'Tom', lastName: 'Testmann', company: 'Lager' },
+  { firstName: 'Paul', lastName: 'Platzhalter', company: 'Lager', blocked: true, note: 'Karte als verloren gemeldet' },
+  { firstName: 'Clara', lastName: 'Fiktiv', company: 'Vertrieb', accessGranted: false, note: 'Keine Berechtigung' },
+  { firstName: 'Jonas', lastName: 'Demo', company: 'Aushilfe', validFromDays: -90, validUntilDays: -1, note: 'Vertrag beendet' },
+  { firstName: 'Sophie', lastName: 'Zukunft', company: 'Technik', validFromDays: 30, note: 'Beginnt in 30 Tagen' },
 ];
 
-/** Legt die Testpersonen an (überspringt bereits vorhandene IDs). Liefert die Anzahl neu angelegter. */
-export async function seedTestPersons(today = new Date()): Promise<number> {
+const VISITORS: SeedCard[] = [
+  { firstName: 'Felix', lastName: 'Gast', company: 'Beispiel GmbH', validUntilDays: 0, note: 'Termin bei Max Mustermann' },
+  { firstName: 'Mia', lastName: 'Lieferant', company: 'Muster Logistik', validUntilDays: 0 },
+  {},
+  {},
+  {},
+];
+
+/** Legt fiktive Testkarten an (nur wenn noch keine Testdaten vorhanden). Liefert die Anzahl. */
+export async function seedTestCards(today = new Date()): Promise<number> {
+  await ensureDefaultGroups();
+  if ((await db.cards.filter((c) => c.testData === true).count()) > 0) return 0;
+  const groups = await db.groups.toArray();
+  const staffGroup = groups.find((g) => g.prefix === DEFAULT_GROUPS[0]?.prefix) ?? groups[0];
+  const visitorGroup = groups.find((g) => g.prefix === DEFAULT_GROUPS[1]?.prefix) ?? groups[1] ?? groups[0];
+  if (!staffGroup || !visitorGroup) return 0;
+
   let created = 0;
-  for (const [i, s] of SEED.entries()) {
-    const personnelNo = `T-${String(i + 1).padStart(3, '0')}`;
-    if (await db.persons.where('personnelNo').equals(personnelNo).first()) continue;
-    const input: PersonInput = {
-      personnelNo,
-      firstName: s.firstName,
-      lastName: s.lastName,
-      photo: placeholderAvatar(s.firstName, s.lastName, i),
-      accessGranted: s.accessGranted ?? true,
-      validFrom: s.validFromDays !== undefined ? toLocalDateString(addDays(today, s.validFromDays)) : undefined,
-      validUntil: s.validUntilDays !== undefined ? toLocalDateString(addDays(today, s.validUntilDays)) : undefined,
-      note: s.note ? `Fiktive Testperson – ${s.note}` : 'Fiktive Testperson',
-      testData: true,
-    };
-    const person = await createPerson(input);
-    if (s.blocked) await setCardBlocked(person.id, true);
-    created++;
+  let avatar = 0;
+  for (const [groupId, list] of [
+    [staffGroup.id, STAFF],
+    [visitorGroup.id, VISITORS],
+  ] as const) {
+    const cards = await createCards({ groupId, count: list.length, testData: true });
+    for (const [i, s] of list.entries()) {
+      const card = cards[i];
+      if (!card) continue;
+      created++;
+      if (!s.firstName || !s.lastName) continue;
+      const holder: CardHolder = {
+        firstName: s.firstName,
+        lastName: s.lastName,
+        company: s.company,
+        photo: placeholderAvatar(s.firstName, s.lastName, avatar++),
+        note: s.note ? `Fiktive Testperson – ${s.note}` : 'Fiktive Testperson',
+      };
+      const update: CardUpdate = {
+        accessGranted: s.accessGranted ?? true,
+        validFrom: s.validFromDays !== undefined ? toLocalDateString(addDays(today, s.validFromDays)) : undefined,
+        validUntil: s.validUntilDays !== undefined ? toLocalDateString(addDays(today, s.validUntilDays)) : undefined,
+        holder,
+      };
+      await updateCard(card.id, update);
+      if (s.blocked) await setCardBlocked(card.id, true);
+    }
   }
   return created;
 }
 
-/** Entfernt alle als Testdaten markierten Personen inkl. deren Protokolleinträge. */
-export async function removeTestPersons(): Promise<number> {
-  return db.transaction('rw', [db.persons, db.presence, db.events], async () => {
-    const ids = (await db.persons.toArray()).filter((p) => p.testData).map((p) => p.id);
-    await db.persons.bulkDelete(ids);
+/** Entfernt alle Testkarten inkl. deren Protokolleinträge und Anwesenheit. */
+export async function removeTestCards(): Promise<number> {
+  return db.transaction('rw', [db.cards, db.presence, db.events], async () => {
+    const ids = (await db.cards.toArray()).filter((c) => c.testData).map((c) => c.id);
+    await db.cards.bulkDelete(ids);
     await db.presence.bulkDelete(ids);
-    await db.events.where('personId').anyOf(ids).delete();
+    await db.events.where('cardId').anyOf(ids).delete();
     return ids.length;
   });
 }
