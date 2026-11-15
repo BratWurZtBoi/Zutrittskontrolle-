@@ -5,6 +5,9 @@ import { db } from './db';
 
 export type ThemeChoice = 'auto' | 'light' | 'dark';
 
+/** Größe der Kameravorschau im Dashboard (die Erkennung läuft immer in voller Auflösung). */
+export type DashCameraSize = 'small' | 'large' | 'hidden';
+
 export interface AppSettings {
   /** Darstellung: automatisch nach Systemeinstellung, hell oder dunkel (je Gerät). */
   theme: ThemeChoice;
@@ -27,6 +30,8 @@ export interface AppSettings {
   retentionDays: number;
   /** Zeitpunkt des letzten Backups auf diesem Gerät. */
   lastBackupAt?: number;
+  /** Kameravorschau im Dashboard: klein, groß oder ausgeblendet (Scannen läuft weiter). */
+  dashCamera: DashCameraSize;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -41,6 +46,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   testMode: false,
   autoLogoutMin: 15,
   retentionDays: 90,
+  dashCamera: 'small',
 };
 
 const KEY = 'app';

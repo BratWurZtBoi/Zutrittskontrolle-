@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { textColorOn } from '../domain/color';
 import { useSettings } from '../hooks/useSettings';
 import { setKeepScreenOn } from '../lib/device';
-import { listenForScans, type PresentationScan } from '../lib/presentation';
+import { announcePresentation, listenForScans, type PresentationScan } from '../lib/presentation';
 import { AlertIcon, CheckIcon, CrossIcon, ExitIcon } from '../components/Icons';
 
 const ICONS = { ok: CheckIcon, out: ExitIcon, deny: CrossIcon, warn: AlertIcon };
@@ -30,10 +30,12 @@ export function PresentationPage() {
     document.title = 'Zutrittskontrolle – Präsentation';
     void setKeepScreenOn(true);
     const stop = listenForScans(setScan);
+    const stopAnnounce = announcePresentation();
     const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', onFs);
     return () => {
       stop();
+      stopAnnounce();
       document.removeEventListener('fullscreenchange', onFs);
       void setKeepScreenOn(false);
     };

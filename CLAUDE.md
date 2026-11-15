@@ -56,7 +56,12 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   Buchen, Ton) steckt in `hooks/useScanProcessor.ts` und wird von Kiosk-Scanner und Dashboard
   gemeinsam genutzt; Ergebnisanzeige in `components/ScanResult.tsx` (Vollbild bzw. Feld).
 - Übersicht/Dashboard: reine Filter-/Sortierfunktionen in `domain/overview.ts`, Daten über
-  `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Entschlüsselte Namen
+  `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Dashboard-Kennzahlen ohne
+  Entschlüsseln in `hooks/useDashboardData.ts`. Dashboard-Layout: Statusleiste, linke Spalte
+  sticky, rechts **eine** Liste mit Reitern – keine Scrollbereiche in Kacheln (E2E prüft das).
+  Kameravorschau „Aus“ deckt das Video nur ab (Video muss sichtbar bleiben, sonst pausiert es).
+  Präsentation: Herzschlag per BroadcastChannel (`announcePresentation`/`watchPresentation`),
+  Öffnen auf dem zweiten Bildschirm über `getScreenDetails()` (Fensterverwaltung). Entschlüsselte Namen
   werden pro Schlüssel zwischengespeichert (`security/decryptCache.ts`).
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.

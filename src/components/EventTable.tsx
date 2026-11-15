@@ -4,6 +4,7 @@ import { directionText, reasonText } from '../domain/texts';
 import type { AccessEvent, Group } from '../domain/types';
 import type { SortState } from '../hooks/useSort';
 import { GroupBadge } from './GroupBadge';
+import { GroupBarCell } from './GroupBar';
 import { SortableTh } from './SortableTh';
 
 interface Props {
@@ -22,13 +23,14 @@ export function EventTable({ events, groups, sort, limit, onMore, compact = fals
   const shown = sorted.slice(0, limit);
   const now = new Date();
 
-  if (events.length === 0) return <p className="muted">Keine passenden Aktionen.</p>;
+  if (events.length === 0) return <p className="muted empty-note">Keine passenden Aktionen.</p>;
 
   return (
     <div className="table-wrap">
-      <table className={compact ? 'data-table compact events' : 'data-table events'}>
+      <table className={compact ? 'data-table compact one-line events' : 'data-table events'}>
         <thead>
           <tr>
+            {compact && <th aria-label="Gruppe" className="group-bar-cell" />}
             <SortableTh label="Zeit" sortKey="time" sort={sort} />
             <SortableTh label="Name" sortKey="name" sort={sort} />
             <SortableTh label="Karte" sortKey="card" sort={sort} />
@@ -42,6 +44,7 @@ export function EventTable({ events, groups, sort, limit, onMore, compact = fals
             const group = e.groupId ? byId.get(e.groupId) : undefined;
             return (
               <tr key={e.seq} className={e.outcome === 'denied' ? 'row-denied' : ''}>
+                {compact && <GroupBarCell group={group} fallbackName={e.groupName} />}
                 <td>{formatShortDateTime(e.timestamp, now)}</td>
                 <td>
                   {e.holderName ?? (e.holderLocked ? <span className="muted">🔒 gesperrt</span> : <span className="muted">–</span>)}

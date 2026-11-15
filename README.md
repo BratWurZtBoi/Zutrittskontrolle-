@@ -35,9 +35,17 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 ### Dashboard und Übersicht
 
-- **Dashboard** (für Laptop oder Tablet quer): links die Kamera mit dem letzten Scan-Ergebnis,
-  rechts die anwesenden Personen und die Aktionen – mit Suche, Filtern und sortierbaren Spalten.
-  Alles aktualisiert sich live bei jedem Scan. Auf dem Handy untereinander.
+- **Dashboard** (für den Windows-Rechner am Empfang, auch Tablet quer):
+  - **Statusleiste** oben: Scan-Modus, Anwesende je Gruppe, Buchungen und Abweisungen von heute
+    (antippen öffnet die passende Liste), Präsentation öffnen bzw. „Präsentation läuft“,
+    Backup-Erinnerung.
+  - **Links** eine kleine Kameravorschau (**Klein / Groß / Aus** – bei „Aus“ wird weiter
+    gescannt), darunter das letzte Ergebnis mit Foto und die letzten Scans. Die Spalte bleibt
+    beim Scrollen stehen.
+  - **Rechts eine Liste mit Reitern:** *Anwesend*, *Aktionen heute*, *Abgewiesen* – eine Zeile pro
+    Eintrag, Gruppenfarbe als Balken, Suche und Gruppen-Schaltflächen für alle Reiter,
+    **Weitere Filter** (Zeitraum, Richtung, Ergebnis, auch Abwesende) bei Bedarf.
+  - Nur die Seite scrollt, keine Scrollbereiche innerhalb der Kacheln. Auf dem Handy untereinander.
 - **Übersicht → Anwesenheit:** alle Personen mit Status anwesend/abwesend und „seit wann“,
   Suche (Name, Firma, Karte), Filter nach Status und Gruppe, Sortierung per Spaltenkopf,
   **„Alle ausbuchen“** (z. B. am Tagesende).
@@ -47,8 +55,11 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 ### Präsentationsansicht für Gäste (2. Bildschirm)
 
-- Im *Dashboard* auf **„Präsentation für Gäste öffnen“** tippen – es öffnet sich ein eigenes Fenster.
-- Dieses Fenster auf den zweiten Bildschirm (Monitor/Fernseher) ziehen und **F11** (Vollbild) drücken.
+- Im *Dashboard* auf **„Präsentation öffnen“** klicken. Ist ein zweiter Bildschirm angeschlossen,
+  öffnet sich das Fenster direkt dort (Chrome/Edge fragen beim ersten Mal nach der Erlaubnis zur
+  **Fensterverwaltung** – erlauben). Sonst das Fenster auf den zweiten Bildschirm ziehen.
+- Im Präsentationsfenster einmal **„Vollbild“** anklicken (oder **F11**).
+- Das Dashboard zeigt **„Präsentation läuft“**, solange das Fenster geöffnet ist.
 - Bei jedem Scan sieht der Gast groß „Willkommen“, „Auf Wiedersehen“ oder „Kein Zutritt“ mit Name,
   Foto und Gruppe; dazwischen einen Begrüßungsbildschirm mit Uhrzeit und Organisationsname.
 - Funktioniert ohne Internet: Die Ergebnisse gehen direkt von Fenster zu Fenster im selben Browser.

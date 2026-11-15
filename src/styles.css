@@ -1300,114 +1300,368 @@ table.data-table {
 
 /* ---------- Dashboard ---------- */
 
+/* Mobil: alles untereinander. Ab 1000 px: Statusleiste oben, links Kamera/Ergebnis
+   (bleibt beim Scrollen stehen), rechts eine Liste. Nur die Seite scrollt. */
 .dashboard {
   display: grid;
   gap: 0.75rem;
   padding: 0.75rem;
-  grid-template-columns: 1fr;
-  grid-template-areas: 'note' 'camera' 'presence' 'events';
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'status' 'side' 'list';
+  align-items: start;
 }
-.backup-reminder {
-  grid-column: 1 / -1;
-  grid-area: note;
+
+.dash-status {
+  grid-area: status;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
   padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.dash-status-spacer {
+  flex: 1;
+}
+.dash-status-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: right;
+}
+.kpi {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.4rem;
+  min-height: 44px;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
   border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kpi-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.kpi-value {
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+.kpi-groups {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.kpi-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+.kpi-group .color-dot,
+.group-chips .color-dot {
+  width: 10px;
+  height: 10px;
+}
+.kpi-denied {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+.kpi-denied .kpi-value,
+.kpi-denied .kpi-label {
+  color: var(--danger-text);
+}
+.presentation-state {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  color: var(--ok-fg);
+}
+.btn-warn {
   background: var(--warn-bg);
+  border-color: var(--warn-bg);
   color: var(--warn-text);
+}
+
+/* Schaltergruppe auf hellem Grund (Statusleiste) */
+.segmented-light {
+  border-color: var(--border);
+}
+.segmented-light button {
+  background: var(--surface);
+  color: var(--muted);
+}
+.segmented-small button {
+  min-height: 36px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+/* Linke Spalte */
+.dash-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+/* nicht stauchen, wenn die Spalte höher als der Bildschirm ist – dann scrollt sie */
+.dash-side > * {
+  flex-shrink: 0;
+}
+.dash-cam {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.dash-cam-view {
+  position: relative;
+  display: flex;
+  height: 210px;
+}
+.dash-cam-large .dash-cam-view {
+  height: 340px;
+}
+.dash-cam-hidden .dash-cam-view {
+  height: 44px;
+}
+.dash-cam .camera-frame {
+  width: auto;
+  height: 72%;
+  border-width: 3px;
+  border-radius: 14px;
+}
+.dash-cam-hidden .camera-frame {
+  display: none;
+}
+.dash-cam .camera-message {
+  font-size: 0.95rem;
+}
+.dash-cam-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  background: #0f172a;
+  font-size: 0.9rem;
   font-weight: 600;
 }
-.dash-panel {
+.dash-cam-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+.dash-cam-tools select {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: 36px;
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+.dash-side .test-panel {
+  border-radius: var(--radius);
+}
+
+.dash-recent {
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.dash-recent h2 {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.dash-recent ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dash-recent li {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.dash-recent li:first-child {
+  border-top: 0;
+}
+.dash-recent time {
+  flex: none;
+  width: 2.8rem;
+  color: var(--muted);
+}
+.recent-in,
+.recent-out,
+.recent-deny {
+  flex: none;
+  width: 3.2rem;
+  font-weight: 700;
+}
+.recent-in {
+  color: var(--ok-fg);
+}
+.recent-out {
+  color: var(--link);
+}
+.recent-deny {
+  color: var(--danger-fg);
+}
+.recent-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rechte Spalte: eine Liste mit Reitern */
+.dash-list {
+  grid-area: list;
   min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
-.dash-camera {
-  grid-area: camera;
-  background: #0f172a;
-  border-color: #0f172a;
-  color: #e2e8f0;
-  padding: 0;
-  overflow: hidden;
-}
-.dash-presence {
-  grid-area: presence;
-}
-.dash-events {
-  grid-area: events;
-}
-.dash-camera-view {
-  position: relative;
-  display: flex;
-  height: 38vh;
-  min-height: 220px;
-}
-.dash-camera .scanner-bar {
-  padding: 0.5rem 0.75rem;
-}
-.dash-camera .test-panel {
+.dash-tabs {
+  flex-wrap: wrap;
   margin: 0;
+  padding: 0 0.5rem;
 }
-.dash-head {
+.dash-tabs .tab {
+  white-space: nowrap;
+}
+.dash-toolbar,
+.dash-more-filters {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
+  padding: 0.6rem 0.75rem 0;
 }
-.dash-head h2 {
+.dash-toolbar input[type='search'] {
+  flex: 1 1 220px;
+  max-width: 340px;
+}
+.dash-more-filters select {
+  width: auto;
+  flex: 0 1 200px;
+}
+.group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.group-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  font-weight: 600;
+}
+.filter-toggle {
+  margin-left: auto;
+}
+.filter-toggle.active {
+  border-color: var(--link);
+  color: var(--link);
+}
+.dash-list-body {
+  padding: 0.6rem 0 0;
+}
+.dash-list .table-wrap {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.empty-note {
+  padding: 1rem 0.75rem;
   margin: 0;
 }
-.dash-presence .table-wrap,
-.dash-events .table-wrap {
-  max-height: 60vh;
-  overflow: auto;
+
+/* Eine Zeile pro Eintrag, Gruppe als Farbbalken */
+.data-table.one-line td {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+.data-table .group-bar-cell {
+  width: 10px;
+  padding: 0 0 0 0.4rem;
+}
+.group-bar {
+  display: block;
+  width: 5px;
+  height: 1.6rem;
+  border-radius: 3px;
+  background: var(--muted-2);
+}
+.data-table .th-plain {
+  padding: 0.3rem 0.6rem;
+  font-weight: 700;
+}
+.cell-ellipsis {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 @media (min-width: 1000px) {
   .dashboard {
-    grid-template-columns: minmax(360px, 4fr) minmax(440px, 5fr);
-    grid-template-rows: auto minmax(0, 2fr) minmax(0, 3fr);
-    grid-template-areas: 'note note' 'camera presence' 'camera events';
-    height: calc(100dvh - var(--nav-h));
+    grid-template-columns: 360px minmax(0, 1fr);
+    grid-template-areas: 'status status' 'side list';
   }
-  .dash-camera {
+  .dashboard.dash-cam-large {
+    grid-template-columns: 500px minmax(0, 1fr);
+  }
+  .dash-side {
+    position: sticky;
+    top: calc(var(--nav-h) + 0.75rem);
+    max-height: calc(100dvh - var(--nav-h) - 1.5rem);
     overflow-y: auto;
   }
-  .dash-camera-view {
-    height: 40vh;
-    flex: none;
+  /* Tabellenkopf bleibt beim Scrollen der Seite unter der Navigation sichtbar */
+  .dash-list .table-wrap {
+    overflow: visible;
   }
-  .dash-presence,
-  .dash-events {
-    min-height: 0;
-  }
-  .dash-presence .table-wrap,
-  .dash-events .table-wrap {
-    max-height: none;
-    flex: 1;
-    min-height: 0;
-  }
-}
-@media (min-width: 1600px) {
-  .dashboard {
-    grid-template-columns: minmax(420px, 4fr) minmax(320px, 3fr) minmax(460px, 4fr);
-    grid-template-rows: auto 1fr;
-    grid-template-areas: 'note note note' 'camera presence events';
-  }
-  .dash-camera-view {
-    height: 50vh;
+  .dash-list .data-table th {
+    top: var(--nav-h);
   }
 }
 
 /* Ergebnis als Feld im Dashboard */
 .result-panel {
-  margin: 0 0.75rem 0.75rem;
   padding: 0.75rem;
-  border-radius: 10px;
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1429,14 +1683,16 @@ table.data-table {
   background: var(--warn);
 }
 .result-panel.stale {
-  background: #1e293b;
-  color: #cbd5e1;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 .result-idle {
-  background: #1e293b;
-  color: #94a3b8;
+  background: var(--surface-2);
+  border: 1px dashed var(--input-border);
+  color: var(--muted);
   font-weight: 600;
-  min-height: 80px;
+  min-height: 64px;
   justify-content: center;
 }
 .result-stale-label {
@@ -1446,26 +1702,36 @@ table.data-table {
   opacity: 0.8;
 }
 .result-panel .result-title {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
 }
 .result-panel .result-icon {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
 }
 .result-panel .result-photo {
-  height: 96px;
+  height: 104px;
   border-width: 3px;
   font-size: 1.8rem;
 }
+.result-panel.stale .result-photo {
+  border-color: var(--border);
+}
 .result-panel .result-name {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
 }
 .result-panel .result-id,
 .result-panel .result-detail {
   font-size: 0.95rem;
 }
+.result-panel .result-group {
+  font-size: 0.8rem;
+  border-width: 1px;
+}
+.result-panel.stale .result-group {
+  border-color: transparent;
+}
 /* Querformat: Foto links, Angaben rechts – spart Höhe */
-@media (min-width: 420px) {
+@media (min-width: 340px) {
   .result-panel:not(.result-idle) {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -1703,13 +1969,4 @@ table.data-table {
   cursor: pointer;
   opacity: 0.7;
 }
-.dash-camera-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 0.75rem 0.75rem;
-}
-.dash-camera-actions .btn {
-  background: #1e293b;
-  border-color: #334155;
-  color: #e2e8f0;
-}
+
