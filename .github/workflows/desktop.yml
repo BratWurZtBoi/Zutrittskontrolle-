@@ -1,12 +1,12 @@
-# Windows-Programm (Electron): baut bei jedem Push auf "main" die Installationsdatei
-# auf einem Windows-Rechner und legt sie unter „Releases“ ab (je Version eine Ausgabe,
-# z. B. v0.9.0 – ein erneuter Build derselben Version ersetzt die Datei).
-# Manuell startbar über „Run workflow“ (dann nur als Download beim Lauf).
+# Windows-Programm (Electron): baut bei jedem Push die Installationsdatei auf einem
+# Windows-Rechner (Prüfung, Download beim Lauf). Nur Pushes auf "main" werden zusätzlich
+# unter „Releases“ veröffentlicht (je Version eine Ausgabe, z. B. v0.9.0 – ein erneuter
+# Build derselben Version ersetzt die Datei).
 name: Windows-Programm
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
