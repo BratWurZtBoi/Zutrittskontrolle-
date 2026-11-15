@@ -74,9 +74,9 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 | Große Anzeige von Name, Foto, Gruppe und Entscheidung, Ton & Vibration | ✅ |
 | Automatische Ein-/Ausbuchung, Doppelscan-Schutz, Protokoll, Anwesenheit | ✅ |
 | Offline-Betrieb (PWA) auf Android und Windows | ✅ |
-| Admin-Passwort, verschlüsselte Personendaten, Sperrbildschirm | ⏳ Schritt 3 |
-| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ⏳ Schritt 4 |
-| Export/Import (verschlüsseltes Backup, CSV) | ⏳ Schritt 5 |
+| Admin-Passwort, verschlüsselte Personendaten, Sperrbildschirm | ⏳ als Nächstes |
+| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ⏳ danach |
+| Export/Import (verschlüsseltes Backup, CSV) | ⏳ geplant |
 
 ## Technik
 
