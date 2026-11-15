@@ -5,7 +5,7 @@ import { SettingsShell } from './settings/SettingsShell';
 import { ValidationError, db } from '../db/db';
 import { createGroup, deleteGroup, listGroups, updateGroup } from '../db/groups';
 import { listLayouts } from '../db/layouts';
-import { STANDARD_LAYOUT } from '../domain/presentationLayout';
+import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { GROUP_COLOR_PRESETS } from '../domain/color';
 import type { Group, GroupInput } from '../domain/types';
 
@@ -27,7 +27,7 @@ export function GroupsPage() {
     return map;
   }, []);
   const [editing, setEditing] = useState<string | 'new' | null>(null);
-  const allLayouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const allLayouts = useLiveQuery(listLayouts, [], BUILT_IN_LAYOUTS);
   const layoutName = (id?: string) => allLayouts.find((l) => l.id === id)?.name;
 
   if (!groups) return null;
@@ -87,7 +87,7 @@ interface FormProps {
 
 function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
   const [form, setForm] = useState<GroupInput>({ ...initial });
-  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const layouts = useLiveQuery(listLayouts, [], BUILT_IN_LAYOUTS);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<GroupInput>) => setForm({ ...form, ...patch });
 
@@ -178,11 +178,11 @@ function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
         melden“). Das Ausbuchen bleibt immer automatisch.
       </p>
       <label>
-        Präsentationslayout (Gästebildschirm)
+        Scan-Anzeige (Gästebildschirm)
         <select value={form.presentationLayoutId ?? ''} onChange={(e) => set({ presentationLayoutId: e.target.value || undefined })}>
           <option value="">Standardlayout</option>
           {layouts
-            .filter((l) => !l.builtIn)
+            .filter((l) => !l.builtIn && l.kind === 'result')
             .map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}

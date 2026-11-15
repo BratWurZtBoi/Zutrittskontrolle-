@@ -75,11 +75,15 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
   Präsentation: Herzschlag per BroadcastChannel (`announcePresentation`/`watchPresentation`),
   Öffnen auf dem zweiten Bildschirm über `getScreenDetails()` (Fensterverwaltung). Entschlüsselte Namen
   werden pro Schlüssel zwischengespeichert (`security/decryptCache.ts`).
-- Präsentationslayouts: reine Logik in `domain/presentationLayout.ts` (`pickLayout` Karte > Gruppe >
-  Standard, `fillPlaceholders`, `buildLayoutResult`), Tabelle `layouts` (DB-Version 2), Standardlayout
-  `STANDARD_LAYOUT` nur im Code (nicht gespeichert, nicht änderbar). Platzhalter werden im
-  Scanner-Fenster gefüllt (`toPresentationScan`); das Präsentationsfenster liest nur Layouts/Einstellungen.
-  `PresentationView` nutzt Container-Einheiten (cqw/cqh) – gleiche Darstellung im Vollbild und in der Vorschau.
+- Gästebildschirm: Layouts in `domain/presentationLayout.ts` mit `kind` **`idle`** (Ruhebildschirm,
+  aktiv: `settings.idleLayoutId`) bzw. **`result`** (Scan-Anzeige, `pickLayout` Karte > Gruppe >
+  `defaultLayoutId`). Inhalt = positionierte `elements` (x/y/w in %, `size` in % der Höhe,
+  `showOn` je Ergebnis); `{titel}`/`{meldung}` kommen aus `texts` je Ergebnis. Mitgelieferte
+  `STANDARD_IDLE`/`STANDARD_LAYOUT` nur im Code. Platzhalter werden im Scanner-Fenster gefüllt
+  (`buildLayoutResult` → nur Texte/Foto/Gruppe sichtbarer Elemente); das Präsentationsfenster liest
+  nur Layouts/Einstellungen. `PresentationView` (cqh-Einheiten) dient auch als Editor-Vorschau mit
+  Ziehen/Pfeiltasten. Layouts der Version 0.7 (ohne `elements`) wandelt `normalizeLayout` bzw.
+  einmalig `upgradeLegacyLayouts` (App-Start) um.
 - Einstellungen: Übersicht `#/einstellungen` (Kacheln) + je Bereich eine Seite unter `pages/settings/`
   mit `SettingsShell` (Seitenleiste ab 1000 px, sonst „← Einstellungen“). Neue Bereiche in
   `SETTINGS_SECTIONS` eintragen; keine langen Sammelseiten mehr.
@@ -125,6 +129,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    prüft „noch frei“ in der Transaktion; Kamera-Scans gehen bei offenem Fenster an den Dialog),
    Notfallliste `#/notfallliste`, automatische Sicherung in einen Ordner (`db/autoBackup.ts`,
    File System Access API, Passwort mit Datenschlüssel verschlüsselt, Ordner-Zugriff separat gespeichert).
+8. ✅ Einstellungen als Übersicht mit Unterseiten; Ruhebildschirm getrennt von der Scan-Anzeige,
+   Elemente frei hinzufügen/verschieben/entfernen (Version 0.8).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

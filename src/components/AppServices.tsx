@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { runAutoBackup } from '../db/autoBackup';
+import { upgradeLegacyLayouts } from '../db/layouts';
 import { purgeOldEvents } from '../db/scans';
 import { useSettings } from '../hooks/useSettings';
 import { applyTheme } from '../lib/theme';
@@ -23,6 +24,7 @@ export function AppServices() {
   }, [location.pathname, location.key]);
 
   useEffect(() => {
+    void upgradeLegacyLayouts().catch(() => undefined); // Layouts der Version 0.7 umwandeln
     void initSecurity();
     const onActivity = () => touchActivity();
     window.addEventListener('pointerdown', onActivity, { passive: true });

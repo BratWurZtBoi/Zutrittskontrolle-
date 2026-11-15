@@ -6,7 +6,7 @@ import { ScanDeduper } from '../domain/scanDeduper';
 import type { AccessEventRecord, Direction } from '../domain/types';
 import { setKeepScreenOn } from '../lib/device';
 import { playFeedback, type FeedbackKind } from '../lib/feedback';
-import { STANDARD_LAYOUT } from '../domain/presentationLayout';
+import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { broadcastScan, type LayoutContext } from '../lib/presentation';
 import { staffRole } from '../security/session';
 import { useSettings } from './useSettings';
@@ -45,7 +45,7 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   // Layouts für den Gästebildschirm (enthalten keine Personendaten)
-  const layouts = useLiveQuery(listLayouts, [], [STANDARD_LAYOUT]);
+  const layouts = useLiveQuery(listLayouts, [], BUILT_IN_LAYOUTS);
   const layoutsRef = useRef(layouts);
   layoutsRef.current = layouts;
   const layoutContext = (): LayoutContext => ({
