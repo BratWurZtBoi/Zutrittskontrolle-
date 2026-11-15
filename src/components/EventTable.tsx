@@ -14,10 +14,13 @@ interface Props {
   limit: number;
   onMore?: () => void;
   compact?: boolean;
+  /** Nummern der Buchungen, die rückgängig gemacht werden können (nur mit onUndo). */
+  undoable?: Set<number>;
+  onUndo?: (seq: number) => void;
 }
 
 /** Tabelle der Aktionen (Zutrittsprotokoll), sortierbar. */
-export function EventTable({ events, groups, sort, limit, onMore, compact = false }: Props) {
+export function EventTable({ events, groups, sort, limit, onMore, compact = false, undoable, onUndo }: Props) {
   const byId = new Map(groups.map((g) => [g.id, g]));
   const sorted = sortEvents(events, sort.key, sort.dir);
   const shown = sorted.slice(0, limit);
@@ -37,6 +40,7 @@ export function EventTable({ events, groups, sort, limit, onMore, compact = fals
             {!compact && <SortableTh label="Gruppe" sortKey="group" sort={sort} />}
             <SortableTh label="Richtung" sortKey="direction" sort={sort} />
             <SortableTh label="Ergebnis" sortKey="outcome" sort={sort} />
+            {onUndo && <th className="th-plain" aria-label="Korrektur" />}
           </tr>
         </thead>
         <tbody>
@@ -50,6 +54,7 @@ export function EventTable({ events, groups, sort, limit, onMore, compact = fals
                   {e.holderName ?? (e.holderLocked ? <span className="muted">🔒 gesperrt</span> : <span className="muted">–</span>)}
                   {e.source === 'test' && <span className="badge badge-test">Test</span>}
                   {e.source === 'system' && <span className="badge badge-test">automatisch</span>}
+                  {e.source === 'manual' && e.reason !== 'CORRECTION' && <span className="badge badge-test">manuell</span>}
                   {e.confirmedBy && e.outcome === 'granted' && (
                     <span className="badge badge-confirmed" title={e.confirmedBy === 'admin' ? 'vom Admin bestätigt' : 'vom Bediener bestätigt'}>
                       bestätigt
@@ -59,7 +64,24 @@ export function EventTable({ events, groups, sort, limit, onMore, compact = fals
                 <td>{e.cardNumber ?? <span className="muted">unbekannt</span>}</td>
                 {!compact && <td>{group ? <GroupBadge group={group} /> : (e.groupName ?? '–')}</td>}
                 <td>{directionText(e.direction)}</td>
-                <td className="result-cell">{e.outcome === 'granted' ? '✓ erfasst' : `✕ ${reasonText(e.reason)}`}</td>
+                <td className="result-cell">
+                  {e.reason === 'CORRECTION'
+                    ? '↺ Korrektur'
+                    : e.outcome === 'granted'
+                      ? e.correctedBy
+                        ? <span className="muted strike">✓ erfasst – rückgängig gemacht</span>
+                        : '✓ erfasst'
+                      : `✕ ${reasonText(e.reason)}`}
+                </td>
+                {onUndo && (
+                  <td className="cell-action">
+                    {e.seq !== undefined && undoable?.has(e.seq) && (
+                      <button type="button" className="btn btn-small" title="Fehlbuchung rückgängig machen" onClick={() => onUndo(e.seq!)}>
+                        ↺ Rückgängig
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}

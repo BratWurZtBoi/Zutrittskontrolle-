@@ -28,7 +28,7 @@ const time = (ts: number) => {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-const SOURCE: Record<AccessEvent['source'], string> = { camera: 'Kamera', test: 'Test', system: 'automatisch' };
+const SOURCE: Record<AccessEvent['source'], string> = { camera: 'Kamera', test: 'Test', system: 'automatisch', manual: 'manuell' };
 
 export function eventsToCsv(events: AccessEvent[]): string {
   return toCsv([
@@ -40,7 +40,7 @@ export function eventsToCsv(events: AccessEvent[]): string {
       e.holderName ?? (e.holderLocked ? '(gesperrt)' : ''),
       e.groupName ?? '',
       e.direction ? directionText(e.direction) : '',
-      e.outcome === 'granted' ? 'erfasst' : 'abgewiesen',
+      e.reason === 'CORRECTION' ? 'Korrektur' : e.outcome === 'granted' ? (e.correctedBy ? 'rückgängig gemacht' : 'erfasst') : 'abgewiesen',
       e.outcome === 'granted' ? '' : reasonText(e.reason),
       SOURCE[e.source],
       e.confirmedBy === 'admin' ? 'Admin' : e.confirmedBy === 'operator' ? 'Bediener' : '',

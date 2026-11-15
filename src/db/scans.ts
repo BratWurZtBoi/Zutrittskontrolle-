@@ -1,12 +1,12 @@
 import { decideAccess, type ConfirmationContext, type Decision } from '../domain/access';
 import { parseCardPayload } from '../domain/cardCode';
 import { holderName } from '../domain/texts';
-import type { AccessEvent, AccessEventRecord, Card, CardRecord, Group, ScanMode, StaffRole } from '../domain/types';
+import type { AccessEvent, AccessEventRecord, Card, CardRecord, Direction, Group, ScanMode, StaffRole } from '../domain/types';
 import { decryptText } from '../security/crypto';
 import { cachedDecrypt } from '../security/decryptCache';
 import { getDataKey } from '../security/session';
 import { toCard } from './cards';
-import { db } from './db';
+import { ValidationError, db } from './db';
 
 export interface ScanOptions {
   mode: ScanMode;
@@ -139,6 +139,90 @@ export async function resolvePendingScan(
     }
     const event = await book(decision, record, group, at, opts.source, action === 'timeout' ? undefined : opts.by);
     return { decision, record, group, event };
+  });
+  const card = result.record ? await toCard(result.record) : undefined;
+  return { decision: result.decision, card, group: result.group, event: result.event, at };
+}
+
+/**
+ * Manuell ein- oder ausbuchen (z. B. Karte vergessen). Es gelten dieselben Regeln
+ * wie beim Scan (gesperrt, abgelaufen …) – nur ohne Doppelscan-Schutz und ohne
+ * zusätzliche Bestätigung, denn der Bediener bucht ja selbst. Abgelehnte Versuche
+ * werden nicht protokolliert (Ergebnis ohne `event`).
+ */
+export async function bookManually(
+  cardId: string,
+  direction: Direction,
+  opts: { by: StaffRole; now?: Date },
+): Promise<ScanOutcome> {
+  const now = opts.now ?? new Date();
+  const at = now.getTime();
+  const result = await db.transaction('rw', [db.cards, db.groups, db.presence, db.events], async () => {
+    const record = await db.cards.get(cardId);
+    const group = record ? await db.groups.get(record.groupId) : undefined;
+    const presence = record ? await db.presence.get(cardId) : undefined;
+    const decision = decideAccess({
+      card: record ? { ...record, hasHolder: hasHolderRecord(record) } : undefined,
+      group,
+      presence,
+      mode: direction,
+      now,
+      cooldownMs: 0,
+      confirmation: 'confirmed',
+    });
+    if (decision.outcome !== 'granted') return { decision, record, group, event: undefined };
+    const event = await book(decision, record, group, at, 'manual', opts.by);
+    return { decision, record, group, event };
+  });
+  const card = result.record ? await toCard(result.record) : undefined;
+  return { decision: result.decision, card, group: result.group, event: result.event, at };
+}
+
+/**
+ * Fehlbuchung rückgängig machen: schreibt eine Gegenbuchung (Grund „Korrektur“)
+ * und setzt die Anwesenheit zurück. Nur die letzte Buchung einer Karte, nichts
+ * wird gelöscht – beide Einträge bleiben im Protokoll.
+ */
+export async function undoBooking(seq: number, opts: { by: StaffRole; now?: Date }): Promise<ScanOutcome> {
+  const at = (opts.now ?? new Date()).getTime();
+  const result = await db.transaction('rw', [db.cards, db.groups, db.presence, db.events], async () => {
+    const original = await db.events.get(seq);
+    if (!original || !original.cardId) throw new ValidationError('Buchung nicht gefunden.');
+    if (original.outcome !== 'granted' || original.source === 'system' || original.reason === 'CORRECTION') {
+      throw new ValidationError('Diese Buchung kann nicht rückgängig gemacht werden.');
+    }
+    if (original.correctedBy) throw new ValidationError('Diese Buchung wurde bereits rückgängig gemacht.');
+    const later = await db.events
+      .where('cardId')
+      .equals(original.cardId)
+      .filter((e) => e.outcome === 'granted' && (e.seq ?? 0) > seq)
+      .count();
+    if (later > 0) throw new ValidationError('Nur die letzte Buchung einer Karte kann rückgängig gemacht werden.');
+
+    const record = await db.cards.get(original.cardId);
+    const group = record ? await db.groups.get(record.groupId) : undefined;
+    const direction: Direction = original.direction === 'in' ? 'out' : 'in';
+    const correction: AccessEventRecord = {
+      timestamp: at,
+      outcome: 'granted',
+      direction,
+      reason: 'CORRECTION',
+      cardId: original.cardId,
+      cardNumber: original.cardNumber,
+      groupId: original.groupId,
+      groupName: original.groupName,
+      holderNameEnc: original.holderNameEnc,
+      holderName: original.holderName,
+      source: 'manual',
+      confirmedBy: opts.by,
+      correctionOf: seq,
+    };
+    correction.seq = await db.events.add(correction);
+    await db.events.update(seq, { correctedBy: correction.seq });
+    // als automatische Buchung markieren: der nächste echte Scan wird nicht als Doppelscan gewertet
+    await db.presence.put({ cardId: original.cardId, status: direction, lastBookingAt: at, bySystem: true });
+    const decision: Decision = { outcome: 'granted', reason: 'CORRECTION', direction };
+    return { decision, record, group, event: correction };
   });
   const card = result.record ? await toCard(result.record) : undefined;
   return { decision: result.decision, card, group: result.group, event: result.event, at };

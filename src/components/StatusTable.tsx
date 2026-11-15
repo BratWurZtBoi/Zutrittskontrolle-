@@ -16,6 +16,10 @@ interface Props {
   showStatus?: boolean;
   /** Zeile antippen öffnet die Karte (Standard; für Bediener abgeschaltet). */
   linkRows?: boolean;
+  /** Nur kompakt: Schaltfläche „Einbuchen“/„Ausbuchen“ je Zeile (Karte vergessen). */
+  onBook?: (row: StatusRow) => void;
+  /** Nur kompakt: „Zurückgeben“ für Besucherkarten (Gruppen ohne Namensdruck). */
+  onReturn?: (row: StatusRow) => void;
   limit?: number;
 }
 
@@ -27,7 +31,7 @@ function nameText(row: StatusRow) {
 }
 
 /** Tabelle: wer ist anwesend, wer nicht – seit wann. Zeile antippen öffnet die Karte. */
-export function StatusTable({ rows, sort, compact = false, showStatus = true, linkRows = true, limit }: Props) {
+export function StatusTable({ rows, sort, compact = false, showStatus = true, linkRows = true, onBook, onReturn, limit }: Props) {
   const navigate = useNavigate();
   const rowProps = (cardId: string) =>
     linkRows ? { className: 'clickable', onClick: () => navigate(`/karten/${cardId}`) } : {};
@@ -49,6 +53,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
               <SortableTh label="Karte" sortKey="card" sort={sort} />
               {showStatus && <SortableTh label="Status" sortKey="status" sort={sort} />}
               <SortableTh label="Seit / zuletzt" sortKey="time" sort={sort} />
+              {onBook && <th className="th-plain" aria-label="Buchen" />}
             </tr>
           </thead>
           <tbody>
@@ -65,6 +70,34 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
                   </td>
                 )}
                 <td>{row.lastBookingAt ? formatShortDateTime(row.lastBookingAt, now) : <span className="muted">–</span>}</td>
+                {onBook && (
+                  <td className="cell-action">
+                    <button
+                      type="button"
+                      className="btn btn-small"
+                      title={row.present ? 'Manuell ausbuchen' : 'Manuell einbuchen (z. B. Karte vergessen)'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBook(row);
+                      }}
+                    >
+                      {row.present ? 'Ausbuchen' : 'Einbuchen'}
+                    </button>
+                    {onReturn && row.card.hasHolder && row.group && !row.group.printHolder && (
+                      <button
+                        type="button"
+                        className="btn btn-small"
+                        title="Ausbuchen und Personendaten entfernen – die Karte ist danach frei"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReturn(row);
+                        }}
+                      >
+                        Zurückgeben
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

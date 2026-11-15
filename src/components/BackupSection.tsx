@@ -4,6 +4,7 @@ import { saveSettings } from '../db/settings';
 import { formatDateTime } from '../domain/dates';
 import { passwordProblem } from '../security/crypto';
 import { canShareFile, downloadBlob, formatBytes, shareFile } from '../lib/download';
+import { AutoBackupSection } from './AutoBackupSection';
 import { PasswordInput } from './PasswordInput';
 
 function SummaryText({ s }: { s: BackupSummary }) {
@@ -26,6 +27,7 @@ export function BackupSection({ lastBackupAt }: { lastBackupAt?: number }) {
       <p className={lastBackupAt ? 'muted' : 'hint'}>
         Letztes Backup auf diesem Gerät: {lastBackupAt ? formatDateTime(lastBackupAt) : 'noch nie'}
       </p>
+      <AutoBackupSection />
       <ExportForm />
       <ImportForm />
     </section>

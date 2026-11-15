@@ -116,10 +116,17 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    Automatische Buchungen (`bySystem`) zählen nicht für den Doppelscan-Schutz.
 
 7. ✅ Dashboard neu (Statusleiste, kleine Kamera, Liste mit Reitern), Eintritt bestätigen je Gruppe,
-   Bediener-PIN, verlorene Karten (Ersatzkarte), Präsentationslayouts (Aufbau, Texte, Hintergrund).
+   Bediener-PIN, verlorene Karten (Ersatzkarte), Präsentationslayouts (Aufbau, Texte, Hintergrund),
+   manuell buchen (`bookManually`, Quelle `manual`), Korrektur (`undoBooking`: Gegenbuchung
+   `CORRECTION`, nur letzte Buchung je Karte), Besucher-Schnellerfassung (`assignHolderToFreeCard`
+   prüft „noch frei“ in der Transaktion; Kamera-Scans gehen bei offenem Fenster an den Dialog),
+   Notfallliste `#/notfallliste`, automatische Sicherung in einen Ordner (`db/autoBackup.ts`,
+   File System Access API, Passwort mit Datenschlüssel verschlüsselt, Ordner-Zugriff separat gespeichert).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
 
-Mögliche nächste Schritte (mit dem Nutzer abstimmen): Test auf echten Geräten und Feinschliff,
-Backup zusammenführen statt ersetzen, Kiosk-Hinweise für Android („App anheften“), Logo auf der Karte.
+Mögliche nächste Schritte (mit dem Nutzer abstimmen): Quick-Share-Fix (Teilen der Backup-Datei als
+`.txt`, Chrome erlaubt `.zkb` nicht – vom Nutzer zurückgestellt), Fremdkarten (QR/Strichcode einlernen,
+zurückgestellt), Musik/Animationen in Layouts (zurückgestellt), USB-Handscanner, Test auf echten
+Geräten und Feinschliff, Backup zusammenführen statt ersetzen, Logo auf der Karte.

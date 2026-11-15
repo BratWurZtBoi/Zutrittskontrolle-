@@ -39,7 +39,15 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
     if (decision.reason === 'CARD_LOST') return { tone: 'deny', title: 'Verlorene Karte!', detail: reasonText(decision.reason, card) };
     return { tone: 'deny', title: 'Kein Zutritt', detail: reasonText(decision.reason, card) };
   }
-  const detail = `${directionText(decision.direction)} gebucht · ${formatTime(result.at)} Uhr`;
+  if (decision.reason === 'CORRECTION') {
+    return {
+      tone: 'warn',
+      title: 'Korrigiert',
+      detail: `Fehlbuchung rückgängig gemacht – jetzt ${decision.direction === 'in' ? 'anwesend' : 'abwesend'}.`,
+    };
+  }
+  const manual = result.event?.source === 'manual' ? ' (manuell)' : '';
+  const detail = `${directionText(decision.direction)} gebucht${manual} · ${formatTime(result.at)} Uhr`;
   return decision.direction === 'out'
     ? { tone: 'out', title: 'Auf Wiedersehen', detail }
     : { tone: 'ok', title: 'Willkommen', detail };

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CameraSelect } from '../components/CameraSelect';
 import { DashStatusBar } from '../components/DashStatusBar';
 import { EventTable } from '../components/EventTable';
@@ -7,6 +7,8 @@ import { PendingPanel, usePendingShortcuts } from '../components/PendingPanel';
 import { ResultPanel } from '../components/ScanResult';
 import { StatusTable } from '../components/StatusTable';
 import { TestScanPanel } from '../components/TestScanPanel';
+import { VisitorDialog } from '../components/VisitorDialog';
+import { returnCard } from '../db/cards';
 import { listGroups } from '../db/groups';
 import { saveSettings, type AppSettings, type DashCameraSize } from '../db/settings';
 import { formatTime } from '../domain/dates';
@@ -19,9 +21,10 @@ import {
   type RangePreset,
   type StatusFilter,
   type StatusSortKey,
+  undoableSeqs,
 } from '../domain/overview';
 import { reasonText } from '../domain/texts';
-import type { Group } from '../domain/types';
+import type { Direction, Group } from '../domain/types';
 import { useDashboardStats, useRecentScans } from '../hooks/useDashboardData';
 import { useRangeEvents, useStatusRows } from '../hooks/useOverviewData';
 import { useKeepScreenOn, useScanProcessor } from '../hooks/useScanProcessor';
@@ -36,25 +39,69 @@ type DashTab = 'presence' | 'events' | 'denied';
  * Scan-Ergebnis links, rechts eine Liste mit Reitern. Nur die Seite scrollt.
  */
 export function DashboardPage() {
-  const { settings, result, handleText, onCamera, pending, resolvePending } = useScanProcessor({ confirm: true });
-  usePendingShortcuts(pending, resolvePending);
+  const { settings, result, handleText, onCamera, pending, resolvePending, bookCard, undo } = useScanProcessor({ confirm: true });
+  const [visitorOpen, setVisitorOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  usePendingShortcuts(pending, resolvePending, !visitorOpen);
+  // Während der Besucher-Erfassung gehen Kamera-Scans an das Fenster (Karte auswählen)
+  const scanTarget = useRef<((text: string) => void) | null>(null);
+  const registerScanTarget = useCallback((h: ((text: string) => void) | null) => {
+    scanTarget.current = h;
+  }, []);
+  const onCameraRouted = useCallback((text: string) => (scanTarget.current ? scanTarget.current(text) : onCamera(text)), [onCamera]);
   useKeepScreenOn();
   const { admin } = useSecurity();
+  const [undoError, setUndoError] = useState<string | null>(null);
+  const onUndo = async (seq: number) => setUndoError(await undo(seq));
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), 8000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+  useEffect(() => setUndoError(null), [result]);
   const groups = useLiveQuery(listGroups, [], []);
   const stats = useDashboardStats();
   const [tab, setTab] = useState<DashTab>('presence');
 
   return (
     <div className={`dashboard dash-cam-${settings.dashCamera}`}>
-      <DashStatusBar settings={settings} stats={stats} groups={groups} onShow={setTab} />
+      <DashStatusBar settings={settings} stats={stats} groups={groups} onShow={setTab} onRegisterVisitor={() => setVisitorOpen(true)} />
+      {visitorOpen && (
+        <VisitorDialog
+          groups={groups}
+          registerScanTarget={registerScanTarget}
+          onClose={() => setVisitorOpen(false)}
+          onDone={(cardId, checkIn, label) => {
+            setVisitorOpen(false);
+            setNotice(`Besucher angemeldet: ${label}`);
+            if (checkIn) void bookCard(cardId, 'in');
+          }}
+        />
+      )}
       <aside className="dash-side" aria-label="Scanner">
-        <DashCamera settings={settings} onCode={onCamera} />
+        <DashCamera settings={settings} onCode={onCameraRouted} />
         <PendingPanel pending={pending} onResolve={(id, action) => void resolvePending(id, action)} />
-        <ResultPanel result={result} highlightSec={settings.resultDisplaySec} />
+        {notice && (
+          <p className="dash-notice" role="status">
+            {notice}
+          </p>
+        )}
+        <ResultPanel result={result} highlightSec={settings.resultDisplaySec} onUndo={(seq) => void onUndo(seq)} undoError={undoError} />
         <RecentScans />
         {settings.testMode && admin && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
       </aside>
-      <DashList tab={tab} onTab={setTab} groups={groups} linkRows={admin} />
+      <DashList
+        tab={tab}
+        onTab={setTab}
+        groups={groups}
+        linkRows={admin}
+        onBook={(cardId, direction) => void bookCard(cardId, direction)}
+        onUndo={(seq) => void onUndo(seq)}
+        onReturn={(cardId, label) => {
+          if (!window.confirm(`Karte von ${label} zurückgeben? Die Person wird ausgebucht und die Personendaten werden entfernt.`)) return;
+          void returnCard(cardId).then(() => setNotice(`Karte zurückgegeben: ${label}`));
+        }}
+      />
     </div>
   );
 }
@@ -125,7 +172,8 @@ function RecentScans() {
       <ul>
         {events.map((e) => {
           const denied = e.outcome === 'denied';
-          const label = denied ? '✕' : e.direction === 'out' ? '← Aus' : '→ Ein';
+          const correction = e.reason === 'CORRECTION';
+          const label = denied ? '✕' : correction ? '↺' : e.direction === 'out' ? '← Aus' : '→ Ein';
           const who = e.holderName ?? (e.cardNumber ? `Karte ${e.cardNumber}` : 'Unbekannter Code');
           return (
             <li key={e.seq}>
@@ -134,6 +182,7 @@ function RecentScans() {
               <span className="recent-text">
                 {who}
                 {denied && <span className="muted"> – {reasonText(e.reason)}</span>}
+                {correction && <span className="muted"> – Korrektur</span>}
               </span>
             </li>
           );
@@ -161,9 +210,15 @@ interface DashListProps {
   groups: Group[];
   /** Zeilen öffnen die Karte (nur für den Admin). */
   linkRows: boolean;
+  /** Manuell buchen (Karte vergessen). */
+  onBook: (cardId: string, direction: Direction) => void;
+  /** Fehlbuchung rückgängig machen. */
+  onUndo: (seq: number) => void;
+  /** Besucherkarte zurückgeben (ausbuchen + Personendaten entfernen). */
+  onReturn: (cardId: string, label: string) => void;
 }
 
-function DashList({ tab, onTab, groups, linkRows }: DashListProps) {
+function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: DashListProps) {
   // Suche und Gruppe gelten für alle Reiter
   const [query, setQuery] = useState('');
   const [groupId, setGroupId] = useState('');
@@ -177,9 +232,11 @@ function DashList({ tab, onTab, groups, linkRows }: DashListProps) {
   const [limit, setLimit] = useState(100);
 
   const rows = useStatusRows();
+  // Bei der Suche auch Abwesende zeigen – z. B. um jemanden ohne Karte manuell einzubuchen
+  const effectiveStatus: StatusFilter['status'] = query.trim() ? 'all' : presenceStatus;
   const presenceRows = useMemo(
-    () => (rows ? filterStatusRows(rows, { query, groupId, status: presenceStatus, includeFree: false }) : []),
-    [rows, query, groupId, presenceStatus],
+    () => (rows ? filterStatusRows(rows, { query, groupId, status: effectiveStatus, includeFree: false }) : []),
+    [rows, query, groupId, effectiveStatus],
   );
   const presentCount = presenceRows.filter((r) => r.present).length;
 
@@ -190,12 +247,13 @@ function DashList({ tab, onTab, groups, linkRows }: DashListProps) {
   );
   const allEvents = events.outcome === 'all' ? baseEvents : baseEvents.filter((e) => e.outcome === events.outcome);
   const deniedEvents = baseEvents.filter((e) => e.outcome === 'denied');
+  const undoable = useMemo(() => undoableSeqs(raw ?? []), [raw]);
 
   const presenceSort = useSort<StatusSortKey>('time', 'desc', { time: 'desc' });
   const eventSort = useSort<EventSortKey>('time', 'desc', { time: 'desc' });
 
   const extraActive =
-    tab === 'presence' ? presenceStatus !== 'present' : events.range !== 'today' || events.direction !== 'all' || (tab === 'events' && events.outcome !== 'all');
+    tab === 'presence' ? effectiveStatus !== 'present' : events.range !== 'today' || events.direction !== 'all' || (tab === 'events' && events.outcome !== 'all');
   const rangeName = RANGES.find((r) => r.value === events.range)?.label ?? '';
 
   const tabs: { id: DashTab; label: string; count: number; danger?: boolean }[] = [
@@ -306,7 +364,21 @@ function DashList({ tab, onTab, groups, linkRows }: DashListProps) {
 
       <div role="tabpanel" className="dash-list-body">
         {tab === 'presence' ? (
-          rows && <StatusTable rows={presenceRows} sort={presenceSort} compact showStatus={presenceStatus !== 'present'} linkRows={linkRows} />
+          rows && <StatusTable
+              rows={presenceRows}
+              sort={presenceSort}
+              compact
+              showStatus={effectiveStatus !== 'present'}
+              linkRows={linkRows}
+              onBook={(row) => {
+                const direction: Direction = row.present ? 'out' : 'in';
+                const name = row.card.holder ? `${row.card.holder.firstName} ${row.card.holder.lastName}` : `Karte ${row.card.number}`;
+                if (window.confirm(`${name} manuell ${direction === 'in' ? 'einbuchen' : 'ausbuchen'}?`)) onBook(row.card.id, direction);
+              }}
+              onReturn={(row) =>
+                onReturn(row.card.id, row.card.holder ? `${row.card.holder.firstName} ${row.card.holder.lastName}`.trim() : `Karte ${row.card.number}`)
+              }
+            />
         ) : (
           raw && (
             <EventTable
@@ -316,6 +388,10 @@ function DashList({ tab, onTab, groups, linkRows }: DashListProps) {
               limit={limit}
               onMore={() => setLimit((l) => l + 100)}
               compact
+              undoable={undoable}
+              onUndo={(seq) => {
+                if (window.confirm('Diese Buchung rückgängig machen? Es wird eine Gegenbuchung („Korrektur“) eingetragen.')) onUndo(seq);
+              }}
             />
           )
         )}

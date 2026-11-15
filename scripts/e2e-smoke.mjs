@@ -260,7 +260,7 @@ try {
   check(true, 'Statusleiste zählt live mit (2 anwesend)');
   check((await page.locator('.dash-recent li').count()) >= 1, 'Seitenleiste: letzte Scans');
   const rowHeight = await listRows.first().evaluate((r) => r.getBoundingClientRect().height);
-  check(rowHeight < 44, `Eine Zeile pro Person (${Math.round(rowHeight)} px hoch)`);
+  check(rowHeight < 52, `Eine Zeile pro Person (${Math.round(rowHeight)} px hoch)`);
   await page.getByRole('tab', { name: /Aktionen heute/ }).click();
   const todayRows = await listRows.count();
   check(todayRows === 6, `Dashboard: Aktionen von heute (${todayRows})`);
@@ -640,6 +640,58 @@ try {
   await guestScreen.screenshot({ path: `${OUT}/24-praesentation-layout.png` });
   await guestScreen.close();
   await page.locator('.dash-status').getByRole('radio', { name: 'Automatisch' }).click();
+
+  console.log('17e) Manuell buchen, rückgängig, Besucher-Schnellerfassung, Notfallliste');
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await page.goto(`${URL}#/dashboard`);
+  const kpi = async () => Number((await page.getByTestId('kpi-present').textContent()).trim());
+  const presentBefore = await kpi();
+  await page.locator('.dash-list').getByLabel('Suchen').fill('Testmann');
+  const tomRow = page.locator('.dash-list tbody tr', { hasText: 'Testmann' });
+  await tomRow.waitFor();
+  check((await tomRow.textContent()).includes('abwesend'), 'Suche zeigt auch Abwesende');
+  await tomRow.getByRole('button', { name: 'Einbuchen' }).click();
+  await page.locator('.result-panel.fresh', { hasText: 'Tom Testmann' }).waitFor();
+  const manualPanel = await page.locator('.result-panel').textContent();
+  check(manualPanel.includes('(manuell)') && manualPanel.includes('Tom Testmann'), `Manuell eingebucht (Karte vergessen) – ${manualPanel}`);
+  await page.waitForFunction((n) => Number(document.querySelector('[data-testid="kpi-present"]')?.textContent) === n + 1, presentBefore);
+  const manualEvent = (await readStore(page, 'events')).at(-1);
+  check(manualEvent?.source === 'manual' && manualEvent?.confirmedBy === 'admin', 'Protokoll: Quelle „manuell“');
+  await page.locator('.result-panel').getByRole('button', { name: /Rückgängig/ }).click();
+  await page.locator('.result-panel.fresh', { hasText: 'Korrigiert' }).waitFor();
+  await page.waitForFunction((n) => Number(document.querySelector('[data-testid="kpi-present"]')?.textContent) === n, presentBefore);
+  const evs = await readStore(page, 'events');
+  check(evs.at(-1)?.reason === 'CORRECTION' && evs.at(-2)?.correctedBy === evs.at(-1)?.seq, 'Rückgängig: Gegenbuchung, beide Einträge bleiben');
+  await page.locator('.dash-list').getByLabel('Suchen').fill('');
+
+  await page.getByRole('button', { name: '+ Besucher anmelden' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Besucher anmelden' });
+  await dialog.waitFor();
+  const visitorCard = await dialog.getByLabel('Karte').locator('option:checked').textContent();
+  check(/^B-\d+$/.test(visitorCard), `Erste freie Besucherkarte vorgeschlagen (${visitorCard})`);
+  await dialog.getByLabel('Vorname').fill('Vera');
+  await dialog.getByLabel('Nachname').fill('Vorab');
+  await dialog.getByLabel('Firma / Abteilung').fill('Beispiel AG');
+  await page.screenshot({ path: `${OUT}/25-besucher-anmelden.png` });
+  await dialog.getByRole('button', { name: 'Anmelden' }).click();
+  await page.getByText(`Besucher angemeldet: Vera Vorab → Karte ${visitorCard}`).waitFor();
+  const veraRow = page.locator('.dash-list tbody tr', { hasText: 'Vorab, Vera' });
+  await veraRow.waitFor();
+  check(true, 'Besucher angemeldet und gleich eingebucht (ohne Bestätigung, der Bediener bucht selbst)');
+  await veraRow.getByRole('button', { name: 'Zurückgeben' }).click();
+  await page.getByText(`Karte zurückgegeben: Vera Vorab`).waitFor();
+  await veraRow.waitFor({ state: 'detached' });
+  check(true, 'Besucherkarte zurückgegeben (ausgebucht, Personendaten entfernt)');
+
+  await page.getByRole('link', { name: 'Notfallliste' }).click();
+  await page.getByRole('heading', { name: /Notfall- \/ Evakuierungsliste/ }).waitFor();
+  const emergencyRows = await page.locator('.emergency-table tbody tr').count();
+  check(emergencyRows === presentBefore, `Notfallliste: alle ${emergencyRows} Anwesenden`);
+  await page.screenshot({ path: `${OUT}/26-notfallliste.png`, fullPage: true });
+
+  await page.goto(`${URL}#/einstellungen`);
+  await page.getByRole('heading', { name: 'Automatische Sicherung' }).waitFor();
+  check(true, 'Einstellungen: automatische Sicherung angeboten');
 
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);

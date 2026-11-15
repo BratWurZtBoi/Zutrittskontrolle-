@@ -286,6 +286,57 @@ export async function reissueToken(id: string, now = Date.now()): Promise<Card> 
 }
 
 // ---------------------------------------------------------------------------
+// Besucher-Schnellerfassung
+// ---------------------------------------------------------------------------
+
+/** Freie Karten einer Gruppe (ohne Person, nicht gesperrt/verloren), nach Nummer sortiert. */
+export async function listFreeCards(groupId: string): Promise<{ id: string; number: string }[]> {
+  const records = await db.cards.where('groupId').equals(groupId).toArray();
+  return records
+    .filter((c) => !c.holderEnc && !c.holder && !c.blocked && !c.lostAt)
+    .map((c) => ({ id: c.id, number: c.number }))
+    .sort((a, b) => a.number.localeCompare(b.number, 'de', { numeric: true }));
+}
+
+/**
+ * Person einer FREIEN Karte zuweisen (Besucher-Schnellerfassung am Empfang).
+ * Prüft in der Transaktion, dass die Karte noch frei ist – so wird nie versehentlich
+ * die Person einer bereits ausgegebenen Karte überschrieben.
+ */
+export async function assignHolderToFreeCard(
+  id: string,
+  data: { holder: CardHolder; validFrom?: string; validUntil?: string },
+  now = Date.now(),
+): Promise<Card> {
+  const holder = normalizeHolder(data.holder);
+  if (!holder) throw new ValidationError('Bitte mindestens Vor- oder Nachnamen eingeben.');
+  validateDates(data.validFrom, data.validUntil);
+  const key = requireKey();
+  // verschlüsseln außerhalb der Transaktion
+  const holderEnc = await encryptJson(key, holder);
+  const nameEnc = await encryptText(key, holderName(holder) ?? '');
+  const record = await db.transaction('rw', db.cards, async () => {
+    const current = await db.cards.get(id);
+    if (!current) throw new ValidationError('Karte nicht gefunden.');
+    if (current.holderEnc || current.holder) throw new ValidationError(`Karte ${current.number} ist bereits vergeben.`);
+    if (current.blocked || current.lostAt) throw new ValidationError(`Karte ${current.number} ist gesperrt.`);
+    const updated: CardRecord = {
+      ...current,
+      accessGranted: true,
+      validFrom: data.validFrom,
+      validUntil: data.validUntil,
+      holderEnc,
+      nameEnc,
+      holderSince: now,
+      updatedAt: now,
+    };
+    await db.cards.put(updated);
+    return updated;
+  });
+  return toCard(record, key);
+}
+
+// ---------------------------------------------------------------------------
 // Verlorene Karten
 // ---------------------------------------------------------------------------
 

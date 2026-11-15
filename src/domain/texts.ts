@@ -39,6 +39,8 @@ export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | '
       return 'Vom Empfang abgewiesen.';
     case 'CONFIRMATION_TIMEOUT':
       return 'Nicht rechtzeitig bestätigt.';
+    case 'CORRECTION':
+      return 'Fehlbuchung rückgängig gemacht.';
   }
 }
 

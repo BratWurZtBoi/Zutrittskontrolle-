@@ -122,7 +122,9 @@ export type ReasonCode =
   /** Vom Admin/Bediener abgewiesen. */
   | 'REJECTED'
   /** Nicht rechtzeitig bestätigt. */
-  | 'CONFIRMATION_TIMEOUT';
+  | 'CONFIRMATION_TIMEOUT'
+  /** Korrektur: macht eine Fehlbuchung rückgängig (Gegenbuchung). */
+  | 'CORRECTION';
 
 /** 'pending' = wartet auf Bestätigung durch den Bediener (noch nicht gebucht). */
 export type Outcome = 'granted' | 'denied' | 'duplicate' | 'pending';
@@ -147,10 +149,17 @@ export interface AccessEventRecord {
   holderNameEnc?: EncryptedData;
   /** Altbestand vor der Verschlüsselung (Klartext). */
   holderName?: string;
-  /** 'system' = automatische Buchung, z. B. beim Zurückgeben einer Karte. */
-  source: 'camera' | 'test' | 'system';
-  /** Eintritt wurde vom Admin/Bediener bestätigt bzw. abgewiesen. */
+  /**
+   * 'system' = automatische Buchung, z. B. beim Zurückgeben einer Karte;
+   * 'manual' = vom Admin/Bediener gebucht (Karte vergessen) oder korrigiert.
+   */
+  source: 'camera' | 'test' | 'system' | 'manual';
+  /** Eintritt wurde vom Admin/Bediener bestätigt bzw. abgewiesen – oder manuell gebucht/korrigiert. */
   confirmedBy?: StaffRole;
+  /** Diese Buchung korrigiert die Buchung mit dieser Nummer. */
+  correctionOf?: number;
+  /** Diese Buchung wurde durch die Buchung mit dieser Nummer rückgängig gemacht. */
+  correctedBy?: number;
 }
 
 /** Protokolleintrag für die Oberfläche. */

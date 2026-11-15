@@ -1,9 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listLayouts } from '../db/layouts';
-import { processScan, resolvePendingScan, type PendingAction, type ScanOutcome } from '../db/scans';
+import { bookManually, processScan, resolvePendingScan, undoBooking, type PendingAction, type ScanOutcome } from '../db/scans';
 import { ScanDeduper } from '../domain/scanDeduper';
-import type { AccessEventRecord } from '../domain/types';
+import type { AccessEventRecord, Direction } from '../domain/types';
 import { setKeepScreenOn } from '../lib/device';
 import { playFeedback, type FeedbackKind } from '../lib/feedback';
 import { STANDARD_LAYOUT } from '../domain/presentationLayout';
@@ -64,12 +64,15 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
     setPending(next);
   }, []);
 
-  const showFinal = useCallback((outcome: ScanOutcome) => {
-    const s = settingsRef.current;
-    setResult(outcome);
-    playFeedback(feedbackKind(outcome, confirm), s.sound);
-    broadcastScan(outcome, s.resultDisplaySec, layoutContext());
-  }, [confirm]);
+  const showFinal = useCallback(
+    (outcome: ScanOutcome, broadcast = true) => {
+      const s = settingsRef.current;
+      setResult(outcome);
+      playFeedback(feedbackKind(outcome, confirm), s.sound);
+      if (broadcast) broadcastScan(outcome, s.resultDisplaySec, layoutContext());
+    },
+    [confirm],
+  );
 
   const handleText = useCallback(
     async (text: string, source: AccessEventRecord['source']) => {
@@ -141,10 +144,32 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
     [],
   );
 
+  /** Manuell ein-/ausbuchen (Karte vergessen). Abgelehnt → nur Anzeige, nichts an den Gästebildschirm. */
+  const bookCard = useCallback(
+    async (cardId: string, direction: Direction) => {
+      const outcome = await bookManually(cardId, direction, { by: staffRole() ?? 'operator' });
+      showFinal(outcome, outcome.decision.outcome === 'granted');
+    },
+    [showFinal],
+  );
+
+  /** Fehlbuchung rückgängig machen (Gegenbuchung). Liefert eine Fehlermeldung oder null. */
+  const undo = useCallback(
+    async (seq: number): Promise<string | null> => {
+      try {
+        showFinal(await undoBooking(seq, { by: staffRole() ?? 'operator' }), false);
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : 'Rückgängig machen fehlgeschlagen.';
+      }
+    },
+    [showFinal],
+  );
+
   const onCamera = useCallback((text: string) => void handleText(text, 'camera'), [handleText]);
   const clearResult = useCallback(() => setResult(null), []);
 
-  return { settings, result, clearResult, handleText, onCamera, pending, resolvePending };
+  return { settings, result, clearResult, handleText, onCamera, pending, resolvePending, bookCard, undo };
 }
 
 /** Hält den Bildschirm an, solange die Komponente angezeigt wird. */

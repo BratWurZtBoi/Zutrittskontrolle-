@@ -6,6 +6,7 @@ import { CardCreatePage } from './pages/CardCreatePage';
 import { CardDetailPage } from './pages/CardDetailPage';
 import { CardListPage } from './pages/CardListPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { EmergencyListPage } from './pages/EmergencyListPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { ImportPage } from './pages/ImportPage';
 import { LayoutsPage } from './pages/LayoutsPage';
@@ -35,6 +36,7 @@ export function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="uebersicht" element={<OverviewPage />} />
             <Route path="anwesenheit" element={<Navigate to="/uebersicht" replace />} />
+            <Route path="notfallliste" element={<EmergencyListPage />} />
           </Route>
           {/* nur mit Admin-Anmeldung */}
           <Route element={<RequireRole allow="admin" />}>

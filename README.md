@@ -58,6 +58,21 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche und Sortierung.
 - Der **Vollbild-Scanner** bleibt als Kiosk-Modus für Geräte am Eingang (ohne Anmeldung nutzbar).
 
+### Am Empfang: manuell buchen, korrigieren, Besucher anmelden
+
+- **Karte vergessen:** Im Dashboard den Namen suchen – die Suche zeigt auch Abwesende – und
+  **Einbuchen** bzw. **Ausbuchen** klicken. Es gelten dieselben Regeln wie beim Scan (gesperrt,
+  abgelaufen …). Im Protokoll steht „manuell“.
+- **Fehlbuchung korrigieren:** **↺ Rückgängig** am letzten Ergebnis oder im Reiter *Aktionen*
+  (je Karte die letzte Buchung). Es wird eine Gegenbuchung „Korrektur“ eingetragen, nichts gelöscht.
+- **+ Besucher anmelden** (Statusleiste): freie Karte wählen – oder die ausgegebene Karte einfach
+  vor die Kamera halten –, Name, Firma, Notiz und optional Foto eintragen, gültig „nur heute“,
+  auf Wunsch gleich einbuchen. Vergebene Karten werden nie überschrieben.
+- **Zurückgeben** (bei Besucherkarten in der Anwesenheitsliste): ausbuchen und Personendaten
+  entfernen – die Karte ist wieder frei.
+- **Notfallliste** (Statusleiste): alle Anwesenden nach Gruppen mit Kästchen zum Abhaken am
+  Sammelplatz, zum Ausdrucken (optional mit Fotos). Auch für Bediener.
+
 ### Eintritt bestätigen (je Gruppe)
 
 - *Einstellungen → Gruppen verwalten → Bearbeiten*: **„Eintritt muss bestätigt werden“**.
@@ -133,6 +148,11 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - **Backup einspielen:** Datei wählen, Passwort eingeben, Vorschau prüfen, bestätigen. Die Daten
   auf dem Gerät werden **ersetzt**; das Admin-Passwort des Geräts bleibt. So lassen sich Daten
   z. B. vom Handy auf den Windows-Rechner übertragen.
+- **Automatische Sicherung** (*Einstellungen → Datensicherung*, Chrome/Edge am Computer): Ordner
+  wählen (z. B. USB-Stick oder Netzlaufwerk), eigenes Passwort, täglich bis stündlich; die letzten
+  7/14/30 Sicherungen bleiben. Läuft, solange die App geöffnet und entsperrt ist. Fragt der
+  Browser nach einem Neustart erneut nach dem Ordnerzugriff, zeigt das Dashboard
+  „Auto-Backup: Problem“ – „Jetzt sichern“ erlaubt ihn wieder.
 - **CSV-Export für Excel** (*Übersicht*): die gerade gefilterte und sortierte Liste der Anwesenheit
   bzw. der Aktionen. ⚠️ CSV-Dateien sind **nicht** verschlüsselt.
 - Das Dashboard erinnert, wenn das letzte Backup länger als 7 Tage zurückliegt.

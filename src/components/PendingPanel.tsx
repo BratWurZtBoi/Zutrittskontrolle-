@@ -72,10 +72,14 @@ export function PendingPanel({ pending, onResolve }: Props) {
 }
 
 /** Tastaturkürzel für die erste Anfrage – nicht während der Eingabe in Such- oder Textfeldern. */
-export function usePendingShortcuts(pending: PendingEntry[], onResolve: (id: string, action: PendingAction) => void): void {
+export function usePendingShortcuts(
+  pending: PendingEntry[],
+  onResolve: (id: string, action: PendingAction) => void,
+  enabled = true,
+): void {
   useEffect(() => {
     const first = pending[0];
-    if (!first) return;
+    if (!first || !enabled) return;
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return;
@@ -89,5 +93,5 @@ export function usePendingShortcuts(pending: PendingEntry[], onResolve: (id: str
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pending, onResolve]);
+  }, [pending, onResolve, enabled]);
 }

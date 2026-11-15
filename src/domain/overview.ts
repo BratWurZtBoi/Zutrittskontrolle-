@@ -210,3 +210,28 @@ export function countPerGroup(groupIds: string[], groups: Group[]): { group: Gro
   for (const id of groupIds) counts.set(id, (counts.get(id) ?? 0) + 1);
   return groups.filter((g) => counts.has(g.id)).map((group) => ({ group, count: counts.get(group.id) ?? 0 }));
 }
+
+// ---------------------------------------------------------------------------
+// Korrekturen
+// ---------------------------------------------------------------------------
+
+/** Kann diese Buchung grundsätzlich rückgängig gemacht werden? (echte Buchung, noch nicht korrigiert) */
+export function isCorrectable(e: Pick<AccessEvent, 'outcome' | 'source' | 'reason' | 'correctedBy' | 'cardId'>): boolean {
+  return e.outcome === 'granted' && e.source !== 'system' && e.reason !== 'CORRECTION' && !e.correctedBy && Boolean(e.cardId);
+}
+
+/**
+ * Nummern der Buchungen, die rückgängig gemacht werden können: je Karte nur die
+ * letzte erfolgreiche Buchung (sonst würde die Anwesenheit falsch).
+ */
+export function undoableSeqs(events: AccessEvent[]): Set<number> {
+  const latest = new Map<string, AccessEvent>();
+  for (const e of events) {
+    if (e.outcome !== 'granted' || !e.cardId || e.seq === undefined) continue;
+    const cur = latest.get(e.cardId);
+    if (!cur || (cur.seq ?? 0) < e.seq) latest.set(e.cardId, e);
+  }
+  const result = new Set<number>();
+  for (const e of latest.values()) if (isCorrectable(e) && e.seq !== undefined) result.add(e.seq);
+  return result;
+}

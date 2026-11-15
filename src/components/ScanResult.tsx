@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
+import { isCorrectable } from '../domain/overview';
 import { holderName } from '../domain/texts';
 import { describeOutcome, hideIdentityFor, type Audience } from '../lib/resultText';
 import { GroupBadge } from './GroupBadge';
@@ -65,9 +66,20 @@ export function ResultOverlay({ result, onClose }: { result: ScanOutcome; onClos
 
 /**
  * Ergebnis als Feld im Dashboard: einige Sekunden farbig hervorgehoben,
- * danach als „Letzter Scan“ neutral weiter sichtbar.
+ * danach als „Letzter Scan“ neutral weiter sichtbar. Optional mit „Rückgängig“.
  */
-export function ResultPanel({ result, highlightSec }: { result: ScanOutcome | null; highlightSec: number }) {
+export function ResultPanel({
+  result,
+  highlightSec,
+  onUndo,
+  undoError,
+}: {
+  result: ScanOutcome | null;
+  highlightSec: number;
+  /** Fehlbuchung rückgängig machen (nur bei echten Buchungen angeboten). */
+  onUndo?: (seq: number) => void;
+  undoError?: string | null;
+}) {
   const [fresh, setFresh] = useState(false);
   useEffect(() => {
     if (!result) return;
@@ -91,6 +103,14 @@ export function ResultPanel({ result, highlightSec }: { result: ScanOutcome | nu
     >
       {!fresh && <div className="result-stale-label">Letzter Scan · {formatTime(result.at)} Uhr</div>}
       <ResultContent result={result} audience="staff" />
+      {onUndo && result.event?.seq !== undefined && isCorrectable(result.event) && (
+        <div className="result-actions">
+          <button type="button" className="btn btn-small result-undo" onClick={() => onUndo(result.event!.seq!)}>
+            ↺ Rückgängig ({result.decision.direction === 'out' ? 'doch anwesend' : 'doch nicht eingetreten'})
+          </button>
+        </div>
+      )}
+      {undoError && <p className="result-undo-error">{undoError}</p>}
     </div>
   );
 }

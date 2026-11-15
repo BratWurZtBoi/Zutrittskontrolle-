@@ -1,4 +1,6 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
+import { loadAutoBackup } from '../db/autoBackup';
 import { Link } from 'react-router';
 import { saveSettings, type AppSettings } from '../db/settings';
 import { countPerGroup } from '../domain/overview';
@@ -26,11 +28,13 @@ interface Props {
   groups: Group[];
   /** Klick auf eine Kennzahl öffnet die passende Liste. */
   onShow: (tab: 'presence' | 'events' | 'denied') => void;
+  onRegisterVisitor: () => void;
 }
 
 /** Kompakte Statusleiste: Modus, Kennzahlen, Präsentation, Backup-Erinnerung. */
-export function DashStatusBar({ settings, stats, groups, onShow }: Props) {
+export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisitor }: Props) {
   const connected = usePresentationConnected();
+  const autoBackupError = useLiveQuery(async () => (await loadAutoBackup())?.lastError, [], undefined);
   const [hint, setHint] = useState<string | null>(null);
   const backupDue = !settings.lastBackupAt || Date.now() - settings.lastBackupAt > BACKUP_DUE_MS;
   const perGroup = stats ? countPerGroup(stats.presentGroupIds, groups) : [];
@@ -90,6 +94,10 @@ export function DashStatusBar({ settings, stats, groups, onShow }: Props) {
         </button>
       )}
 
+      <button type="button" className="btn btn-primary btn-small" onClick={onRegisterVisitor}>
+        + Besucher anmelden
+      </button>
+
       <span className="dash-status-spacer" />
 
       {connected ? (
@@ -101,7 +109,15 @@ export function DashStatusBar({ settings, stats, groups, onShow }: Props) {
           Präsentation öffnen
         </button>
       )}
-      {backupDue && (
+      <Link to="/notfallliste" className="btn btn-small" title="Alle Anwesenden zum Ausdrucken (Evakuierung)">
+        Notfallliste
+      </Link>
+      {autoBackupError && (
+        <Link to="/einstellungen" className="btn btn-small btn-warn" title={autoBackupError}>
+          Auto-Backup: Problem
+        </Link>
+      )}
+      {backupDue && !autoBackupError && (
         <Link to="/einstellungen" className="btn btn-small btn-warn">
           {settings.lastBackupAt ? 'Backup fällig' : 'Noch kein Backup'}
         </Link>

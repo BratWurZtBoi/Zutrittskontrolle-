@@ -68,8 +68,12 @@ export class ValidationError extends Error {
 export const VAULT_KEY = 'vault';
 /** Prüfwert der Bediener-PIN in der Einstellungstabelle. */
 export const OPERATOR_PIN_KEY = 'operatorPin';
+/** Automatische Sicherung: Einstellungen mit verschlüsseltem Backup-Passwort … */
+export const AUTO_BACKUP_KEY = 'autoBackup';
+/** … und der Ordner (Zugriffsrecht des Browsers, FileSystemDirectoryHandle). */
+export const AUTO_BACKUP_DIR_KEY = 'autoBackupDir';
 /** Gerätebezogene Zugangsdaten – bleiben bei „Alle Daten löschen“ und beim Einspielen eines Backups erhalten. */
-export const DEVICE_SECRET_KEYS = [VAULT_KEY, OPERATOR_PIN_KEY];
+export const DEVICE_SECRET_KEYS = [VAULT_KEY, OPERATOR_PIN_KEY, AUTO_BACKUP_KEY, AUTO_BACKUP_DIR_KEY];
 
 /**
  * Löscht alle Daten (Karten, Gruppen, Protokoll, Anwesenheit, Einstellungen).

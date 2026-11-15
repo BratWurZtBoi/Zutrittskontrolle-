@@ -1,5 +1,5 @@
 /** Welche Seiten der Bediener (PIN) öffnen darf – alles andere nur der Admin. */
-const STAFF_PATHS = ['/dashboard', '/uebersicht', '/anwesenheit'];
+const STAFF_PATHS = ['/dashboard', '/uebersicht', '/anwesenheit', '/notfallliste'];
 
 export function isStaffPath(path: string): boolean {
   const pathname = path.split('?')[0] ?? '';
