@@ -11,7 +11,7 @@ type Validity = 'today' | 'open' | 'until';
 
 interface Props {
   groups: Group[];
-  /** Kamera-Scans an das Fenster umleiten (Karte durch Scannen auswählen). */
+  /** Scans (Kamera, USB-Scanner) an das Fenster umleiten (Karte durch Scannen auswählen). */
   registerScanTarget: (handler: ((text: string) => void) | null) => void;
   onClose: () => void;
   /** Nach dem Anmelden: optional direkt einbuchen. */
@@ -142,7 +142,7 @@ export function VisitorDialog({ groups, registerScanTarget, onClose, onDone }: P
             zurückgegeben.
           </p>
         )}
-        <p className="muted small">Tipp: Die Karte, die Sie ausgeben, einfach vor die Kamera halten – sie wird hier ausgewählt.</p>
+        <p className="muted small">Tipp: Die Karte, die Sie ausgeben, einfach vor die Kamera oder den Scanner halten – sie wird hier ausgewählt.</p>
         {scanInfo && (
           <p className="form-success" role="status">
             {scanInfo}

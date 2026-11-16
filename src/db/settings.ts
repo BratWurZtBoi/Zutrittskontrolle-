@@ -1,9 +1,13 @@
+import type { ScannerSpeed } from '../domain/keyboardScan';
 import type { ScanMode } from '../domain/types';
 
 export type CameraChoice = 'user' | 'environment' | `device:${string}`;
 import { db } from './db';
 
 export type ThemeChoice = 'auto' | 'light' | 'dark';
+
+/** Womit gescannt wird: Kamera, USB-Scanner (Tastatur-Modus) oder beides. */
+export type ScanInput = 'both' | 'camera' | 'scanner';
 
 /** Größe der Kameravorschau im Dashboard (die Erkennung läuft immer in voller Auflösung). */
 export type DashCameraSize = 'small' | 'large' | 'hidden';
@@ -44,6 +48,10 @@ export interface AppSettings {
   defaultCardLayoutId: string;
   /** Druckformat: A4-Bogen (mehrere Karten) oder Kartendrucker (eine Karte je Seite). */
   cardPrintFormat: 'sheet' | 'card-printer';
+  /** Scannen mit Kamera, USB-Scanner oder beidem (je Gerät). */
+  scanInput: ScanInput;
+  /** Tempo des USB-Scanners: normal oder langsam (Bluetooth/gedrosselt). */
+  scannerSpeed: ScannerSpeed;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -65,6 +73,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   idleLayoutId: 'standard-idle',
   defaultCardLayoutId: 'standard-karte',
   cardPrintFormat: 'sheet',
+  scanInput: 'both',
+  scannerSpeed: 'fast',
 };
 
 const KEY = 'app';

@@ -805,6 +805,129 @@ try {
   check(quer === landscapeCards && hoch === portraitCards, `Kartendrucker: je Karte eine Seite in Kartengröße (${quer} quer, ${hoch} hoch, ${boxes.length} Seiten)`);
   await page.getByRole('radio', { name: 'A4-Bogen' }).click();
 
+  console.log('17g) USB-Scanner (Tastatur-Modus)');
+  await page.setViewportSize({ width: 1536, height: 900 });
+  const scanGroups = await readStore(page, 'groups');
+  const staffGroup = scanGroups.find((g) => g.prefix === 'M');
+  const visitorGroup = scanGroups.find((g) => g.prefix === 'B');
+  const usable = (c) => !c.blocked && !c.lostAt && !c.validFrom && !c.validUntil && c.accessGranted !== false;
+  const scanCards = await readStore(page, 'cards');
+  const staffCards = scanCards.filter((c) => c.groupId === staffGroup.id && c.holderEnc && usable(c));
+  const presentIds = new Set((await readStore(page, 'presence')).filter((p) => p.status === 'in').map((p) => p.cardId));
+  // Besucher mit Person, gerade abwesend → Eintritt muss bestätigt werden (Regel aus 17b)
+  const waitingVisitor = scanCards.find((c) => c.groupId === visitorGroup.id && c.holderEnc && usable(c) && !presentIds.has(c.id));
+  check(staffCards.length >= 4 && waitingVisitor, `Testkarten für den Scanner (${staffCards.map((c) => c.number).join(', ')}, ${waitingVisitor?.number})`);
+  const codeOf = (c) => `ZK1:${c.token}`;
+  const swapYZ = (t) => t.replace(/[YZ]/g, (ch) => (ch === 'Y' ? 'Z' : 'Y'));
+  /** Scanner simulieren: Zeichen sehr schnell, danach Enter. */
+  const scannerType = async (target, text) => {
+    await target.keyboard.type(text, { delay: 4 });
+    await target.keyboard.press('Enter');
+  };
+  /** Wartet, bis die letzte Buchung zu dieser Karte gehört. */
+  const lastBookingFor = async (number) => {
+    for (let i = 0; i < 50; i++) {
+      const ev = (await readStore(page, 'events')).at(-1);
+      if (ev?.cardNumber === number) return ev;
+      await page.waitForTimeout(100);
+    }
+    return (await readStore(page, 'events')).at(-1);
+  };
+  const blur = (target) => target.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+
+  await page.goto(`${URL}#/einstellungen/scanner`);
+  await page.getByRole('heading', { name: 'USB-Scanner' }).waitFor();
+  // Doppelscan-Schutz für diesen Abschnitt aus – die Karten wurden teils eben erst gebucht
+  await page.getByLabel('Doppelscan-Schutz (Sekunden)').fill('0');
+  await page.getByLabel('Doppelscan-Schutz (Sekunden)').blur();
+  await page.waitForTimeout(300);
+  const eventsBeforeTest = (await readStore(page, 'events')).length;
+  await blur(page);
+  await scannerType(page, codeOf(staffCards[0]));
+  const testResult = page.getByTestId('scanner-test-result');
+  await testResult.waitFor();
+  await page.waitForFunction((n) => document.querySelector('[data-testid="scanner-test-result"]')?.textContent?.includes(`Karte ${n}`), staffCards[0].number);
+  check((await testResult.textContent()).includes('erkannt'), `Scanner-Test erkennt Karte ${staffCards[0].number}`);
+  await scannerType(page, `YK1:${swapYZ(staffCards[0].token)}`);
+  await page.getByText('wurde automatisch korrigiert').waitFor();
+  check(true, 'Scanner-Test: falsches Tastaturlayout (US) erkannt und korrigiert');
+  await page.getByLabel('Scannen mit').focus();
+  await scannerType(page, 'https://example.com/fremd');
+  await page.getByText('Kein Karten-Code dieser Anwendung').waitFor();
+  check((await page.getByLabel('Scannen mit').inputValue()) === 'both', 'Fremder Code: erkannt, Auswahlliste bleibt unverändert');
+  check((await readStore(page, 'events')).length === eventsBeforeTest, 'Im Scanner-Test wird nichts gebucht');
+  await page.screenshot({ path: `${OUT}/31-scanner-test.png`, fullPage: true });
+
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-cam').waitFor();
+  await blur(page);
+  await scannerType(page, codeOf(staffCards[0]));
+  let lastEvent = await lastBookingFor(staffCards[0].number);
+  check(lastEvent?.source === 'scanner' && lastEvent?.cardNumber === staffCards[0].number && lastEvent?.outcome === 'granted', 'Dashboard: Scan vom USB-Scanner gebucht (Quelle „Scanner“)');
+
+  const search = page.locator('.dash-list').getByLabel('Suchen');
+  await search.fill('xyz');
+  await search.focus();
+  await scannerType(page, codeOf(staffCards[1]));
+  lastEvent = await lastBookingFor(staffCards[1].number);
+  check(lastEvent?.cardNumber === staffCards[1].number && lastEvent?.source === 'scanner', `Scan bei aktivem Suchfeld wird gebucht (${lastEvent?.cardNumber})`);
+  check((await search.inputValue()) === 'xyz', 'Suchfeld bleibt unverändert (gescannte Zeichen entfernt)');
+  await search.fill('');
+
+  await blur(page);
+  await scannerType(page, codeOf(waitingVisitor));
+  await page.locator('.pending-panel').waitFor();
+  check((await page.locator('.pending-panel').textContent()).includes(waitingVisitor.number), 'Besucherkarte per Scanner: Bestätigung erforderlich');
+  const eventsWhilePending = (await readStore(page, 'events')).length;
+  await scannerType(page, codeOf(staffCards[2]));
+  await lastBookingFor(staffCards[2].number);
+  await page.waitForTimeout(300);
+  check(await page.locator('.pending-panel').isVisible(), 'Enter des Scanners löst „Einlassen“ nicht aus');
+  const afterPending = await readStore(page, 'events');
+  check(
+    afterPending.length === eventsWhilePending + 1 && afterPending.at(-1)?.cardNumber === staffCards[2].number,
+    `Nur der zweite Scan wurde gebucht, die wartende Besucherkarte nicht (${afterPending.slice(eventsWhilePending).map((e) => `${e.cardNumber} ${e.outcome} ${e.reason}`).join(', ')})`,
+  );
+  await blur(page);
+  await page.keyboard.press('Escape');
+  await page.locator('.pending-panel').waitFor({ state: 'detached' });
+
+  // Gästebildschirm aktiv (zuletzt angeklickt) → Scan wird ans Dashboard weitergereicht
+  const popupPromise = page.waitForEvent('popup');
+  await page.getByRole('button', { name: 'Präsentation öffnen' }).click();
+  const guest = await popupPromise;
+  guest.on('pageerror', (e) => problems.push(`JS-Fehler (Präsentation): ${e.message}`));
+  await guest.locator('.presentation-idle').waitFor();
+  await page.getByText('Präsentation läuft').waitFor({ timeout: 5000 });
+  await scannerType(guest, codeOf(staffCards[3]));
+  lastEvent = await lastBookingFor(staffCards[3].number);
+  await guest.locator('.presentation-result').waitFor({ timeout: 5000 });
+  check(lastEvent?.cardNumber === staffCards[3].number && lastEvent?.source === 'scanner', 'Scan im Präsentationsfenster wird an das Dashboard weitergereicht und gebucht');
+  await guest.close();
+
+  // Nur USB-Scanner: Kiosk ohne Kamera
+  await page.goto(`${URL}#/einstellungen/scanner`);
+  await page.getByLabel('Scannen mit').selectOption('scanner');
+  await page.waitForTimeout(300);
+  await page.goto(`${URL}#/`);
+  await page.locator('.scanner-only').waitFor();
+  check((await page.locator('.scanner-page video').count()) === 0, 'Kiosk „Nur USB-Scanner“: Kamera ausgeschaltet');
+  await page.screenshot({ path: `${OUT}/32-kiosk-nur-scanner.png` });
+  await blur(page);
+  await scannerType(page, codeOf(staffCards[0]));
+  await page.locator('.result-overlay').waitFor();
+  lastEvent = await lastBookingFor(staffCards[0].number);
+  check(lastEvent?.source === 'scanner' && lastEvent?.cardNumber === staffCards[0].number, `Kiosk: Scan gebucht (${lastEvent?.outcome}, ${lastEvent?.direction ?? lastEvent?.reason})`);
+  await page.locator('.result-overlay').click();
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-scanner').waitFor();
+  check((await page.locator('.dash-side video').count()) === 0, 'Dashboard „Nur USB-Scanner“: Statusanzeige statt Kamera');
+  await page.goto(`${URL}#/einstellungen/scanner`);
+  await page.getByLabel('Scannen mit').selectOption('both');
+  await page.getByLabel('Doppelscan-Schutz (Sekunden)').fill('30');
+  await page.getByLabel('Doppelscan-Schutz (Sekunden)').blur();
+  await page.waitForTimeout(300);
+
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);

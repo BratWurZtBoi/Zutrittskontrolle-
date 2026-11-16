@@ -1,8 +1,11 @@
-# Windows-Programm (Electron): baut bei jedem Push die Installationsdatei auf einem
-# Windows-Rechner (Prüfung, Download beim Lauf). Nur Pushes auf "main" werden zusätzlich
-# unter „Releases“ veröffentlicht (je Version eine Ausgabe, z. B. v0.9.0 – ein erneuter
-# Build derselben Version ersetzt die Datei).
-name: Windows-Programm
+# Programm für Windows und Linux (Electron): baut bei jedem Push
+# - die Windows-Installationsdatei auf einem Windows-Rechner,
+# - die Linux-Pakete (.deb für PCs/Laptops = amd64 und Raspberry Pi = arm64) auf Ubuntu;
+#   das PC-Paket wird dort installiert und das installierte Programm getestet.
+# Download beim Lauf (Artefakte). Nur Pushes auf "main" werden zusätzlich unter „Releases“
+# veröffentlicht (je Version eine Ausgabe, z. B. v0.11.0 – ein erneuter Build derselben
+# Version ersetzt die Dateien).
+name: Programm für Windows und Linux
 
 on:
   push:
@@ -45,16 +48,72 @@ jobs:
           path: release/*.exe
           retention-days: 30
 
-      - name: Unter „Releases“ veröffentlichen
-        if: github.ref == 'refs/heads/main'
-        shell: bash
+  linux:
+    name: Linux-Pakete bauen und testen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pakete bauen (.deb für amd64 und arm64)
+        run: npm run desktop:build:linux
+        env:
+          BUILD_ID: ${{ github.run_number }} · ${{ github.ref_name }} · Linux
+
+      - name: PC-Paket installieren
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb ./release/Zutrittskontrolle-*-amd64.deb
+
+      - name: Installiertes Programm testen
+        run: |
+          npm install --no-save playwright@1.63.0
+          xvfb-run -a npm run desktop:smoke
+        env:
+          ZK_DESKTOP_EXE: /opt/Zutrittskontrolle/zutrittskontrolle
+
+      - name: Als Download beim Lauf bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zutrittskontrolle-Linux
+          path: release/*.deb
+          retention-days: 30
+
+  release:
+    name: Unter „Releases“ veröffentlichen
+    if: github.ref == 'refs/heads/main'
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dateien
+          merge-multiple: true
+
+      - name: Release anlegen bzw. aktualisieren
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v$VERSION"
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "Zutrittskontrolle $VERSION (Windows)" \
-              --notes "Windows-Programm. Installation: Datei herunterladen und starten. Windows meldet „Unbekannter Herausgeber“ (keine Signatur) – über „Weitere Informationen“ → „Trotzdem ausführen“ installieren. Update: neue Version einfach über die alte installieren, die Daten bleiben erhalten."
+          cat > notes.md <<EOF
+          **Windows:** \`Zutrittskontrolle-Setup-$VERSION.exe\` herunterladen und starten. Windows meldet „Unbekannter Herausgeber“ (keine Signatur) – über „Weitere Informationen“ → „Trotzdem ausführen“ installieren.
+
+          **Linux:** \`Zutrittskontrolle-$VERSION-amd64.deb\` für PCs und Laptops (z. B. Linux Mint, Ubuntu), \`Zutrittskontrolle-$VERSION-arm64.deb\` für den Raspberry Pi 4/5 (Raspberry Pi OS 64-Bit). Per Doppelklick installieren oder im Terminal: \`sudo apt install ./Dateiname.deb\`.
+
+          **Update:** neue Version einfach über die alte installieren, die Daten bleiben erhalten.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "Zutrittskontrolle $VERSION" --notes-file notes.md
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Zutrittskontrolle $VERSION" --notes-file notes.md
           fi
-          gh release upload "$TAG" release/*.exe --clobber
+          gh release upload "$TAG" dateien/*.exe dateien/*.deb --clobber

@@ -5,12 +5,13 @@ import { DashStatusBar } from '../components/DashStatusBar';
 import { EventTable } from '../components/EventTable';
 import { PendingPanel, usePendingShortcuts } from '../components/PendingPanel';
 import { ResultPanel } from '../components/ScanResult';
+import { ScannerInactiveNote } from '../components/ScannerStatus';
 import { StatusTable } from '../components/StatusTable';
 import { TestScanPanel } from '../components/TestScanPanel';
 import { VisitorDialog } from '../components/VisitorDialog';
 import { returnCard } from '../db/cards';
 import { listGroups } from '../db/groups';
-import { saveSettings, type AppSettings, type DashCameraSize } from '../db/settings';
+import { saveSettings, type AppSettings, type DashCameraSize, type ScanInput } from '../db/settings';
 import { formatTime } from '../domain/dates';
 import {
   DEFAULT_EVENT_FILTER,
@@ -27,7 +28,9 @@ import { reasonText } from '../domain/texts';
 import type { Direction, Group } from '../domain/types';
 import { useDashboardStats, useRecentScans } from '../hooks/useDashboardData';
 import { useRangeEvents, useStatusRows } from '../hooks/useOverviewData';
+import { useScannerInput, type KeyboardScan } from '../hooks/useKeyboardScanner';
 import { useKeepScreenOn, useScanProcessor } from '../hooks/useScanProcessor';
+import { useLoadedSettings } from '../hooks/useSettings';
 import { useSort } from '../hooks/useSort';
 import { CameraScanner } from '../scanner/CameraScanner';
 import { useSecurity } from '../security/useSecurity';
@@ -39,7 +42,7 @@ type DashTab = 'presence' | 'events' | 'denied';
  * Scan-Ergebnis links, rechts eine Liste mit Reitern. Nur die Seite scrollt.
  */
 export function DashboardPage() {
-  const { settings, result, handleText, onCamera, pending, resolvePending, bookCard, undo } = useScanProcessor({ confirm: true });
+  const { settings, result, handleText, onCamera, onScanner, pending, resolvePending, bookCard, undo } = useScanProcessor({ confirm: true });
   const [visitorOpen, setVisitorOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   usePendingShortcuts(pending, resolvePending, !visitorOpen);
@@ -49,6 +52,16 @@ export function DashboardPage() {
     scanTarget.current = h;
   }, []);
   const onCameraRouted = useCallback((text: string) => (scanTarget.current ? scanTarget.current(text) : onCamera(text)), [onCamera]);
+  const onScannerRouted = useCallback(
+    (scan: KeyboardScan) => (scanTarget.current ? scanTarget.current(scan.payload ?? scan.raw) : onScanner(scan)),
+    [onScanner],
+  );
+  // Kamera erst starten, wenn feststeht, dass sie gebraucht wird
+  const scanInput = useLoadedSettings()?.scanInput;
+  const scanner = useScannerInput(onScannerRouted, {
+    enabled: scanInput !== 'camera', // schon während des Ladens – sonst gehen frühe Scans verloren
+    speed: settings.scannerSpeed,
+  });
   useKeepScreenOn();
   const { admin } = useSecurity();
   const [undoError, setUndoError] = useState<string | null>(null);
@@ -79,7 +92,16 @@ export function DashboardPage() {
         />
       )}
       <aside className="dash-side" aria-label="Scanner">
-        <DashCamera settings={settings} onCode={onCameraRouted} />
+        {scanInput === 'scanner' ? (
+          <DashScanner reachable={scanner.inputReachable} />
+        ) : (
+          <DashCamera
+            settings={settings}
+            scanInput={scanInput}
+            onCode={onCameraRouted}
+            scannerWarning={scanInput === 'both' && scanner.seen && !scanner.inputReachable}
+          />
+        )}
         <PendingPanel pending={pending} onResolve={(id, action) => void resolvePending(id, action)} />
         {notice && (
           <p className="dash-notice" role="status">
@@ -116,7 +138,16 @@ const CAMERA_SIZES: { value: DashCameraSize; label: string }[] = [
   { value: 'hidden', label: 'Aus' },
 ];
 
-function DashCamera({ settings, onCode }: { settings: AppSettings; onCode: (text: string) => void }) {
+interface DashCameraProps {
+  settings: AppSettings;
+  /** undefined = Einstellungen werden noch geladen (Kamera noch nicht starten). */
+  scanInput: ScanInput | undefined;
+  onCode: (text: string) => void;
+  /** Ein USB-Scanner wird benutzt, aber das Fenster bekommt gerade keine Eingaben. */
+  scannerWarning: boolean;
+}
+
+function DashCamera({ settings, scanInput, onCode, scannerWarning }: DashCameraProps) {
   const [cameraStarts, setCameraStarts] = useState(0);
   const onStarted = useCallback(() => setCameraStarts((n) => n + 1), []);
   const mirror = settings.mirrorPreview && settings.camera !== 'environment';
@@ -125,7 +156,7 @@ function DashCamera({ settings, onCode }: { settings: AppSettings; onCode: (text
   return (
     <section className="dash-cam" aria-label="Kamera">
       <div className="dash-cam-view">
-        <CameraScanner camera={settings.camera} mirror={mirror} onCode={onCode} onStarted={onStarted} />
+        {scanInput && <CameraScanner camera={settings.camera} mirror={mirror} onCode={onCode} onStarted={onStarted} />}
         {/* Vorschau nur abdecken – das Video läuft weiter, damit die Erkennung aktiv bleibt */}
         {hidden && (
           <div className="dash-cam-cover">
@@ -155,6 +186,22 @@ function DashCamera({ settings, onCode }: { settings: AppSettings; onCode: (text
           ))}
         </div>
       </div>
+      {scannerWarning && <ScannerInactiveNote className="dash-scanner-note" />}
+    </section>
+  );
+}
+
+/** Nur USB-Scanner (Kamera aus): kompakte Statusanzeige. */
+function DashScanner({ reachable }: { reachable: boolean }) {
+  return (
+    <section className="dash-cam dash-scanner" aria-label="Scanner">
+      {reachable ? (
+        <p className="dash-scanner-ready" role="status">
+          <span className="status-dot present" /> USB-Scanner bereit – Karte vor den Scanner halten
+        </p>
+      ) : (
+        <ScannerInactiveNote className="dash-scanner-note" />
+      )}
     </section>
   );
 }

@@ -49,8 +49,8 @@ export function AutoBackupSection() {
       <div className="subform">
         <h3>Automatische Sicherung</h3>
         <p className="muted">
-          Automatische Sicherungen in einen Ordner (z. B. USB-Stick) sind in Chrome oder Edge am Computer möglich – etwa am
-          Windows-Rechner.
+          Automatische Sicherungen in einen Ordner (z. B. USB-Stick) sind im Programm für Windows/Linux sowie in Chrome oder Edge
+          am Computer möglich.
         </p>
       </div>
     );

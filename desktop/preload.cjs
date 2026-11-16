@@ -1,5 +1,5 @@
 /**
- * Brücke zwischen Oberfläche und Windows-Programm: nur diese wenigen Funktionen sind
+ * Brücke zwischen Oberfläche und Programm (Windows/Linux): nur diese wenigen Funktionen sind
  * für die App sichtbar (window.zkDesktop). Kein direkter Zugriff auf Dateien oder System.
  */
 const { contextBridge, ipcRenderer } = require('electron');

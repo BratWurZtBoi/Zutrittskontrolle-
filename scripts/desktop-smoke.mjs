@@ -1,7 +1,8 @@
 /**
- * Test des Windows-Programms (Electron) – startet das echte Programm mit eigenem
+ * Test des Programms für Windows/Linux (Electron) – startet das echte Programm mit eigenem
  * Datenordner. Unter Linux mit virtuellem Bildschirm: xvfb-run -a npm run desktop:smoke
  * Voraussetzung: npm run build (Ordner dist/).
+ * Installiertes Linux-Paket testen: ZK_DESKTOP_EXE=/opt/Zutrittskontrolle/zutrittskontrolle
  */
 import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -20,6 +21,7 @@ const electronPath = require('electron');
 const root = resolve('.');
 const userData = mkdtempSync(join(tmpdir(), 'zk-desktop-'));
 const backupDir = mkdtempSync(join(tmpdir(), 'zk-sicherung-'));
+const autostartDir = mkdtempSync(join(tmpdir(), 'zk-autostart-'));
 const PASSWORD = 'Test-Passwort-123';
 const problems = [];
 
@@ -28,7 +30,7 @@ function check(cond, msg) {
   console.log(`  ✓ ${msg}`);
 }
 
-const env = { ...process.env, ZK_USER_DATA_DIR: userData };
+const env = { ...process.env, ZK_USER_DATA_DIR: userData, ZK_AUTOSTART_DIR: autostartDir };
 delete env.NODE_OPTIONS; // in Electron nicht erlaubte Optionen der Umgebung
 // ZK_DESKTOP_EXE: fertig gepacktes Programm testen (sonst Entwicklungsstart mit „electron .“)
 const packaged = process.env.ZK_DESKTOP_EXE;
@@ -54,7 +56,7 @@ try {
   check(page.url().startsWith('app://zutrittskontrolle/'), `eigene Herkunft app://zutrittskontrolle (${page.url()})`);
   const info = await page.evaluate(() => window.zkDesktop?.info());
   const expected = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
-  check(info?.version === expected, `Windows-Programm erkannt (Version ${info?.version})`);
+  check(info?.version === expected, `Programm erkannt (Version ${info?.version})`);
   check(info.dataPath === userData, 'Daten im eigenen Programmordner');
   const blocked = await page.evaluate(() => fetch('https://example.com/').then(() => 'erreicht', () => 'gesperrt'));
   check(blocked === 'gesperrt', 'Keine Verbindungen ins Internet');
@@ -96,6 +98,24 @@ try {
     .then(() => true, () => false);
   check(cameraOk, 'Kamera ohne Rückfrage freigegeben');
 
+  // USB-Scanner (Tastatur-Modus): Hauptfenster hat nach dem Öffnen der Präsentation die Tastatur
+  const token = await page.evaluate(
+    () =>
+      new Promise((res, rej) => {
+        const req = indexedDB.open('zutrittskontrolle-daten');
+        req.onerror = () => rej(req.error);
+        req.onsuccess = () => {
+          const all = req.result.transaction('cards').objectStore('cards').getAll();
+          all.onsuccess = () => res(all.result.find((c) => c.number === 'M-001')?.token);
+        };
+      }),
+  );
+  await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+  await page.keyboard.type(`ZK1:${token}`, { delay: 4 });
+  await page.keyboard.press('Enter');
+  await presentation.locator('.presentation-result', { hasText: 'Max Mustermann' }).waitFor({ timeout: 5000 });
+  check(true, 'Scan per USB-Scanner (Tastatur) gebucht und auf dem Gästebildschirm angezeigt');
+
   console.log('4) Automatische Sicherung in einen Ordner');
   const bad = await page.evaluate(() => window.zkDesktop.backupWrite('../boese.txt', 'x').then(() => 'geschrieben', () => 'abgelehnt'));
   check(bad === 'abgelehnt', 'Schreiben außerhalb des Sicherungsordners wird abgelehnt');
@@ -115,12 +135,24 @@ try {
 
   console.log('5) Gerät & App');
   await page.evaluate(() => (location.hash = '#/einstellungen/geraet'));
-  await page.getByText('Windows-Programm', { exact: true }).waitFor();
+  const label = process.platform === 'linux' ? 'Linux-Programm' : 'Windows-Programm';
+  await page.getByText(label, { exact: true }).waitFor();
+  check(true, `Als „${label}“ erkannt`);
   check((await page.locator('code.path').textContent()) === userData, 'Datenordner wird angezeigt');
+  if (process.platform === 'linux') {
+    const autostart = page.getByLabel('Beim Anmelden automatisch starten');
+    await autostart.click();
+    await page.waitForFunction(() => document.querySelector('input[type=checkbox]:checked') !== null);
+    const entry = join(autostartDir, 'zutrittskontrolle.desktop');
+    check(existsSync(entry) && /Exec=".+" --ozone-platform=x11/.test(readFileSync(entry, 'utf8')), 'Linux: Autostart-Eintrag angelegt');
+    await autostart.click();
+    await page.waitForFunction(() => document.querySelector('input[type=checkbox]:checked') === null);
+    check(!existsSync(entry), 'Linux: Autostart-Eintrag wieder entfernt');
+  }
   await page.screenshot({ path: join(root, '.e2e', 'desktop-geraet.png') });
 
   check(problems.length === 0, `keine JavaScript-Fehler${problems.length ? ': ' + problems.join(' | ') : ''}`);
-  console.log('\nWindows-Programm: alle Prüfungen bestanden.');
+  console.log(`\n${process.platform === 'linux' ? 'Linux' : 'Windows'}-Programm: alle Prüfungen bestanden.`);
 } catch (err) {
   console.error(err);
   for (const [i, w] of app.windows().entries()) await w.screenshot({ path: join(root, '.e2e', `desktop-fehler-${i}.png`) }).catch(() => undefined);

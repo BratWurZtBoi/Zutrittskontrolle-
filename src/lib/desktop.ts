@@ -1,5 +1,5 @@
 /**
- * Windows-Programm (Electron): Funktionen, die nur dort zur Verfügung stehen.
+ * Windows- und Linux-Programm (Electron): Funktionen, die nur dort zur Verfügung stehen.
  * Im Browser ist `getDesktop()` null – die App verhält sich dann wie bisher.
  */
 
@@ -9,6 +9,7 @@ export interface DesktopFolder {
 }
 
 export interface DesktopApi {
+  /** 'win32' oder 'linux' */
   platform: string;
   info(): Promise<{ version: string; dataPath: string }>;
   /** Präsentationsfenster: auf dem zweiten Bildschirm im Vollbild, sonst als Fenster. */

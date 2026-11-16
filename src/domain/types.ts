@@ -161,9 +161,10 @@ export interface AccessEventRecord {
   holderName?: string;
   /**
    * 'system' = automatische Buchung, z. B. beim Zurückgeben einer Karte;
-   * 'manual' = vom Admin/Bediener gebucht (Karte vergessen) oder korrigiert.
+   * 'manual' = vom Admin/Bediener gebucht (Karte vergessen) oder korrigiert;
+   * 'scanner' = USB-Scanner (Tastatur-Modus).
    */
-  source: 'camera' | 'test' | 'system' | 'manual';
+  source: 'camera' | 'scanner' | 'test' | 'system' | 'manual';
   /** Eintritt wurde vom Admin/Bediener bestätigt bzw. abgewiesen – oder manuell gebucht/korrigiert. */
   confirmedBy?: StaffRole;
   /** Diese Buchung korrigiert die Buchung mit dieser Nummer. */

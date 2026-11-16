@@ -10,7 +10,7 @@ export interface SettingsSectionInfo {
 /** Bereiche der Einstellungen – Reihenfolge = Reihenfolge in Übersicht und Seitenleiste. */
 export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
   { path: '/einstellungen/allgemein', title: 'Allgemein', description: 'Hell/dunkel, Name der Organisation' },
-  { path: '/einstellungen/scanner', title: 'Scanner', description: 'Modus, Doppelscan-Schutz, Kamera, Ton, Testmodus' },
+  { path: '/einstellungen/scanner', title: 'Scanner', description: 'Modus, Doppelscan-Schutz, Kamera, USB-Scanner, Ton, Testmodus' },
   { path: '/einstellungen/gruppen', title: 'Gruppen', description: 'Farbe, Kürzel, Regeln, Bestätigung, Layout' },
   { path: '/einstellungen/karten', title: 'Kartenlayout', description: 'Aussehen der gedruckten Karten, Quer- oder Hochformat' },
   { path: '/einstellungen/praesentation', title: 'Präsentation', description: 'Ruhebildschirm und Scan-Anzeige für Gäste gestalten' },

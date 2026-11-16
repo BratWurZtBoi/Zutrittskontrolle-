@@ -3,7 +3,8 @@
 Offlinefähige Zutritts- und Anwesenheitskontrolle mit QR-Karten als PWA.
 Der Nutzer entwickelt **ausschließlich über Claude Code auf dem Smartphone** – es gibt keinen
 Entwicklungs-PC. Er testet über die veröffentlichte App (GitHub Pages) auf einem Galaxy S24 Ultra,
-Android-Tablets und einem Windows-Rechner mit Webcam.
+Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei Bildschirmen**
+(Bedienung + Gästebildschirm); geplant: USB-QR-Scanner, ggf. günstige Linux-Hardware (Raspberry Pi).
 
 ## Grundregeln
 
@@ -11,7 +12,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - **Keine Cloud-Abhängigkeit** für Daten: alles bleibt in IndexedDB auf dem Gerät.
   Keine externen Requests zur Laufzeit (keine CDNs, Fonts, Analytics).
 - **Kein APK/Capacitor** für Android – bewusst entschieden: dort reine PWA.
-  **Windows:** zusätzlich ein Electron-Programm aus demselben Code (vom Nutzer gewünscht, Version 0.9).
+  **Windows/Linux:** zusätzlich ein Electron-Programm aus demselben Code (vom Nutzer gewünscht,
+  Windows ab 0.9, Linux-.deb für amd64 + arm64/Raspberry Pi ab 0.11).
 - Kleine, testbare Schritte. Vor jedem Commit: `npm run check`.
   Bei UI-Änderungen zusätzlich `npm run build && npm run e2e:local` (simulierte Kamera).
 - Oberfläche und Doku auf **Deutsch**, Bezeichner im Code auf Englisch.
@@ -68,6 +70,15 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - `src/scanner/` – Kamera-Loop + jsQR im Web Worker. Scan-Verarbeitung (Doppelerkennung,
   Buchen, Ton) steckt in `hooks/useScanProcessor.ts` und wird von Kiosk-Scanner und Dashboard
   gemeinsam genutzt; Ergebnisanzeige in `components/ScanResult.tsx` (Vollbild bzw. Feld).
+- **USB-Scanner (Tastatur-Modus/HID):** Erkennung rein in `domain/keyboardScan.ts`
+  (`KeyboardScanDetector`: Tempo ≤ 40 ms bzw. 110 ms „langsam“, ≥ 6 Zeichen, Enter/Tab; vollständige
+  Karten-Codes sofort; `scannedCardPayload` korrigiert Feststelltaste und US/DE-Layout am Präfix
+  `YK1Ö`/`YK1>`). `hooks/useKeyboardScanner.ts`: `keydown` im Capture-Modus, verschluckt das Enter
+  (sonst „Einlassen“!), setzt fokussierte Felder zurück; `useScannerInput` (Dashboard/Kiosk) +
+  `useScanForwarding` (Präsentationsfenster reicht Scans per BroadcastChannel `lib/scanForward.ts`
+  weiter und meldet seinen Fokus). Einstellungen `scanInput` (`both`/`camera`/`scanner`) und
+  `scannerSpeed` je Gerät (nicht im Backup); Quelle `scanner`. Kamera startet erst nach Laden der
+  Einstellungen (`useLoadedSettings`), der Scanner sofort. E2E simuliert per `keyboard.type(delay 4)`.
 - Übersicht/Dashboard: reine Filter-/Sortierfunktionen in `domain/overview.ts`, Daten über
   `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Dashboard-Kennzahlen ohne
   Entschlüsseln in `hooks/useDashboardData.ts`. Dashboard-Layout: Statusleiste, linke Spalte
@@ -95,17 +106,23 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
 - Einstellungen: Übersicht `#/einstellungen` (Kacheln) + je Bereich eine Seite unter `pages/settings/`
   mit `SettingsShell` (Seitenleiste ab 1000 px, sonst „← Einstellungen“). Neue Bereiche in
   `SETTINGS_SECTIONS` eintragen; keine langen Sammelseiten mehr.
-- **Windows-Programm** (`desktop/`): `main.cjs` lädt `dist/` über das eigene Protokoll
+- **Programm für Windows/Linux** (`desktop/`): `main.cjs` lädt `dist/` über das eigene Protokoll
   `app://zutrittskontrolle` (feste Herkunft → IndexedDB, Web Crypto, Kamera, BroadcastChannel wie im
   Browser), sperrt alle Verbindungen außer eigenen Dateien, erlaubt Kamera ohne Rückfrage, öffnet die
-  Präsentation selbst auf dem zweiten Bildschirm. `preload.cjs` stellt `window.zkDesktop` bereit
+  Präsentation selbst auf dem zweiten Bildschirm (danach Fokus zurück ins Hauptfenster – wegen
+  USB-Scanner). Linux: X11-Modus (`--ozone-platform=x11` im Startmenü-Eintrag, sonst einmaliger
+  Neustart, weil Wayland keine Fensterplatzierung erlaubt), Autostart über `~/.config/autostart`
+  (`ZK_AUTOSTART_DIR` für Tests). `preload.cjs` stellt `window.zkDesktop` bereit
   (`lib/desktop.ts`: Präsentation, Sicherungsordner – Schreiben nur in den im Dialog gewählten
   Ordner und nur Backup-Dateinamen –, Autostart, Info). Im Browser ist `getDesktop()` null.
   Kein Service Worker im Programm. Test: `npm run build && xvfb-run -a npm run desktop:smoke`
-  (gepackt: `ZK_DESKTOP_EXE=…`). Installationsdatei baut `.github/workflows/desktop.yml` auf
-  `windows-latest` (`npm run desktop:build`, unsigniert) und legt sie unter Releases `v<Version>` ab
-  → bei neuen Funktionen die Version in `package.json` erhöhen. Lokal unter Linux scheitert nur der
-  letzte NSIS-Schritt (braucht wine).
+  (gepackt: `ZK_DESKTOP_EXE=…`, z. B. installiertes .deb `/opt/Zutrittskontrolle/zutrittskontrolle`).
+  `.github/workflows/desktop.yml`: Windows-Installationsdatei auf `windows-latest`
+  (`npm run desktop:build`, unsigniert), Linux-.deb amd64 + arm64 auf `ubuntu-latest`
+  (`npm run desktop:build:linux`, Paket wird installiert und mit dem Smoke-Test geprüft), Job
+  `release` legt beides unter Releases `v<Version>` ab → bei neuen Funktionen die Version in
+  `package.json` erhöhen. Lokal unter Linux scheitert nur der letzte NSIS-Schritt (braucht wine);
+  .deb lässt sich lokal bauen und mit `apt-get install ./release/…amd64.deb` installieren.
 - Routing per `HashRouter` (läuft ohne Server-Konfiguration auf GitHub Pages und offline).
 - Vite `base: './'` – relative Pfade, nicht ändern.
 
@@ -154,6 +171,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam.
    Updates durch Drüberinstallieren, ohne Signatur (Version 0.9).
 10. ✅ Kartenlayout frei gestaltbar (Quer/Hoch, Elemente, Zuweisung je Gruppe), Druck auf A4-Bogen
     oder Kartendrucker (Version 0.10).
+11. ✅ USB-Scanner (Tastatur-Modus) mit Scanner-Test und Weiterleitung vom Gästebildschirm,
+    Linux-Programm (.deb für PC und Raspberry Pi) (Version 0.11).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
@@ -162,6 +181,6 @@ Teilen (`lib/download.ts`): Chrome teilt nur bestimmte Endungen – `shareableFi
 `.txt` an (Backup → `….zkb.txt`, Inhalt unverändert); Fehler werden angezeigt, nicht verschluckt.
 
 Mögliche nächste Schritte (mit dem Nutzer abstimmen): Fremdkarten (QR/Strichcode einlernen,
-zurückgestellt), Musik/Animationen in Layouts (zurückgestellt), USB-Handscanner, Test auf echten
-Geräten und Feinschliff, Datenschutz (Hinweis, Auskunft/Löschen je Person), Zutrittszeiten je Gruppe,
+zurückgestellt – der USB-Scanner liest sie bereits), Musik/Animationen in Layouts (zurückgestellt),
+Test auf echten Geräten (Scanner, Linux/Raspberry Pi, Kartendrucker) und Feinschliff, Datenschutz (Hinweis, Auskunft/Löschen je Person), Zutrittszeiten je Gruppe,
 Kartenrückseite, Backup zusammenführen statt ersetzen.

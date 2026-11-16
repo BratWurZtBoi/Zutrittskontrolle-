@@ -1,5 +1,8 @@
-# Windows-Programm (Electron) – Installationsdatei erzeugen: npm run desktop:build
-# Gebaut wird in GitHub Actions auf einem Windows-Rechner (.github/workflows/desktop.yml).
+# Programm für Windows und Linux (Electron)
+# Windows-Installationsdatei: npm run desktop:build        (GitHub Actions, windows-latest)
+# Linux-Pakete (.deb):        npm run desktop:build:linux  (GitHub Actions, ubuntu-latest)
+#   x64 = normale PCs/Laptops, arm64 = Raspberry Pi 4/5 mit 64-Bit-System
+# Siehe .github/workflows/desktop.yml
 appId: app.zutrittskontrolle.desktop
 productName: Zutrittskontrolle
 copyright: Zutrittskontrolle
@@ -33,3 +36,26 @@ nsis:
   deleteAppDataOnUninstall: false
   installerLanguages: [de_DE]
   language: "1031"
+linux:
+  icon: desktop/icon.png
+  executableName: zutrittskontrolle
+  category: Office
+  synopsis: Zutritts- und Anwesenheitskontrolle mit QR-Karten
+  description: Offlinefähige Zutritts- und Anwesenheitskontrolle mit QR-Karten – alle Daten bleiben auf dem Gerät.
+  maintainer: Zutrittskontrolle
+  vendor: Zutrittskontrolle
+  target:
+    - target: deb
+      arch: [x64, arm64]
+  artifactName: Zutrittskontrolle-${version}-${arch}.${ext}
+  # X11-Kompatibilitätsmodus: nur so landet die Präsentation zuverlässig auf dem zweiten Bildschirm
+  # (Wayland erlaubt Programmen nicht, Fenster auf einen bestimmten Bildschirm zu legen)
+  executableArgs: ["--ozone-platform=x11"]
+  desktop:
+    entry:
+      Name: Zutrittskontrolle
+      Comment: Zutritts- und Anwesenheitskontrolle mit QR-Karten
+      Keywords: Zutritt;Anwesenheit;QR;Scanner;
+deb:
+  packageName: zutrittskontrolle
+  priority: optional

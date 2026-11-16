@@ -39,11 +39,11 @@ function BrowserInfo() {
         </ul>
       </section>
       <section className="card form">
-        <h2>Hinweise für den Windows-Rechner</h2>
+        <h2>Hinweise für den Computer</h2>
         <ul className="info-list">
           <li>
-            Es gibt die App auch als <strong>Windows-Programm</strong> (Installationsdatei unter „Releases“ auf GitHub). Dort liegen
-            die Daten in einem eigenen Programmordner – unabhängig vom Browser.
+            Es gibt die App auch als <strong>Programm für Windows und Linux</strong> (Dateien unter „Releases“ auf GitHub). Dort
+            liegen die Daten in einem eigenen Programmordner – unabhängig vom Browser.
           </li>
           <li>
             In Edge/Chrome darf <strong>„Browserdaten beim Schließen löschen“</strong> nicht aktiv sein – sonst sind alle Daten
@@ -57,9 +57,10 @@ function BrowserInfo() {
   );
 }
 
-/** Windows-Programm (Electron). */
+/** Windows- bzw. Linux-Programm (Electron). */
 function DesktopInfo() {
   const desktop = getDesktop();
+  const linux = desktop?.platform === 'linux';
   const [info, setInfo] = useState<{ version: string; dataPath: string } | null>(null);
   const [autostart, setAutostart] = useState<boolean | null>(null);
 
@@ -74,7 +75,8 @@ function DesktopInfo() {
       <section className="card form">
         <ul className="info-list">
           <li>
-            <strong>Windows-Programm</strong>, Version {info?.version ?? __APP_VERSION__} (Build {__BUILD_ID__})
+            <strong>{linux ? 'Linux-Programm' : 'Windows-Programm'}</strong>, Version {info?.version ?? __APP_VERSION__} (Build{' '}
+            {__BUILD_ID__})
           </li>
           <li>
             Daten liegen in: <code className="path">{info?.dataPath ?? '…'}</code> – unabhängig vom Browser. Sie bleiben bei
@@ -88,21 +90,36 @@ function DesktopInfo() {
             disabled={autostart === null}
             onChange={(e) => void desktop?.setAutostart(e.target.checked).then(setAutostart)}
           />
-          Beim Anmelden an Windows automatisch starten
+          {linux ? 'Beim Anmelden automatisch starten' : 'Beim Anmelden an Windows automatisch starten'}
         </label>
       </section>
       <section className="card form">
         <h2>Updates</h2>
         <ul className="info-list">
-          <li>Neue Version: Installationsdatei herunterladen und einfach über die bisherige Version installieren.</li>
+          {linux ? (
+            <li>
+              Neue Version: das neue Paket (<code>.deb</code>) herunterladen und per Doppelklick installieren – es ersetzt die
+              bisherige Version.
+            </li>
+          ) : (
+            <li>Neue Version: Installationsdatei herunterladen und einfach über die bisherige Version installieren.</li>
+          )}
           <li>Vorher ein Backup erstellen (Einstellungen → Datensicherung) – zur Sicherheit.</li>
         </ul>
       </section>
       <section className="card form">
         <h2>Hinweise</h2>
         <ul className="info-list">
-          <li>Windows-Konto mit Passwort, Geräteverschlüsselung (BitLocker); beim Verlassen des Platzes Win+L drücken.</li>
+          {linux ? (
+            <li>
+              Benutzerkonto mit Passwort, Festplattenverschlüsselung (bei der Installation von Linux wählen); beim Verlassen des
+              Platzes den Bildschirm sperren (meist Super+L).
+            </li>
+          ) : (
+            <li>Windows-Konto mit Passwort, Geräteverschlüsselung (BitLocker); beim Verlassen des Platzes Win+L drücken.</li>
+          )}
           <li>F11 schaltet das Fenster in den Vollbildmodus (z. B. für den Kiosk-Scanner).</li>
+          <li>Zwei Bildschirme: in den Bildschirmeinstellungen „Erweitern“ wählen (nicht „Spiegeln“/„Duplizieren“).</li>
         </ul>
       </section>
     </>

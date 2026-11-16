@@ -1,6 +1,7 @@
 /**
- * Windows-Programm (Electron): dieselbe App wie im Browser, aber als eigenständiges
- * Programm mit eigenem Datenordner (%APPDATA%\Zutrittskontrolle).
+ * Windows- und Linux-Programm (Electron): dieselbe App wie im Browser, aber als
+ * eigenständiges Programm mit eigenem Datenordner (Windows: %APPDATA%\Zutrittskontrolle,
+ * Linux: ~/.config/Zutrittskontrolle).
  *
  * - Die App-Dateien (Ordner dist/) werden über das eigene Protokoll app:// geladen –
  *   wie eine Webseite mit fester Herkunft, damit Datenbank, Verschlüsselung, Kamera und
@@ -27,6 +28,23 @@ protocol.registerSchemesAsPrivileged([
 
 // Nur für automatische Tests: eigener Datenordner
 if (process.env.ZK_USER_DATA_DIR) app.setPath('userData', process.env.ZK_USER_DATA_DIR);
+
+// Linux mit Wayland-Oberfläche (z. B. Ubuntu, Raspberry Pi OS): Programme dürfen dort nicht
+// selbst bestimmen, auf welchem Bildschirm ein Fenster erscheint. Im X11-Kompatibilitätsmodus
+// (XWayland) landet die Präsentation zuverlässig auf dem zweiten Bildschirm. Das Startmenü
+// übergibt den Schalter bereits; beim Start ohne ihn (z. B. aus dem Terminal) einmal neu starten.
+// (Electron trägt die erkannte Oberfläche selbst als --ozone-platform ein, daher der Blick auf argv.)
+if (
+  process.platform === 'linux' &&
+  app.commandLine.getSwitchValue('ozone-platform') === 'wayland' &&
+  !process.argv.some((arg) => arg.startsWith('--ozone-platform')) &&
+  process.env.DISPLAY &&
+  !process.env.ZK_X11_RELAUNCH
+) {
+  process.env.ZK_X11_RELAUNCH = '1';
+  app.relaunch({ args: [...process.argv.slice(1), '--ozone-platform=x11'] });
+  app.exit(0);
+}
 
 // Nur eine Instanz: zwei Programme würden sich die Datenbank teilen
 if (!app.requestSingleInstanceLock()) {
@@ -68,6 +86,52 @@ function backupPath(filename) {
   if (!folder) throw new Error('Kein Sicherungsordner gewählt.');
   if (typeof filename !== 'string' || !BACKUP_FILE.test(filename)) throw new Error('Ungültiger Dateiname.');
   return path.join(folder, filename);
+}
+
+// ---------------------------------------------------------------------------
+// Autostart beim Anmelden
+// ---------------------------------------------------------------------------
+
+/** Linux: Eintrag im Autostart-Ordner der Arbeitsumgebung (freedesktop-Standard). */
+function linuxAutostartFile() {
+  const dir =
+    process.env.ZK_AUTOSTART_DIR || // nur für Tests
+    path.join(process.env.XDG_CONFIG_HOME || path.join(app.getPath('home'), '.config'), 'autostart');
+  return path.join(dir, 'zutrittskontrolle.desktop');
+}
+
+function getAutostart() {
+  if (process.platform === 'linux') return fs.existsSync(linuxAutostartFile());
+  return app.getLoginItemSettings().openAtLogin;
+}
+
+function setAutostart(on) {
+  if (process.platform === 'linux') {
+    const file = linuxAutostartFile();
+    if (on) {
+      const exec = process.env.APPIMAGE || process.execPath;
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(
+        file,
+        [
+          '[Desktop Entry]',
+          'Type=Application',
+          'Name=Zutrittskontrolle',
+          'Comment=Zutritts- und Anwesenheitskontrolle',
+          `Exec="${exec.replace(/(["`$\\])/g, '\\$1')}" --ozone-platform=x11`,
+          'Terminal=false',
+          'X-GNOME-Autostart-enabled=true',
+          '',
+        ].join('\n'),
+        'utf8',
+      );
+    } else {
+      fs.rmSync(file, { force: true });
+    }
+    return getAutostart();
+  }
+  app.setLoginItemSettings({ openAtLogin: Boolean(on) });
+  return getAutostart();
 }
 
 // ---------------------------------------------------------------------------
@@ -123,11 +187,15 @@ function createMainWindow() {
   void mainWindow.loadURL(`${ORIGIN}/index.html`);
 }
 
-/** Präsentation für Gäste: auf dem zweiten Bildschirm im Vollbild, sonst als Fenster. */
+/**
+ * Präsentation für Gäste: auf dem zweiten Bildschirm im Vollbild, sonst als Fenster.
+ * Danach bekommt das Hauptfenster die Tastatur zurück – dorthin „tippt“ ein USB-Scanner.
+ */
 function openPresentation() {
   if (presentationWindow && !presentationWindow.isDestroyed()) {
-    presentationWindow.show();
-    presentationWindow.focus();
+    if (presentationWindow.isMinimized()) presentationWindow.restore();
+    presentationWindow.showInactive();
+    mainWindow?.focus();
     return presentationWindow.isFullScreen() ? 'other-screen' : 'window';
   }
   const current = mainWindow ? screen.getDisplayMatching(mainWindow.getBounds()) : screen.getPrimaryDisplay();
@@ -144,6 +212,7 @@ function openPresentation() {
     }),
   );
   lockDown(presentationWindow);
+  presentationWindow.once('ready-to-show', () => mainWindow?.focus());
   presentationWindow.on('closed', () => {
     presentationWindow = null;
   });
@@ -200,11 +269,8 @@ function registerIpc() {
     fs.rmSync(backupPath(filename), { force: true });
   });
 
-  handle('zk:get-autostart', () => app.getLoginItemSettings().openAtLogin);
-  handle('zk:set-autostart', (on) => {
-    app.setLoginItemSettings({ openAtLogin: Boolean(on) });
-    return app.getLoginItemSettings().openAtLogin;
-  });
+  handle('zk:get-autostart', () => getAutostart());
+  handle('zk:set-autostart', (on) => setAutostart(Boolean(on)));
 }
 
 // ---------------------------------------------------------------------------

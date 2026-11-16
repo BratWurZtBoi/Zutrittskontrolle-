@@ -11,7 +11,7 @@ const MODES: { value: ScanMode; label: string }[] = [
 ];
 
 /** Modus (Auto/Eingang/Ausgang), Kameraauswahl und Anwesenheitszähler. */
-export function ScannerControls({ settings, cameraStarts }: { settings: AppSettings; cameraStarts: number }) {
+export function ScannerControls({ settings, cameraStarts, showCamera = true }: { settings: AppSettings; cameraStarts: number; showCamera?: boolean }) {
   const presentCount = useLiveQuery(() => db.presence.where('status').equals('in').count(), [], 0);
   return (
     <div className="scanner-bar no-print">
@@ -29,12 +29,14 @@ export function ScannerControls({ settings, cameraStarts }: { settings: AppSetti
           </button>
         ))}
       </div>
-      <CameraSelect
-        value={settings.camera}
-        onChange={(camera) => void saveSettings({ camera })}
-        refreshKey={cameraStarts}
-        className="camera-select"
-      />
+      {showCamera && (
+        <CameraSelect
+          value={settings.camera}
+          onChange={(camera) => void saveSettings({ camera })}
+          refreshKey={cameraStarts}
+          className="camera-select"
+        />
+      )}
       <span className="present-count">
         Anwesend: <strong>{presentCount}</strong>
       </span>
