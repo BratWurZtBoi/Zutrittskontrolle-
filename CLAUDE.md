@@ -106,9 +106,19 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   der Karte, Schrift in % der Kartenhöhe, `showWhen` mit/ohne Person, `hideIfEmpty`, Farben
   `group`/`on-group`/#hex, QR mindestens `MIN_QR_MM`), Tabelle `cardLayouts` (DB-Version 3),
   `STANDARD_CARD_LAYOUT` nur im Code; Zuordnung `Group.cardLayoutId` > `settings.defaultCardLayoutId`.
-  Personendaten nur bei `group.printHolder` (`cardDataFor` in `PrintPage`). `CardView` rendert Druck
-  (echte mm) und Editor-Vorschau; Kartendrucker-Druck über benannte `@page karte-quer/karte-hoch`.
-  Ziehen/Pfeiltasten in beiden Editoren über `hooks/useElementDrag.ts`.
+  Formate `format` id1/a7/a6/custom (+`customSize`), Größe immer über `cardSize(layout)` (nie fest
+  85,6 × 54 annehmen); Rückseite optional `back: CardSide` (Vorderseite = `background`/`elements`,
+  Zugriff über `sideOf`/`withSide`). Editor `pages/CardLayoutEditor.tsx`: Reiter Hinzufügen
+  (`CARD_PRESETS`)/Bearbeiten/Design/Allgemein (Gruppen per `setCardLayoutGroups` beim Speichern),
+  Rückgängig über `hooks/useHistory.ts` (Schlüssel fassen Ziehen/Tippen zusammen, `checkpoint` je
+  Zieh-Vorgang), Anfasser `resizeCardElement`, Einrasten `snapCardElement`, Warnung bei
+  ungespeicherten Änderungen `lib/unsavedChanges.ts` (Links + beforeunload; HashRouter hat keinen
+  Blocker). Personendaten nur bei `group.printHolder` (`cardDataFor` in `PrintPage`). Druck:
+  Seitenaufteilung rein in `domain/printLayout.ts` (A4 mit 8 mm Rand/4 mm Abstand, beste
+  Ausrichtung, Duplex gespiegelt je Wendekante, Falten, Kartendrucker abwechselnd), Seiten in mm
+  absolut positioniert (`@page a4-hoch/a4-quer`), Kartengrößen-Seiten per CSSOM (`lib/printPages.ts`,
+  CSP-verträglich). Einstellungen `cardPrintBack/Flip/CutMarks` je Gerät.
+  Ziehen/Anfasser/Pfeiltasten in beiden Editoren über `hooks/useElementDrag.ts`.
 - Einstellungen: Übersicht `#/einstellungen` (Kacheln) + je Bereich eine Seite unter `pages/settings/`
   mit `SettingsShell` (Seitenleiste ab 1000 px, sonst „← Einstellungen“). Neue Bereiche in
   `SETTINGS_SECTIONS` eintragen; keine langen Sammelseiten mehr.
@@ -181,6 +191,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
     Linux-Programm (.deb für PC und Raspberry Pi) (Version 0.11).
 12. ✅ CSV-Import: Zeilen ohne/mit unbekannter Gruppe → Reiter „Nicht zugeordnet“, dort Gruppe
     zuordnen (freie Karte zuerst, sonst neue) oder löschen (Version 0.12).
+13. ✅ Karteneditor neu (Reiter, Bausteine, Rückgängig, Anfasser, Hilfslinien), Formate A7/A6/eigene
+    Größe, Rückseite, Druck beidseitig/zum Falten/Kartendrucker mit Schnittmarken (Version 0.13).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
@@ -190,5 +202,7 @@ Teilen (`lib/download.ts`): Chrome teilt nur bestimmte Endungen – `shareableFi
 
 Mögliche nächste Schritte (mit dem Nutzer abstimmen): Fremdkarten (QR/Strichcode einlernen,
 zurückgestellt – der USB-Scanner liest sie bereits), Musik/Animationen in Layouts (zurückgestellt),
-Test auf echten Geräten (Scanner, Linux/Raspberry Pi, Kartendrucker) und Feinschliff, Datenschutz (Hinweis, Auskunft/Löschen je Person), Zutrittszeiten je Gruppe,
-Kartenrückseite, Backup zusammenführen statt ersetzen.
+Test auf echten Geräten (Scanner, Linux/Raspberry Pi, Kartendrucker, Duplex) und Feinschliff,
+als Nächstes (abgestimmt): Gästebildschirm-Editor im selben Stil, Karten-Bereich mit Reitern,
+Druck-Probeseite + Filter „noch nicht gedruckt“, Einstellungen gliedern; später „Erste Schritte“,
+Datenschutz (Hinweis, Auskunft/Löschen je Person), Zutrittszeiten je Gruppe, Backup zusammenführen.

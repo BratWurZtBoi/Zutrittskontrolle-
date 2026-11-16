@@ -779,61 +779,127 @@ try {
   check(true, 'Seitenleiste wechselt den Bereich');
   await page.screenshot({ path: `${OUT}/28-einstellungen-computer.png` });
 
-  console.log('17f) Kartenlayout gestalten, Gruppe zuweisen, drucken (A4-Bogen und Kartendrucker)');
-  await page.setViewportSize({ width: 1536, height: 900 });
+  console.log('17f) Kartenlayout: neuer Editor, Formate, Rückseite, Druckarten');
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${URL}#/einstellungen/karten`);
   await page.getByRole('button', { name: '+ Neues Kartenlayout' }).click();
-  await page.getByLabel('Name', { exact: true }).fill('Besucher hoch');
-  await page.getByLabel('Vorlage anwenden (ersetzt die Elemente)').selectOption('portrait');
-  await page.locator('.layout-preview .card-view.card-portrait').waitFor();
-  check(true, 'Vorlage Hochformat angewendet');
-  await page.getByRole('button', { name: '+ Textfeld' }).click();
-  const cardEditor = page.locator('.element-editor');
-  await cardEditor.getByLabel('Text', { exact: true }).fill('Bitte gut sichtbar tragen');
-  await page.locator('.layout-preview .cv-text', { hasText: 'Bitte gut sichtbar tragen' }).waitFor();
-  const cardTop = async () => Number(await cardEditor.getByLabel('Abstand oben (%)').inputValue());
-  const cardY0 = await cardTop();
-  await page.locator('.layout-preview .cv-selected').scrollIntoViewIfNeeded();
-  const cardBox = await page.locator('.layout-preview .cv-selected').boundingBox();
-  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+  await page.locator('.ce').waitFor();
+  await page.getByLabel('Name des Kartenlayouts').fill('Besucher hoch');
+  await page.getByRole('tab', { name: 'Design' }).click();
+  await page.getByRole('radio', { name: 'Hochformat' }).click(); // Rückfrage „Vorlage übernehmen?“ → OK
+  await page.locator('.ce-canvas .card-view.card-portrait').waitFor();
+  check((await page.locator('.ce-canvas .cv-el').count()) >= 8, 'Hochformat: passende Vorlage übernommen');
+
+  await page.getByRole('tab', { name: 'Hinzufügen' }).click();
+  await page.locator('.ce-tile', { hasText: 'Freier Text' }).click();
+  await page.getByRole('tab', { name: 'Bearbeiten', selected: true }).waitFor();
+  await page.getByLabel('Inhalt').fill('Bitte gut sichtbar tragen');
+  await page.locator('.ce-canvas .cv-text', { hasText: 'Bitte gut sichtbar tragen' }).waitFor();
+  check(true, 'Baustein „Freier Text“ hinzugefügt und beschriftet');
+  await page.locator('.ce-insert').getByRole('button', { name: '+ Kartennummer' }).click();
+  check((await page.getByLabel('Inhalt').inputValue()).includes('{karte}'), 'Platzhalter per Knopf eingefügt');
+
+  const mmValue = async (label) => Number((await page.locator('.ce-grid label', { hasText: label }).locator('input').inputValue()).replace(',', '.'));
+  const top0 = await mmValue('oben');
+  await page.locator('.ce-canvas .cv-selected').scrollIntoViewIfNeeded();
+  let box = await page.locator('.ce-canvas .cv-selected').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2 - 60, { steps: 8 });
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 80, { steps: 8 });
   await page.mouse.up();
-  check((await cardTop()) < cardY0 - 5, `Textfeld auf der Karte verschoben (oben ${cardY0} % → ${await cardTop()} %)`);
-  await page.locator('.element-list').getByRole('button', { name: 'QR-Code' }).click();
-  check((await cardEditor.textContent()).includes('Mindestens 18'), 'QR-Code: Mindestgröße wird angezeigt');
-  await page.getByRole('tab', { name: 'Ohne Person (anonym)' }).click();
-  await page.locator('.layout-preview .cv-text', { hasText: 'M-007' }).first().waitFor();
-  check((await page.locator('.layout-preview .cv-hidden-here').count()) > 0, 'Vorschau ohne Person: Namensfelder ausgeblendet');
+  const top1 = await mmValue('oben');
+  check(top1 < top0 - 3, `Element auf der Karte verschoben (oben ${top0} → ${top1} mm)`);
+
+  const width0 = await mmValue('Breite');
+  const handle = await page.locator('.ce-canvas .cv-selected .cv-handle-w').boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2 + 60, handle.y + handle.height / 2, { steps: 6 });
+  await page.mouse.up();
+  const width1 = await mmValue('Breite');
+  check(width1 < width0 - 3, `Breite am Anfasser geändert (${width0} → ${width1} mm)`);
+  await page.locator('.ce-topbar').click({ position: { x: 5, y: 5 } }); // Fokus aus Eingabefeldern
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((w) => Number(document.querySelector('.ce-grid label:nth-child(3) input')?.value.replace(',', '.')) === w, width0);
+  check(true, 'Strg+Z macht die Größenänderung rückgängig');
+  check((await mmValue('oben')) === top1, 'Rückgängig betrifft nur den letzten Zieh-Vorgang (Position bleibt)');
+  await page.getByRole('button', { name: 'Wiederholen' }).click();
+  await page.waitForFunction((w) => Number(document.querySelector('.ce-grid label:nth-child(3) input')?.value.replace(',', '.')) === w, width1);
+  check(true, 'Wiederholen stellt sie wieder her');
+
+  await page.getByRole('tab', { name: 'Hinzufügen' }).click();
+  await page.locator('.ce .element-list').getByRole('button', { name: 'QR-Code' }).click();
+  check((await page.locator('.ce-edit').textContent()).includes('Mindestens 18'), 'QR-Code: Mindestgröße wird angezeigt');
+  await page.getByRole('radio', { name: 'Ohne Person', exact: true }).click();
+  check((await page.locator('.ce-canvas .cv-hidden-here').count()) > 0, 'Vorschau ohne Person: Namensfelder ausgeblendet');
+
+  await page.getByRole('tab', { name: 'Design' }).click();
+  await page.getByLabel('Kartengröße').selectOption('a7');
+  await page.locator('.ce-format-pill', { hasText: 'A7 hoch · 74 × 105 mm' }).waitFor();
+  check(true, 'Format A7 hoch gewählt');
+  await page.getByLabel('Rückseite gestalten').check();
+  await page.locator('.ce-canvas .card-back .cv-text', { hasText: 'Bei Fund' }).waitFor();
+  check(true, 'Rückseite angelegt (Vorschlag mit Hinweis bei Fund)');
+  await page.getByRole('tab', { name: 'Allgemein' }).click();
+  await page.getByRole('checkbox', { name: 'Besucher' }).check();
+  await page.screenshot({ path: `${OUT}/29-kartenlayout-editor.png` });
+
+  // ungespeicherte Änderungen: Navigation fragt nach
+  page.removeAllListeners('dialog');
+  let leaveQuestion = '';
+  page.once('dialog', (d) => {
+    leaveQuestion = d.message();
+    void d.dismiss();
+  });
+  await page.locator('.app-nav').getByRole('link', { name: 'Karten' }).click();
+  await page.waitForTimeout(300);
+  check(leaveQuestion.includes('ungespeicherte') && page.url().includes('#/einstellungen/karten'), 'Verlassen mit ungespeicherten Änderungen fragt nach');
+  page.on('dialog', (d) => void d.accept());
+
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await page.getByText('Gespeichert.').waitFor();
-  await page.screenshot({ path: `${OUT}/29-kartenlayout-editor.png` });
   await page.getByRole('button', { name: 'Fertig' }).click();
-  await page.locator('.layout-row', { hasText: 'Besucher hoch' }).waitFor();
-  check(true, 'Kartenlayout gespeichert');
-
-  await page.goto(`${URL}#/einstellungen/gruppen`);
-  await page.locator('.group-list li', { hasText: 'Besucher' }).getByRole('button', { name: 'Bearbeiten' }).click();
-  await page.getByLabel('Kartenlayout (gedruckte Karte)').selectOption({ label: 'Besucher hoch' });
-  await page.getByRole('button', { name: 'Speichern' }).click();
-  await page.locator('.group-list li', { hasText: 'Besucher' }).getByRole('button', { name: 'Bearbeiten' }).waitFor();
+  const row = page.locator('.layout-row', { hasText: 'Besucher hoch' });
+  await row.waitFor();
+  check((await row.textContent()).includes('A7 hoch') && (await row.textContent()).includes('mit Rückseite'), 'Liste zeigt Format und Rückseite');
+  const savedLayout = (await readStore(page, 'cardLayouts')).find((l) => l.name === 'Besucher hoch');
+  const visitorGroupNow = (await readStore(page, 'groups')).find((g) => g.prefix === 'B');
+  check(savedLayout?.format === 'a7' && savedLayout.back?.elements.length > 0 && visitorGroupNow.cardLayoutId === savedLayout.id, 'Gespeichert: A7, Rückseite, Gruppe Besucher zugewiesen');
 
   await page.goto(`${URL}#/druck`);
-  await page.locator('.card-view .cv-qr[src]').first().waitFor();
-  const portraitCards = await page.locator('.card-view.card-portrait').count();
-  const landscapeCards = await page.locator('.card-view.card-landscape').count();
-  check(portraitCards > 0 && landscapeCards > 0, `Druck: Besucher im Hochformat (${portraitCards}), übrige quer (${landscapeCards})`);
+  await page.locator('.print-sheet .card-view .cv-qr[src]').first().waitFor();
+  const a7Cards = await page.locator('.print-sheet .card-view.card-format-a7').count();
+  const id1Cards = await page.locator('.print-sheet .card-view.card-format-id1').count();
+  check(a7Cards > 0 && id1Cards > 0, `Druck: Besucher als A7 (${a7Cards}), übrige als Scheckkarte (${id1Cards}) – auf getrennten Seiten`);
   await page.screenshot({ path: `${OUT}/30-druck-layouts.png`, fullPage: true });
-  await page.getByRole('radio', { name: 'Kartendrucker' }).click();
-  await page.locator('.print-card-printer').waitFor();
-  await page.emulateMedia({ media: 'print' });
-  const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
-  await page.emulateMedia({ media: 'screen' });
-  const boxes = [...pdf.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  const pdfBoxes = async () => {
+    await page.emulateMedia({ media: 'print' });
+    const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
+    await page.emulateMedia({ media: 'screen' });
+    return [...pdf.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  };
   const near = (a, b) => Math.abs(a - b) < 2;
+  const isA4 = ([w, h]) => (near(w, 595.3) && near(h, 841.9)) || (near(w, 841.9) && near(h, 595.3));
+
+  await page.getByRole('radio', { name: 'Beidseitig' }).click();
+  await page.locator('.sheet-label', { hasText: 'Rückseiten' }).first().waitFor();
+  const duplexSheets = await page.locator('.print-sheet').count();
+  check((await page.locator('.print-sheet .card-back').count()) === a7Cards, `Beidseitig: Rückseiten auf eigenen Seiten (${duplexSheets} Seiten)`);
+  const duplexBoxes = await pdfBoxes();
+  check(duplexBoxes.length === duplexSheets && duplexBoxes.every(isA4), `PDF beidseitig: ${duplexBoxes.length} A4-Seiten`);
+  await page.getByRole('radio', { name: 'Zum Falten' }).click();
+  await page.locator('.sheet-label', { hasText: 'zum Falten' }).first().waitFor();
+  check((await page.locator('.print-sheet .card-back').count()) === a7Cards, 'Zum Falten: Rück- und Vorderseite nebeneinander');
+  await page.screenshot({ path: `${OUT}/30b-druck-falten.png`, fullPage: true });
+
+  await page.getByRole('radio', { name: 'Kartendrucker' }).click();
+  await page.getByRole('radio', { name: 'Beidseitig' }).click();
+  await page.locator('.print-cardpage').first().waitFor();
+  const boxes = await pdfBoxes();
   const quer = boxes.filter(([w, h]) => near(w, 242.6) && near(h, 153.1)).length;
-  const hoch = boxes.filter(([w, h]) => near(w, 153.1) && near(h, 242.6)).length;
-  check(quer === landscapeCards && hoch === portraitCards, `Kartendrucker: je Karte eine Seite in Kartengröße (${quer} quer, ${hoch} hoch, ${boxes.length} Seiten)`);
+  const a7 = boxes.filter(([w, h]) => near(w, 209.8) && near(h, 297.6)).length;
+  check(quer === id1Cards * 2 && a7 === a7Cards * 2, `Kartendrucker beidseitig: je Kartenseite eine Seite in Kartengröße (${quer} Scheckkarte, ${a7} A7, ${boxes.length} Seiten)`);
+  await page.getByRole('radio', { name: 'Ohne Rückseite' }).click();
   await page.getByRole('radio', { name: 'A4-Bogen' }).click();
 
   console.log('17g) USB-Scanner (Tastatur-Modus)');

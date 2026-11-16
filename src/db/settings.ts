@@ -1,4 +1,5 @@
 import type { ScannerSpeed } from '../domain/keyboardScan';
+import type { BackMode, FlipEdge } from '../domain/printLayout';
 import type { ScanMode } from '../domain/types';
 
 export type CameraChoice = 'user' | 'environment' | `device:${string}`;
@@ -48,6 +49,12 @@ export interface AppSettings {
   defaultCardLayoutId: string;
   /** Druckformat: A4-Bogen (mehrere Karten) oder Kartendrucker (eine Karte je Seite). */
   cardPrintFormat: 'sheet' | 'card-printer';
+  /** Rückseiten drucken: nicht, beidseitig (Duplex) oder zum Falten (nur A4). */
+  cardPrintBack: BackMode;
+  /** Beidseitig: an der langen oder kurzen Kante wenden (wie im Druckdialog). */
+  cardPrintFlip: FlipEdge;
+  /** A4-Bogen: Schnittmarken drucken. */
+  cardPrintCutMarks: boolean;
   /** Scannen mit Kamera, USB-Scanner oder beidem (je Gerät). */
   scanInput: ScanInput;
   /** Tempo des USB-Scanners: normal oder langsam (Bluetooth/gedrosselt). */
@@ -73,6 +80,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   idleLayoutId: 'standard-idle',
   defaultCardLayoutId: 'standard-karte',
   cardPrintFormat: 'sheet',
+  cardPrintBack: 'none',
+  cardPrintFlip: 'long',
+  cardPrintCutMarks: true,
   scanInput: 'both',
   scannerSpeed: 'fast',
 };

@@ -867,15 +867,6 @@ table.events {
   }
 }
 
-/* ---------- Ausweise (85,6 × 54 mm) – Aussehen siehe „Karten nach Layout“ ---------- */
-
-.cards-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6mm 8mm;
-  justify-content: center;
-}
-
 @media print {
   @page {
     size: A4 portrait;
@@ -2452,14 +2443,12 @@ code.path {
   font-size: 0.85rem;
 }
 
-/* ---------- Karten nach Layout (85,6 × 54 mm, Quer- oder Hochformat) ---------- */
+/* ---------- Karten nach Layout (Größe in mm per style, Quer- oder Hochformat) ---------- */
 
 .card-view {
   position: relative;
   container-type: size;
   flex: none;
-  width: 85.6mm;
-  height: 54mm;
   overflow: hidden;
   border-radius: 3mm;
   background: #fff;
@@ -2469,22 +2458,19 @@ code.path {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-.card-portrait {
-  width: 54mm;
-  height: 85.6mm;
-}
-/* große Vorschau im Editor: gleiche Proportionen, volle Breite */
+/* große Vorschau im Editor: gleiche Proportionen (aspect-ratio per style), volle Breite */
 .card-view-large {
   width: 100%;
   height: auto;
-  aspect-ratio: 85.6 / 54;
   border-radius: 3.5cqh;
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18);
 }
 .card-view-large.card-portrait {
   width: min(100%, 360px);
-  aspect-ratio: 54 / 85.6;
   margin: 0 auto;
+}
+.card-square {
+  border-radius: 0;
 }
 .cv-el {
   position: absolute;
@@ -2550,38 +2536,100 @@ code.path {
   z-index: 2;
 }
 .cv-hidden-here {
-  opacity: 0.3;
+  opacity: 0.15;
 }
 .card-view:focus-visible {
   outline: 3px solid var(--link);
   outline-offset: 3px;
 }
-/* Bogen: dünne Schnittkante */
-.cards-grid .card-view {
-  outline: 0.2mm solid #cbd5e1;
-}
-
-/* Kartendrucker: eine Karte je Seite in Kartengröße */
-@page karte-quer {
-  size: 85.6mm 54mm;
+/* Druck: A4-Seiten mit Karten an festen Positionen (mm), Kartendrucker je Kartenseite eine Seite */
+@page a4-hoch {
+  size: A4 portrait;
   margin: 0;
 }
-@page karte-hoch {
-  size: 54mm 85.6mm;
+@page a4-quer {
+  size: A4 landscape;
   margin: 0;
+}
+.print-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+}
+.print-sheet {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: #fff;
+  color: #0f172a;
+}
+.sheet-card {
+  position: absolute;
+}
+.cut-mark {
+  position: absolute;
+  border-left: 0.2mm solid #64748b;
+  border-top: 0.2mm solid #64748b;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.cut-mark-fold {
+  border-left-style: dashed;
+}
+.sheet-label {
+  align-self: stretch;
+  margin: 1rem 0 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+.print-cardpage {
+  position: relative;
+  flex: none;
+  background: #fff;
+}
+.blank-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+@media screen {
+  .print-sheet,
+  .print-cardpage {
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.18);
+  }
+  .print-card-printer .print-pages {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+}
+@media screen and (max-width: 860px) {
+  .print-sheet {
+    zoom: 0.45;
+  }
 }
 @media print {
-  .print-card-printer .cards-grid {
+  .print-pages {
     display: block;
+    overflow: visible;
   }
-  .print-card-printer .card-view {
-    page: karte-quer;
+  .print-sheet,
+  .print-cardpage {
     break-after: page;
-    border-radius: 0;
-    outline: none;
   }
-  .print-card-printer .card-view.card-portrait {
-    page: karte-hoch;
+  .print-sheet.sheet-portrait {
+    page: a4-hoch;
+  }
+  .print-sheet.sheet-landscape {
+    page: a4-quer;
   }
 }
 .print-options {
@@ -2763,4 +2811,376 @@ code.path {
   min-width: 0;
   width: 100%;
   margin-inline: 0;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Karteneditor (obere Leiste, Vorschau, Reiter)
+   --------------------------------------------------------------------------- */
+.ce-page {
+  max-width: 1560px;
+}
+.ce {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ce-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ce-name {
+  flex: 1 1 10rem;
+  min-width: 8rem;
+  max-width: 20rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.ce-name:hover,
+.ce-name:focus {
+  border-color: var(--input-border);
+  background: var(--input-bg);
+}
+.ce-format-pill {
+  min-height: 40px;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--info-text);
+  border-radius: 999px;
+  background: var(--info-bg);
+  color: var(--info-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ce-spacer {
+  flex: 1;
+}
+.ce-message {
+  margin: 0;
+}
+.ce-main {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .ce-main {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+  }
+  .ce-stage {
+    position: sticky;
+    top: 4.5rem;
+  }
+}
+.ce-stage,
+.ce-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ce-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  min-width: 0;
+}
+.ce-stage-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ce-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  padding: 1.25rem;
+  border-radius: 10px;
+  background: repeating-conic-gradient(var(--bg) 0 25%, var(--surface) 0 50%) 0 0 / 22px 22px;
+}
+.ce-canvas .card-view-large {
+  width: min(100%, 560px);
+}
+.ce-canvas .card-view-large.card-portrait {
+  width: min(100%, 330px);
+}
+.ce-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+.ce-no-back {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1.25rem;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: center;
+}
+.ce-no-back p {
+  margin: 0;
+}
+.ce-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+.ce-tabs {
+  margin: 0;
+}
+.ce-tabs .tab {
+  flex: 1;
+  padding: 0.5rem 0.35rem;
+}
+.ce-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.9rem;
+}
+.ce-title {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.ce-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+.ce-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 56px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ce-tile small {
+  color: var(--muted);
+}
+.ce-tile:hover,
+.ce-tile:focus-visible {
+  border-color: var(--link);
+  background: var(--selected-bg);
+}
+.ce-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.ce-section h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.ce-edit {
+  padding-top: 0;
+  border-top: 0;
+}
+.ce-edit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ce-insert,
+.ce-colors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+.chip-small {
+  min-height: 32px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.82rem;
+}
+.ce .ce-range {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.6rem;
+}
+.ce-range input {
+  flex: 1;
+  min-width: 0;
+}
+.ce-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 0.5rem;
+}
+.ce .ce-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.ce-grid input {
+  width: 100%;
+  min-width: 0;
+}
+.ce-wide {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.ce-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ce-empty p {
+  margin: 0;
+}
+.ce-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ce-groups legend {
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+.ce .btn.active {
+  border-color: var(--link);
+  background: var(--link);
+  color: #fff;
+}
+/* Anfasser und Hilfslinien in der Kartenvorschau */
+.cv-handle {
+  position: absolute;
+  z-index: 3;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #f59e0b;
+  border-radius: 3px;
+  background: #fff;
+  touch-action: none;
+}
+.cv-handle-nw {
+  left: -2px;
+  top: -2px;
+  cursor: nwse-resize;
+}
+.cv-handle-se {
+  right: -2px;
+  bottom: -2px;
+  cursor: nwse-resize;
+}
+.cv-handle-ne {
+  right: -2px;
+  top: -2px;
+  cursor: nesw-resize;
+}
+.cv-handle-sw {
+  left: -2px;
+  bottom: -2px;
+  cursor: nesw-resize;
+}
+.cv-handle-w,
+.cv-handle-e {
+  top: calc(50% - 6px);
+  cursor: ew-resize;
+}
+.cv-handle-w {
+  left: -2px;
+}
+.cv-handle-e {
+  right: -2px;
+}
+@media (pointer: coarse) {
+  .cv-handle {
+    width: 20px;
+    height: 20px;
+  }
+  .cv-handle-w,
+  .cv-handle-e {
+    top: calc(50% - 10px);
+  }
+}
+.cv-guide {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+}
+.cv-guide-x {
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed #ec4899;
+}
+.cv-guide-y {
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #ec4899;
+}
+.card-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+/* Kontrollkästchen in den Editor-Reitern: Kästchen links, Text daneben */
+.ce label.checkbox-inline {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-weight: 500;
+  text-align: left;
+  white-space: normal;
+}
+.ce label.checkbox-inline input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  margin: 0.1rem 0 0;
+}
+.ce label.checkbox-inline .color-dot {
+  margin-top: 0.3rem;
+}
+/* Karteneditor auf schmalen Bildschirmen: Leiste nicht anheften, Auswahlknöpfe umbrechen */
+.ce .segmented {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+@media (max-width: 999px) {
+  .ce-topbar {
+    position: static;
+  }
 }
