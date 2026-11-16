@@ -2733,3 +2733,34 @@ code.path {
 .unassigned-hint {
   flex-basis: 100%;
 }
+
+/* Editoren: lange Kontrollkästchen-Texte umbrechen statt über den Rand zu laufen */
+.element-editor .checkbox-inline,
+.layout-form .checkbox-inline {
+  align-items: flex-start;
+  white-space: normal;
+}
+.element-editor .checkbox-inline input,
+.layout-form .checkbox-inline input {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+/* Auswahllisten mit langen Einträgen und Regler dürfen schmaler werden als ihr Inhalt */
+.inline-select {
+  max-width: 100%;
+  min-width: 0;
+}
+.inline-select select {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+.element-grid > * {
+  min-width: 0;
+}
+.element-grid input,
+.element-grid select {
+  min-width: 0;
+  width: 100%;
+  margin-inline: 0;
+}
