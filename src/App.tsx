@@ -15,10 +15,9 @@ import { LoginPage } from './pages/LoginPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PresentationPage } from './pages/PresentationPage';
 import { PrintPage } from './pages/PrintPage';
-import { ScannerPage } from './pages/ScannerPage';
+import { StartPage } from './pages/StartPage';
 import { BackupSettings } from './pages/settings/BackupSettings';
 import { DataSettings } from './pages/settings/DataSettings';
-import { DeviceSettings } from './pages/settings/DeviceSettings';
 import { GeneralSettings } from './pages/settings/GeneralSettings';
 import { OperatorSettings } from './pages/settings/OperatorSettings';
 import { ScannerSettings } from './pages/settings/ScannerSettings';
@@ -36,14 +35,14 @@ export function App() {
         <Route path="praesentation" element={<PresentationPage />} />
         <Route element={<Layout />}>
           {/* frei zugänglich */}
-          <Route index element={<ScannerPage />} />
+          <Route index element={<StartPage />} />
           <Route path="anmelden" element={<LoginPage />} />
           <Route path="einrichtung" element={<SetupPage />} />
           {/* Admin oder Bediener (PIN) */}
           <Route element={<RequireRole allow="staff" />}>
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="uebersicht" element={<OverviewPage />} />
-            <Route path="anwesenheit" element={<Navigate to="/uebersicht" replace />} />
+            <Route path="auswertung" element={<OverviewPage />} />
+            <Route path="uebersicht" element={<Navigate to="/auswertung" replace />} />
             <Route path="notfallliste" element={<EmergencyListPage />} />
           </Route>
           {/* nur mit Admin-Anmeldung */}
@@ -60,7 +59,7 @@ export function App() {
             <Route path="einstellungen/bediener" element={<OperatorSettings />} />
             <Route path="einstellungen/datensicherung" element={<BackupSettings />} />
             <Route path="einstellungen/daten" element={<DataSettings />} />
-            <Route path="einstellungen/geraet" element={<DeviceSettings />} />
+            <Route path="einstellungen/geraet" element={<Navigate to="/einstellungen/allgemein" replace />} />
             <Route path="einstellungen/gruppen" element={<GroupsPage />} />
             <Route path="einstellungen/praesentation" element={<LayoutsPage />} />
             <Route path="einstellungen/karten" element={<CardLayoutsPage />} />

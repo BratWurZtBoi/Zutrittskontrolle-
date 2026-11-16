@@ -23,12 +23,6 @@ export const ScanIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export const UsersIcon = (p: SVGProps<SVGSVGElement>) => (
-  <svg {...base(p)}>
-    <circle cx="9" cy="8" r="4" />
-    <path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4.5a4 4 0 0 1 0 7M22 21v-1a6 6 0 0 0-4-5.6" />
-  </svg>
-);
 
 export const CardIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
@@ -92,9 +86,3 @@ export const LockIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export const CameraSwitchIcon = (p: SVGProps<SVGSVGElement>) => (
-  <svg {...base(p)}>
-    <path d="M20 16V7a2 2 0 0 0-2-2h-3l-2-2h-2L9 5H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2z" />
-    <path d="m15 11-3-3-3 3M9 13l3 3 3-3" />
-  </svg>
-);

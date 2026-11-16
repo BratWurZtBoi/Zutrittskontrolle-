@@ -64,11 +64,15 @@ try {
   check(sw === 0, 'Kein Service Worker im Programm');
 
   console.log('2) Einrichtung, Datenbank, Verschlüsselung');
-  await page.evaluate(() => (location.hash = '#/karten'));
+  // Startseite leitet ohne Passwort zur Einrichtung weiter
+  await page.getByRole('heading', { name: 'Admin-Passwort einrichten' }).waitFor();
   await page.getByLabel('Neues Passwort (mindestens 8 Zeichen)').fill(PASSWORD);
   await page.getByLabel('Passwort wiederholen').fill(PASSWORD);
   await page.getByLabel(/Verstanden/).check();
   await page.getByRole('button', { name: 'Passwort einrichten' }).click();
+  await page.locator('.dashboard').waitFor();
+  check(true, 'Nach der Einrichtung: Dashboard (kein Kiosk-Scanner als Startseite)');
+  await page.evaluate(() => (location.hash = '#/karten'));
   await page.getByRole('button', { name: 'Testkarten anlegen' }).click();
   await page.locator('.card-row').first().waitFor();
   check((await page.locator('.card-row').count()) > 5, 'Testkarten angelegt (IndexedDB + Verschlüsselung)');
@@ -133,8 +137,8 @@ try {
   const files = readdirSync(backupDir);
   check(files.length === 1 && /^zutrittskontrolle-backup-.*\.zkb$/.test(files[0]), `Sicherung im Ordner (${files.join(', ')})`);
 
-  console.log('5) Gerät & App');
-  await page.evaluate(() => (location.hash = '#/einstellungen/geraet'));
+  console.log('5) Allgemein & Gerät');
+  await page.evaluate(() => (location.hash = '#/einstellungen/allgemein'));
   const label = process.platform === 'linux' ? 'Linux-Programm' : 'Windows-Programm';
   await page.getByText(label, { exact: true }).waitFor();
   check(true, `Als „${label}“ erkannt`);

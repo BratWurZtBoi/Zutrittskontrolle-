@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { saveSettings, type AppSettings } from '../../db/settings';
 import { useSettings } from '../../hooks/useSettings';
+import { DeviceSections } from './DeviceSettings';
 import { SettingsShell } from './SettingsShell';
 
 export function GeneralSettings() {
@@ -10,7 +11,7 @@ export function GeneralSettings() {
   const save = (patch: Partial<AppSettings>) => void saveSettings(patch);
 
   return (
-    <SettingsShell title="Allgemein">
+    <SettingsShell title="Allgemein & Gerät">
       <section className="card form">
         <label>
           Darstellung
@@ -29,6 +30,7 @@ export function GeneralSettings() {
           />
         </label>
       </section>
+      <DeviceSections />
     </SettingsShell>
   );
 }

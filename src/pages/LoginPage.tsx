@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { useSettings } from '../hooks/useSettings';
 import { PasswordInput } from '../components/PasswordInput';
 import { loadOperatorPin } from '../db/vault';
 import { isStaffPath } from '../lib/roles';
@@ -11,11 +12,12 @@ type LoginKind = 'admin' | 'operator';
 
 /**
  * Anmeldung: Admin-Passwort (entsperrt zugleich die Personendaten) oder
- * Bediener-PIN (nur Dashboard und Übersicht, Daten müssen entsperrt sein).
+ * Bediener-PIN (nur Dashboard und Auswertung, Daten müssen entsperrt sein).
  */
 export function LoginPage() {
   const security = useSecurity();
   const navigate = useNavigate();
+  const { kioskMode } = useSettings();
   const [params] = useSearchParams();
   const requested = params.get('ziel') || '';
   const hasPin = useLiveQuery(async () => Boolean(await loadOperatorPin()), [], undefined);
@@ -95,7 +97,7 @@ export function LoginPage() {
         ) : (
           <>
             <p className="muted">
-              Bediener sehen Dashboard und Übersicht und können Eintritte bestätigen. Karten, Gruppen und Einstellungen
+              Bediener sehen Dashboard und Auswertung und können Eintritte bestätigen. Karten, Gruppen und Einstellungen
               bleiben dem Admin vorbehalten.
             </p>
             {security.vault !== 'unlocked' ? (
@@ -123,9 +125,11 @@ export function LoginPage() {
         <button type="submit" className="btn btn-primary" disabled={busy || !secret || (kind === 'operator' && security.vault !== 'unlocked')}>
           {busy ? 'Prüfe …' : 'Anmelden'}
         </button>
-        <p>
-          <Link to="/">Zurück zum Scanner</Link>
-        </p>
+        {kioskMode && (
+          <p>
+            <Link to="/">Zurück zum Kiosk-Scanner</Link>
+          </p>
+        )}
       </form>
     </div>
   );

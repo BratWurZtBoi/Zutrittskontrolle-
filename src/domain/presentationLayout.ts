@@ -268,23 +268,6 @@ export function newElement(type: ElementType, id: string): LayoutElement {
   }
 }
 
-/** Welche Elemente passen zu welcher Art Bildschirm? */
-export const ELEMENT_TYPES: Record<ScreenKind, { type: ElementType; label: string }[]> = {
-  idle: [
-    { type: 'text', label: 'Textfeld' },
-    { type: 'clock', label: 'Uhrzeit' },
-    { type: 'date', label: 'Datum' },
-    { type: 'logo', label: 'Logo' },
-  ],
-  result: [
-    { type: 'text', label: 'Textfeld' },
-    { type: 'photo', label: 'Foto' },
-    { type: 'group', label: 'Gruppe' },
-    { type: 'clock', label: 'Uhrzeit' },
-    { type: 'date', label: 'Datum' },
-    { type: 'logo', label: 'Logo' },
-  ],
-};
 
 /** Bausteine für „Hinzufügen“ je Bildschirmart. */
 export const SCREEN_PRESETS: Record<ScreenKind, { id: string; label: string; hint: string; make: (id: string) => LayoutElement }[]> = {

@@ -115,6 +115,14 @@ try {
   const max = cards.find((c) => c.number === 'M-001');
   const raw = JSON.stringify(cards) + JSON.stringify(await readStore(page, 'events'));
   check(!/Mustermann|Musterfrau|Platzhalter/.test(raw), 'Datenbank enthält keine Namen im Klartext');
+  const navLabels = (await page.locator('.app-nav .nav-link').allTextContents()).map((t) => t.trim());
+  check(navLabels.join(' | ') === 'Dashboard | Auswertung | Karten | Einstellungen | Abmelden', `Menü ohne Kiosk-Scanner, Auswertung neben dem Dashboard (${navLabels.join(' | ')})`);
+  await page.goto(`${URL}#/`);
+  await page.locator('.dashboard').waitFor();
+  check(true, 'Startseite ohne Kiosk-Modus: Dashboard');
+  await page.goto(`${URL}#/uebersicht`);
+  await page.getByRole('heading', { name: 'Auswertung' }).waitFor();
+  check(page.url().includes('#/auswertung'), 'Alte Adresse „Übersicht“ führt zur Auswertung');
 
   console.log('2) Zahlenfeld frei bearbeitbar');
   await page.goto(`${URL}#/karten/neu`);
@@ -135,6 +143,11 @@ try {
   await page.locator('input[type=checkbox]:checked').filter({ has: page.locator('xpath=self::*') }).first().waitFor();
   await page.waitForTimeout(300);
   check(await page.getByLabel(/Testmodus/).isChecked(), 'Testmodus eingeschaltet');
+  // Kiosk-Modus (Gerät am Eingang ohne Bediener) für die folgenden Kiosk-Prüfungen einschalten
+  // gesteuertes Kontrollkästchen (Wert kommt aus der Datenbank): klicken und auf den neuen Zustand warten
+  await page.getByLabel(/Kiosk-Modus für dieses Gerät/).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('label')].some((l) => l.textContent?.includes('Kiosk-Modus für dieses Gerät') && l.querySelector('input')?.checked));
+  check(true, 'Kiosk-Modus eingeschaltet');
   await ctx.close();
 
   console.log('4) Kamerabild mit QR-Code erzeugen');
@@ -258,7 +271,7 @@ try {
   check((await listRows.count()) === 2, 'Dashboard: Anwesenheitsliste aktualisiert sich live');
   await page.waitForFunction(() => document.querySelector('[data-testid="kpi-present"]')?.textContent?.trim() === '2');
   check(true, 'Statusleiste zählt live mit (2 anwesend)');
-  check((await page.locator('.dash-recent li').count()) >= 1, 'Seitenleiste: letzte Scans');
+  check((await page.locator('.dash-recent').count()) === 0, 'Kein doppelter Kasten „Letzte Scans“ mehr');
   const rowHeight = await listRows.first().evaluate((r) => r.getBoundingClientRect().height);
   check(rowHeight < 52, `Eine Zeile pro Person (${Math.round(rowHeight)} px hoch)`);
   await page.getByRole('tab', { name: /Aktionen heute/ }).click();
@@ -274,6 +287,11 @@ try {
   await page.locator('.dash-more-filters').getByLabel('Status').selectOption('all');
   check((await listRows.count()) > 2, 'Weitere Filter: auch Abwesende anzeigen');
   await page.locator('.dash-more-filters').getByLabel('Status').selectOption('present');
+  check((await page.locator('.dash-more-filters').getByRole('link', { name: /Auswertung/ }).count()) === 1, 'Weitere Filter: Link „Ältere Einträge … in der Auswertung“');
+  await page.getByRole('tab', { name: /Aktionen heute/ }).click();
+  const rangeOptions = await page.locator('.dash-more-filters').getByLabel('Zeitraum').locator('option').allTextContents();
+  check(rangeOptions.join(',') === 'Heute,Gestern', `Dashboard: Zeitraum nur Heute/Gestern (${rangeOptions.join(', ')})`);
+  await page.getByRole('tab', { name: /Anwesend/ }).click();
   const scrollers = await page.evaluate(() =>
     [...document.querySelectorAll('.dash-list *')].filter((el) => {
       const st = getComputedStyle(el);
@@ -281,7 +299,7 @@ try {
     }).map((el) => `${el.tagName}.${el.className} ${el.scrollHeight}/${el.clientHeight}`),
   );
   check(scrollers.length === 0, `Kein Scrollbereich innerhalb der Liste (nur die Seite scrollt) ${scrollers.join(', ')}`);
-  await page.locator('.dash-cam').getByRole('radio', { name: 'Aus' }).click();
+  await page.locator('.dash-cam').getByRole('radio', { name: 'Vorschau aus' }).click();
   await page.locator('.dash-cam-cover').waitFor();
   check(true, 'Kameravorschau ausblendbar');
   await page.locator('.dash-cam').getByRole('radio', { name: 'Klein' }).click();
@@ -290,8 +308,8 @@ try {
   await page.setViewportSize(viewport);
   await page.screenshot({ path: `${OUT}/06b-dashboard-handy.png`, fullPage: true });
 
-  console.log('11) Übersicht: Anwesenheit und Aktionen');
-  await page.goto(`${URL}#/uebersicht`);
+  console.log('11) Auswertung: Anwesenheit und Protokoll');
+  await page.goto(`${URL}#/auswertung`);
   await page.locator('.data-table tbody tr').first().waitFor();
   check((await page.locator('.chip-present').textContent()).includes('2'), 'Übersicht: 2 anwesend');
   check((await page.locator('.data-table tbody tr').count()) === 11, 'Übersicht: alle 11 zugeordneten Karten (freie ausgeblendet)');
@@ -309,7 +327,7 @@ try {
   await page.getByText('2 Person(en) ausgebucht.').waitFor();
   check((await page.locator('.chip-present').textContent()).includes('0'), '„Alle ausbuchen“ bucht alle aus');
 
-  await page.getByRole('tab', { name: 'Aktionen' }).click();
+  await page.getByRole('tab', { name: 'Protokoll' }).click();
   await page.locator('.data-table.events tbody tr').first().waitFor();
   const actionCount = await page.locator('.data-table.events tbody tr').count();
   check(actionCount === 8, `Aktionen heute: 8 (6 + 2 automatische Ausbuchungen) – gefunden: ${actionCount}`);
@@ -332,7 +350,7 @@ try {
   const csvPath = `${OUT}/${csvDownload.suggestedFilename()}`;
   await csvDownload.saveAs(csvPath);
   const csv = readFileSync(csvPath, 'utf8');
-  check(/^zutritt-aktionen-\d{4}-\d{2}-\d{2}\.csv$/.test(csvDownload.suggestedFilename()), 'CSV-Export: Dateiname mit Datum');
+  check(/^zutritt-protokoll-\d{4}-\d{2}-\d{2}\.csv$/.test(csvDownload.suggestedFilename()), 'CSV-Export: Dateiname mit Datum');
   check(csv.startsWith('\uFEFFDatum;Uhrzeit;Karte;Name;Gruppe;Richtung;Ergebnis;Grund;Quelle;Bestätigt von\r\n'), 'CSV-Export: Excel-Format (BOM, Semikolon)');
   check(csv.includes('Berta Besuch') && csv.split('\r\n').length === 10, 'CSV-Export: 8 Aktionen mit Namen');
 
@@ -468,10 +486,12 @@ try {
   await presentation.getByText('Herzlich willkommen').waitFor();
   check((await presentation.locator('.presentation-idle').textContent()).includes('Musterfirma'), 'Präsentation: Ruhebildschirm mit Organisationsname');
   await presentation.screenshot({ path: `${OUT}/13-praesentation-warten.png` });
-  // „Alle Daten löschen“ im Backup-Schritt hat den Testmodus zurückgesetzt
+  // „Alle Daten löschen“ im Backup-Schritt hat Testmodus und Kiosk-Modus zurückgesetzt
   await page.goto(`${URL}#/einstellungen/scanner`);
   await page.getByLabel(/Testmodus/).click();
   await page.waitForTimeout(300);
+  await page.getByLabel(/Kiosk-Modus für dieses Gerät/).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('label')].some((l) => l.textContent?.includes('Kiosk-Modus für dieses Gerät') && l.querySelector('input')?.checked));
   await page.goto(`${URL}#/dashboard`);
   await page.getByText('Präsentation läuft').waitFor({ timeout: 5000 });
   check(true, 'Dashboard erkennt das geöffnete Präsentationsfenster');
@@ -498,7 +518,7 @@ try {
   await page.goto(`${URL}#/dashboard`);
   await page.locator('.dash-list tbody tr').first().waitFor();
   await page.screenshot({ path: `${OUT}/16-dunkel-dashboard.png` });
-  await page.goto(`${URL}#/uebersicht`);
+  await page.goto(`${URL}#/auswertung`);
   await page.locator('.data-table tbody tr').first().waitFor();
   await page.screenshot({ path: `${OUT}/17-dunkel-uebersicht.png` });
   await page.setViewportSize(viewport);
@@ -508,7 +528,8 @@ try {
 
   console.log('17) Karten drucken (Druck bleibt hell)');
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.getByRole('link', { name: /Drucken \(16\)/ }).click();
+  check((await page.getByRole('link', { name: /Drucken \(\d+\)/ }).count()) === 0, 'Kartenliste ohne doppelten Druckknopf – gedruckt wird über den Reiter');
+  await page.locator('.card-tabs').getByRole('link', { name: 'Drucken' }).click();
   await page.locator('.card-view .cv-qr[src]').first().waitFor();
   check((await page.locator('.card-view').count()) === 15, '15 Karten druckbereit (gesperrte ausgenommen)');
   await page.waitForTimeout(500);
@@ -577,8 +598,8 @@ try {
 
   // Bediener-Anmeldung
   await page.getByRole('button', { name: 'Abmelden' }).click();
-  await page.getByRole('link', { name: 'Verwaltung' }).waitFor();
-  await page.getByRole('link', { name: 'Verwaltung' }).click();
+  await page.locator('.app-nav').getByRole('link', { name: 'Anmelden' }).waitFor();
+  await page.locator('.app-nav').getByRole('link', { name: 'Anmelden' }).click();
   await page.getByRole('heading', { name: 'Anmelden' }).waitFor();
   await page.screenshot({ path: `${OUT}/21-anmelden-bediener.png` });
   await page.getByLabel('Bediener-PIN').fill('111111');
@@ -589,9 +610,9 @@ try {
   await page.locator('.dashboard').waitFor();
   check((await page.locator('.role-badge').textContent()) === 'Bediener', 'Bediener mit PIN angemeldet – Dashboard geöffnet');
   const navText = await page.locator('.app-nav').textContent();
-  check(!navText.includes('Karten') && !navText.includes('Einstellungen') && navText.includes('Übersicht'), 'Bediener sieht nur Dashboard und Übersicht');
+  check(!navText.includes('Karten') && !navText.includes('Einstellungen') && navText.includes('Auswertung'), 'Bediener sieht nur Dashboard und Auswertung');
   check((await page.locator('.dash-side .test-panel').count()) === 0, 'Testmodus bleibt dem Admin vorbehalten');
-  await page.goto(`${URL}#/uebersicht`);
+  await page.goto(`${URL}#/auswertung`);
   await page.locator('.data-table tbody tr').first().waitFor();
   check((await page.getByRole('button', { name: /CSV-Export/ }).count()) === 0, 'Bediener: kein CSV-Export');
   await page.goto(`${URL}#/karten`);
@@ -892,6 +913,10 @@ try {
   const id1Cards = await page.locator('.print-sheet .card-view.card-format-id1').count();
   check(a7Cards > 0 && id1Cards > 0, `Druck: Besucher als A7 (${a7Cards}), übrige als Scheckkarte (${id1Cards}) – auf getrennten Seiten`);
   await page.screenshot({ path: `${OUT}/30-druck-layouts.png`, fullPage: true });
+  await page.locator('.print-options').getByLabel('Gruppe').selectOption({ label: 'Besucher' });
+  await page.waitForFunction(() => document.querySelectorAll('.print-sheet .card-view.card-format-id1').length === 0);
+  check((await page.locator('.print-sheet .card-view.card-format-a7').count()) === a7Cards, 'Druck: Gruppenfilter (nur Besucher)');
+  await page.locator('.print-options').getByLabel('Gruppe').selectOption('');
   const pdfBoxes = async () => {
     await page.emulateMedia({ media: 'print' });
     const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
@@ -1071,7 +1096,7 @@ try {
   await page.setViewportSize(viewport);
   await page.goto(`${URL}#/einstellungen`);
   await page.locator('.settings-tile').first().waitFor();
-  check((await page.locator('.settings-tile').count()) === 10, 'Einstellungen: aufgeräumte Übersicht mit 10 Bereichen');
+  check((await page.locator('.settings-tile').count()) === 9, 'Einstellungen: aufgeräumte Übersicht mit 9 Bereichen');
   check((await page.locator('.settings-group h2').allTextContents()).join(' | ') === 'Betrieb | Gestaltung | Daten & Sicherheit | Allgemein & Gerät', 'Einstellungen in Gruppen gegliedert');
   await page.screenshot({ path: `${OUT}/27-einstellungen-handy.png`, fullPage: true });
   await page.locator('.settings-tile', { hasText: 'Sicherheit' }).click();
@@ -1090,6 +1115,14 @@ try {
   await page.getByRole('button', { name: 'Jetzt sperren' }).click();
   await page.locator('.lock-banner').waitFor();
   check(true, '„Jetzt sperren“ sperrt die Daten');
+
+  // Kiosk-Modus wieder aus: Abmelden führt zur Anmeldung, im Menü kein Kiosk
+  await login(page, '/einstellungen/scanner');
+  await page.getByLabel(/Kiosk-Modus für dieses Gerät/).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('label')].some((l) => l.textContent?.includes('Kiosk-Modus für dieses Gerät') && !l.querySelector('input')?.checked));
+  await page.getByRole('button', { name: 'Abmelden' }).click();
+  await page.getByRole('heading', { name: 'Anmelden' }).waitFor();
+  check(page.url().includes('#/anmelden') && (await page.locator('.app-nav').getByRole('link', { name: 'Kiosk' }).count()) === 0, 'Ohne Kiosk-Modus: nach dem Abmelden die Anmeldung, kein Kiosk im Menü');
 
   check(problems.length === 0, `keine JavaScript-Fehler und keine CSP-Verstöße${problems.length ? ': ' + problems.join(' | ') : ''}`);
   await ctx.close();

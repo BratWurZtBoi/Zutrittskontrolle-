@@ -68,7 +68,7 @@ export function statusToCsv(rows: StatusRow[]): string {
   ]);
 }
 
-/** Dateiname mit Datum, z. B. „zutritt-aktionen-2026-11-15.csv“. */
+/** Dateiname mit Datum, z. B. „zutritt-protokoll-2026-11-15.csv“. */
 export function csvFilename(kind: string, now = new Date()): string {
   return `zutritt-${kind}-${toLocalDateString(now)}.csv`;
 }

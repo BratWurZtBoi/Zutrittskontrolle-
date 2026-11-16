@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getDesktop } from '../../lib/desktop';
 import { isStoragePersisted, requestPersistentStorage } from '../../pwa';
-import { SettingsShell } from './SettingsShell';
 
-export function DeviceSettings() {
-  const desktop = getDesktop();
-  return <SettingsShell title="Gerät & App">{desktop ? <DesktopInfo /> : <BrowserInfo />}</SettingsShell>;
+/** Angaben zu Gerät und App (Teil der Seite „Allgemein & Gerät“). */
+export function DeviceSections() {
+  return getDesktop() ? <DesktopInfo /> : <BrowserInfo />;
 }
 
 /** Web-App im Browser (Handy, Tablet, Computer). */

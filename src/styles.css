@@ -593,7 +593,6 @@ textarea {
   padding: 2px;
 }
 
-
 .edit-layout {
   display: grid;
   gap: 1rem;
@@ -1376,62 +1375,6 @@ table.data-table {
   border-radius: var(--radius);
 }
 
-.dash-recent {
-  padding: 0.6rem 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-.dash-recent h2 {
-  margin: 0 0 0.3rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-.dash-recent ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.dash-recent li {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-  border-top: 1px solid var(--border);
-  font-size: 0.9rem;
-}
-.dash-recent li:first-child {
-  border-top: 0;
-}
-.dash-recent time {
-  flex: none;
-  width: 2.8rem;
-  color: var(--muted);
-}
-.recent-in,
-.recent-out,
-.recent-deny {
-  flex: none;
-  width: 3.2rem;
-  font-weight: 700;
-}
-.recent-in {
-  color: var(--ok-fg);
-}
-.recent-out {
-  color: var(--link);
-}
-.recent-deny {
-  color: var(--danger-fg);
-}
-.recent-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Rechte Spalte: eine Liste mit Reitern */
 .dash-list {
   grid-area: list;
@@ -1904,7 +1847,6 @@ table.data-table {
   opacity: 0.7;
 }
 
-
 /* ---------- Bediener-Rolle & Bestätigung ---------- */
 
 .role-badge {
@@ -2067,12 +2009,6 @@ table.data-table {
   margin: 0;
   max-width: 70ch;
 }
-.element-panel {
-  margin: 0.5rem 0 0;
-}
-.element-panel h3 {
-  margin-top: 0;
-}
 .element-list {
   list-style: none;
   margin: 0 0 0.6rem;
@@ -2084,9 +2020,6 @@ table.data-table {
 .element-list .chip {
   min-height: 36px;
   font-weight: 600;
-}
-.add-elements {
-  margin-bottom: 0.75rem;
 }
 .element-editor {
   display: flex;
@@ -2113,11 +2046,6 @@ table.data-table {
   color: var(--text);
   resize: vertical;
 }
-.element-grid {
-  display: grid;
-  gap: 0.5rem 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
 .element-show {
   display: flex;
   flex-wrap: wrap;
@@ -2131,82 +2059,17 @@ table.data-table {
   font-weight: 700;
   padding: 0 0.3rem;
 }
-.layout-editor {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-}
-.layout-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.layout-states {
-  flex-wrap: wrap;
-  align-self: flex-start;
-}
-.layout-form fieldset {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.75rem;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.layout-form legend {
-  font-weight: 700;
-  padding: 0 0.3rem;
-}
-.layout-form input[type='color'] {
-  min-height: 44px;
-  padding: 0.2rem;
-}
 .layout-logo-preview {
   max-height: 48px;
   max-width: 160px;
   background: var(--surface-2);
   border-radius: 6px;
 }
-.choice-grid {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
-.choice {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.6rem;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-}
-.choice input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-.choice.active {
-  border-color: var(--link);
-  background: var(--selected-bg);
-}
 .card-layout-select {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   margin-top: 1rem;
-}
-@media (min-width: 1100px) {
-  .layout-editor {
-    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
-  }
-  .layout-preview {
-    position: sticky;
-    top: calc(var(--nav-h) + 1rem);
-  }
 }
 
 /* ---------- Manuell buchen & Korrektur ---------- */
@@ -2425,15 +2288,6 @@ table.data-table {
   .settings-back {
     display: none;
   }
-}
-.layout-side {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
-}
-.layout-side .card {
-  margin: 0;
 }
 .element-editor > .btn-danger {
   align-self: flex-start;
@@ -2657,9 +2511,6 @@ code.path {
   width: auto;
   min-height: 36px;
 }
-.card-editor .layout-preview .card-view-large {
-  margin: 0.5rem 0;
-}
 
 /* ---------------------------------------------------------------------------
    USB-Scanner (Tastatur-Modus)
@@ -2783,13 +2634,11 @@ code.path {
 }
 
 /* Editoren: lange Kontrollkästchen-Texte umbrechen statt über den Rand zu laufen */
-.element-editor .checkbox-inline,
-.layout-form .checkbox-inline {
+.element-editor .checkbox-inline {
   align-items: flex-start;
   white-space: normal;
 }
-.element-editor .checkbox-inline input,
-.layout-form .checkbox-inline input {
+.element-editor .checkbox-inline input {
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
@@ -2803,16 +2652,6 @@ code.path {
   max-width: 100%;
   flex: 1 1 auto;
 }
-.element-grid > * {
-  min-width: 0;
-}
-.element-grid input,
-.element-grid select {
-  min-width: 0;
-  width: 100%;
-  margin-inline: 0;
-}
-
 
 /* ---------------------------------------------------------------------------
    Karteneditor (obere Leiste, Vorschau, Reiter)

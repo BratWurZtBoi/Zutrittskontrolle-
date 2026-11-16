@@ -65,7 +65,7 @@ export function OperatorSettings() {
     <section className="card form">
       <p className="muted">
         Mit der <strong>Bediener-PIN</strong> kann am Empfang gearbeitet werden, ohne das Admin-Passwort weiterzugeben:
-        Dashboard, Übersicht und Eintritte bestätigen. Karten, Gruppen, Export und Einstellungen bleiben dem Admin
+        Dashboard, Auswertung und Eintritte bestätigen. Karten, Gruppen, Export und Einstellungen bleiben dem Admin
         vorbehalten. Die PIN entschlüsselt keine Daten – nach einem Neustart muss der Admin die Daten einmal mit dem
         Admin-Passwort entsperren.
       </p>
