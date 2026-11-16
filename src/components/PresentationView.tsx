@@ -1,9 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { textColorOn } from '../domain/color';
+import type { ResizeHandle } from '../domain/editorGeometry';
 import {
   idleText,
   isVisibleFor,
   moveElement,
+  resizeElement,
+  snapElement,
   type LayoutElement,
   type LayoutResult,
   type LayoutTone,
@@ -52,7 +55,10 @@ interface Props {
  * in Container-Einheiten (cqh) – dieselbe Darstellung im Vollbild und als Vorschau.
  */
 export function PresentationView({ layout, result, orgName, now, preview = false, edit }: Props) {
-  const { surfaceRef, elementHandlers, surfaceHandlers } = useElementDrag(edit, layout.elements, moveElement);
+  const { surfaceRef, elementHandlers, surfaceHandlers, handleHandlers, guides } = useElementDrag(edit, layout.elements, moveElement, {
+    snap: (e, x, y) => snapElement(e, x, y, layout.elements),
+    resize: resizeElement,
+  });
   const isResult = layout.kind === 'result' && result !== null;
   const outcomeBg = isResult && layout.resultBackground === 'outcome';
   const tone = result?.tone ?? 'ok';
@@ -122,6 +128,7 @@ export function PresentationView({ layout, result, orgName, now, preview = false
         break;
     }
     const selected = edit?.selectedId === element.id;
+    const handles: ResizeHandle[] = selected ? (element.type === 'photo' || element.type === 'logo' ? ['nw', 'ne', 'sw', 'se'] : ['nw', 'ne', 'sw', 'se', 'w', 'e']) : [];
     return (
       <div
         key={element.id}
@@ -131,6 +138,9 @@ export function PresentationView({ layout, result, orgName, now, preview = false
         {...elementHandlers(element)}
       >
         {content}
+        {handles.map((h) => (
+          <span key={h} className={`cv-handle cv-handle-${h}`} data-handle={h} aria-hidden="true" {...handleHandlers(element, h)} />
+        ))}
       </div>
     );
   };
@@ -147,6 +157,12 @@ export function PresentationView({ layout, result, orgName, now, preview = false
       >
         {isResult && !outcomeBg && <div className="pv-tone-band" aria-hidden="true" />}
         {layout.elements.map(renderElement)}
+        {guides.x.map((x) => (
+          <span key={`gx${x}`} className="cv-guide cv-guide-x" style={{ left: `${x}%` }} aria-hidden="true" />
+        ))}
+        {guides.y.map((y) => (
+          <span key={`gy${y}`} className="cv-guide cv-guide-y" style={{ top: `${y}%` }} aria-hidden="true" />
+        ))}
       </div>
     </div>
   );

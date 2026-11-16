@@ -116,6 +116,8 @@ export interface CardRecord {
   presentationLayoutId?: string;
   /** Markiert fiktive Testdaten, damit sie gezielt gelöscht werden können. */
   testData?: boolean;
+  /** Zuletzt gedruckt (nach Rückfrage beim Drucken); neuer QR-Code setzt das zurück. */
+  printedAt?: number;
   createdAt: number;
   updatedAt: number;
 }

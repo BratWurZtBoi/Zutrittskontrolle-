@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { CardView } from '../components/CardView';
+import { Segmented } from '../components/Segmented';
 import { saveCardLayout, setCardLayoutGroups } from '../db/cardLayouts';
 import { newId } from '../db/db';
 import { placeholderAvatar } from '../db/seed';
@@ -35,9 +36,10 @@ import {
   type CardSize,
 } from '../domain/cardLayout';
 import type { Group } from '../domain/types';
+import { useEditorShortcuts, useUnsavedGuard } from '../hooks/useEditorShortcuts';
 import { useHistory } from '../hooks/useHistory';
 import { fileToScaledDataUrl } from '../lib/image';
-import { confirmLeave, guardLinks, setUnsavedChanges } from '../lib/unsavedChanges';
+import { confirmLeave, setUnsavedChanges } from '../lib/unsavedChanges';
 
 /** Fester Beispiel-Code für die Vorschau (kein echter Ausweis). */
 export const SAMPLE_TOKEN = 'BEISPIELKARTEVORSCHAU23456';
@@ -82,8 +84,6 @@ const parseNum = (v: string): number | null => {
   const n = Number(v.replace(',', '.'));
   return v.trim() !== '' && Number.isFinite(n) ? n : null;
 };
-const isTyping = (t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 
 interface Props {
   initial: CardLayout;
@@ -122,17 +122,7 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
   const sameSet = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every((x) => b.has(x));
   const dirty = layout !== saved || !sameSet(assigned, savedGroups) || isDefault !== savedDefault;
 
-  // Warnung vor ungespeicherten Änderungen (Links, Neuladen)
-  useEffect(() => {
-    setUnsavedChanges(dirty ? 'Das Kartenlayout hat ungespeicherte Änderungen. Trotzdem verlassen?' : null);
-  }, [dirty]);
-  useEffect(() => {
-    const stop = guardLinks(rootRef.current);
-    return () => {
-      stop();
-      setUnsavedChanges(null);
-    };
-  }, []);
+  useUnsavedGuard(dirty, rootRef, 'Das Kartenlayout hat ungespeicherte Änderungen. Trotzdem verlassen?');
 
   const updateSide = (fn: (s: CardSide) => CardSide, key?: string) => history.set((l) => withSide(l, face, fn(sideOf(l, face))), key);
   const updateElement = (element: CardElement, key = `el:${element.id}`) =>
@@ -216,27 +206,11 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
     }
   };
 
-  // Tastatur: Rückgängig/Wiederholen, Entf löscht, Esc hebt die Auswahl auf
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target)) return;
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) history.redo();
-        else history.undo();
-      } else if (mod && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        history.redo();
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
-        e.preventDefault();
-        removeElement(selectedId);
-      } else if (e.key === 'Escape') {
-        setSelectedId(undefined);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+  useEditorShortcuts({
+    undo: history.undo,
+    redo: history.redo,
+    remove: selectedId ? () => removeElement(selectedId) : undefined,
+    deselect: () => setSelectedId(undefined),
   });
 
   const onImage = async (e: ChangeEvent<HTMLInputElement>, target: 'background' | 'logo') => {
@@ -445,18 +419,6 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
 // ---------------------------------------------------------------------------
 // Bausteine
 // ---------------------------------------------------------------------------
-
-function Segmented<T extends string>({ label, value, options, onChange, small = false }: { label: string; value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void; small?: boolean }) {
-  return (
-    <div className={`segmented segmented-light${small ? ' segmented-small' : ''}`} role="radiogroup" aria-label={label}>
-      {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} className={value === o.value ? 'active' : ''} onClick={() => onChange(o.value)}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function ElementChips({ elements, selectedId, onSelect }: { elements: CardElement[]; selectedId?: string; onSelect: (id: string) => void }) {
   if (elements.length === 0) return <p className="muted small">Auf dieser Seite ist noch nichts.</p>;

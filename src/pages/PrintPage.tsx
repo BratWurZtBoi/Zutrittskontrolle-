@@ -1,9 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { CardView } from '../components/CardView';
+import { CardsNav } from '../components/CardsNav';
+import { PrintTestSheets } from '../components/PrintTestSheets';
 import { listCardLayouts } from '../db/cardLayouts';
-import { listCards } from '../db/cards';
+import { listCards, markCardsPrinted } from '../db/cards';
 import { saveSettings, type AppSettings } from '../db/settings';
 import { STANDARD_CARD_LAYOUT, cardSize, pickCardLayout, type CardData, type CardLayout } from '../domain/cardLayout';
 import { layoutCardPrinter, layoutSheets, type BackMode, type PlacedCard, type SheetPage } from '../domain/printLayout';
@@ -46,8 +48,14 @@ export function PrintPage() {
   const settings = useSettings();
   const cards = useSecureLiveQuery(listCards, []);
   const layouts = useLiveQuery(listCardLayouts, [], [STANDARD_CARD_LAYOUT]);
+  const [onlyNew, setOnlyNew] = useState(params.get('nur') === 'neu');
+  const [probe, setProbe] = useState(false);
+  const [askPrinted, setAskPrinted] = useState<string[] | null>(null);
+  const [printedMsg, setPrintedMsg] = useState<string | null>(null);
 
-  const selected = useMemo(() => (cards ? (ids ? cards.filter(({ card }) => ids.includes(card.id)) : cards) : []), [cards, ids]);
+  const chosen = useMemo(() => (cards ? (ids ? cards.filter(({ card }) => ids.includes(card.id)) : cards) : []), [cards, ids]);
+  const notPrinted = chosen.filter(({ card }) => !card.printedAt && !card.blocked).length;
+  const selected = useMemo(() => (onlyNew ? chosen.filter(({ card }) => !card.printedAt) : chosen), [chosen, onlyNew]);
   const entries = useMemo(
     () =>
       new Map<string, Entry>(
@@ -72,6 +80,18 @@ export function PrintPage() {
   const skipped = selected.length - list.length;
   const pageCount = sheets ? sheets.pages.length : cardPages.length;
   const save = (patch: Partial<AppSettings>) => void saveSettings(patch);
+  const print = () => {
+    setPrintedMsg(null);
+    printCurrentPage();
+    // Danach fragen, ob wirklich gedruckt wurde (der Druckdialog verrät das nicht)
+    if (!probe && list.length > 0) setAskPrinted(list.map((e) => e.card.id));
+  };
+  const confirmPrinted = async () => {
+    if (!askPrinted) return;
+    const n = await markCardsPrinted(askPrinted);
+    setAskPrinted(null);
+    setPrintedMsg(`${n} Karte(n) als gedruckt markiert.`);
+  };
 
   const renderCard = (placed: PlacedCard, square: boolean) => {
     const entry = entries.get(placed.key);
@@ -84,14 +104,33 @@ export function PrintPage() {
       <header className="page-header no-print">
         <h1>Karten drucken</h1>
         <div className="button-row">
-          <button type="button" className="btn btn-primary" onClick={printCurrentPage} disabled={list.length === 0}>
-            Drucken / PDF
+          <button type="button" className="btn btn-primary" onClick={print} disabled={!probe && list.length === 0}>
+            {probe ? 'Probeseite drucken' : 'Drucken / PDF'}
           </button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
             Zurück
           </button>
         </div>
       </header>
+
+      <CardsNav active="print" />
+
+      {askPrinted && (
+        <div className="print-ask no-print" role="status">
+          <span>Wurden die {askPrinted.length} Karte(n) gedruckt?</span>
+          <button type="button" className="btn btn-primary btn-small" onClick={() => void confirmPrinted()}>
+            Ja, als gedruckt markieren
+          </button>
+          <button type="button" className="btn btn-small" onClick={() => setAskPrinted(null)}>
+            Nein
+          </button>
+        </div>
+      )}
+      {printedMsg && (
+        <p className="form-success no-print" role="status">
+          {printedMsg}
+        </p>
+      )}
 
       <div className="print-options no-print">
         <div className="segmented segmented-light" role="radiogroup" aria-label="Druckformat">
@@ -132,6 +171,15 @@ export function PrintPage() {
             Schnittmarken
           </label>
         )}
+        {(onlyNew || (notPrinted > 0 && notPrinted < chosen.length)) && (
+          <label className="checkbox-inline">
+            <input type="checkbox" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} />
+            Nur noch nicht gedruckte ({notPrinted})
+          </label>
+        )}
+        <button type="button" className={probe ? 'btn btn-small active' : 'btn btn-small'} aria-pressed={probe} onClick={() => setProbe((p) => !p)}>
+          {probe ? 'Zurück zu den Karten' : 'Probeseite zum Nachmessen'}
+        </button>
         <Link to="/einstellungen/karten" className="btn btn-small">
           Kartenlayout anpassen
         </Link>
@@ -161,7 +209,12 @@ export function PrintPage() {
         </p>
       )}
 
-      <div className="print-pages">
+      {probe && (
+        <div className="print-pages">
+          <PrintTestSheets duplex={!cardPrinter && backMode === 'duplex'} flip={settings.cardPrintFlip} />
+        </div>
+      )}
+      <div className="print-pages" hidden={probe}>
         {sheets?.pages.map((page, i) => (
           <Fragment key={i}>
             <p className="no-print sheet-label">

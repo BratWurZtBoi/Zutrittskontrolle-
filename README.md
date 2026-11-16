@@ -106,11 +106,15 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - **Ruhebildschirm:** beliebig viele Designs, eines ist **aktiv** (z. B. Alltag und Betriebsfest).
 - **Scan-Anzeige:** zuweisbar an Gruppen (*Gruppen verwalten*) oder einzelne Karten (Kartenseite);
   es gilt Karte vor Gruppe vor Standard.
-- **Elemente frei platzieren:** Textfeld, Foto, Gruppe, Uhrzeit, Datum, Logo hinzufügen und
-  entfernen; in der Vorschau **anklicken und ziehen** (Maus oder Finger), Feinschritte mit den
-  **Pfeiltasten** (Umschalt = größere Schritte) oder als Zahl. Je Element: Schriftgröße, Breite,
-  Ausrichtung, fett, eigene Farbe; bei der Scan-Anzeige **„Anzeigen bei“** Eingang / Ausgang /
-  Kein Zutritt / Bitte warten.
+- **Editor wie beim Kartenlayout:** oben Name, **Rückgängig/Wiederholen**, Speichern; links die
+  Vorschau (bei der Scan-Anzeige umschaltbar Eingang / Ausgang / Kein Zutritt / Bitte warten);
+  rechts Reiter **Hinzufügen** (Bausteine wie Titel, Name, Gruß mit Vorname, Meldung, Foto, Gruppe,
+  Uhrzeit, Datum, Logo, freier Text), **Bearbeiten** (Inhalt mit Platzhalter-Knöpfen, Schrift, Farbe,
+  Position, Ebenen, „Anzeigen bei“), **Design** (Hintergrund, Schriftfarbe, Logo), **Texte** (nur
+  Scan-Anzeige: Titel/Meldung je Ergebnis, Datenschutz) und **Allgemein** (Vorlagen, Gruppen
+  zuweisen, Standard bzw. aktiver Ruhebildschirm).
+- **Direkt in der Vorschau:** ziehen (rastet mit Hilfslinien ein), **Ecken ziehen = Größe**,
+  Pfeiltasten = Feinschritt, Entf = löschen, Strg+Z = rückgängig.
 - **Vorlagen:** Zentriert, Foto links, Nur Text (Scan-Anzeige); Klassisch, Große Uhr, Nur Text
   (Ruhebildschirm).
 - **Texte mit Platzhaltern:** `{titel}` und `{meldung}` (je Ergebnis einstellbar, z. B.
@@ -124,7 +128,7 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 ### Personenlisten importieren (CSV)
 
-- *Karten* → **CSV-Import** → **Vorlage herunterladen** (liegt auch im Repository unter
+- *Karten* → Reiter **CSV-Import** → **Vorlage herunterladen** (liegt auch im Repository unter
   [`vorlagen/zutritt-import-vorlage.csv`](vorlagen/zutritt-import-vorlage.csv)).
 - In Excel/LibreOffice ausfüllen, als CSV speichern, im Import wählen. Vor dem Import zeigt eine
   **Vorschau** jede Zeile mit Aktion (neue Karte / Zuweisung) oder Fehlergrund.
@@ -150,6 +154,8 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - *Einstellungen* zeigt eine Übersicht mit allen Bereichen (Allgemein, Scanner, Gruppen,
   Präsentation, Sicherheit, Bediener & Bestätigung, Datensicherung, Daten, Gerät & App) und dem
   aktuellen Stand. Am Computer wechselt man über die Seitenleiste, am Handy über „← Einstellungen“.
+- Die Übersicht ist in Gruppen gegliedert: **Betrieb** (Scanner, Gruppen, Bediener), **Gestaltung**
+  (Kartenlayout, Präsentation), **Daten & Sicherheit** und **Allgemein & Gerät** – ebenso die Seitenleiste.
 
 ### Hell und dunkel
 
@@ -219,6 +225,12 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
     Marke falten (ideal für Ausweishüllen, ohne Duplexdrucker).
   - **Kartendrucker:** jede Kartenseite auf einer eigenen Seite in Kartengröße, beidseitig
     abwechselnd Vorder-/Rückseite (im Druckdialog „Ränder: keine“).
+  - **Probeseite zum Nachmessen:** Lineale (100 mm) und eine Scheckkarte in Originalgröße; bei
+    „beidseitig“ zusätzlich ein Kreuz auf der Rückseite zum Prüfen der Ausrichtung (gegen das Licht).
+  - **Nach dem Drucken** fragt die App „Wurden die Karten gedruckt?“ – dann gelten sie als gedruckt.
+    Filter **„Nur noch nicht gedruckte“** beim Druck und **„Noch nicht gedruckt“** in der Kartenliste;
+    ein neuer QR-Code setzt die Markierung zurück.
+- **Karten-Bereich** mit Reitern: Karten | Nicht zugeordnet | CSV-Import | Drucken.
 
 ### USB-Scanner (QR-Code-Scanner im Tastatur-Modus)
 

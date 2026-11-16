@@ -3184,3 +3184,150 @@ code.path {
     position: static;
   }
 }
+
+/* Einstellungen: Übersicht und Seitenleiste in Gruppen */
+.settings-group {
+  margin-bottom: 1.25rem;
+}
+.settings-group h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.settings-nav-group {
+  display: block;
+  margin: 0.75rem 0 0.15rem;
+  padding: 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Druck: Rückfrage „gedruckt?“ und Probeseite */
+.print-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  background: var(--info-bg);
+  color: var(--info-text);
+  font-weight: 600;
+}
+.print-page .btn.active {
+  border-color: var(--link);
+  background: var(--link);
+  color: #fff;
+}
+.test-sheet {
+  color: #0f172a;
+  font-size: 3.6mm;
+  line-height: 1.35;
+}
+.test-margin {
+  position: absolute;
+  border: 0.3mm dashed #94a3b8;
+}
+.test-text {
+  position: absolute;
+}
+.test-ruler {
+  position: absolute;
+  border-color: #0f172a;
+  border-style: solid;
+  border-width: 0;
+}
+.test-ruler-h {
+  width: 100mm;
+  height: 6mm;
+  border-top-width: 0.3mm;
+}
+.test-ruler-v {
+  width: 6mm;
+  height: 100mm;
+  border-left-width: 0.3mm;
+}
+.test-tick {
+  position: absolute;
+  background: #0f172a;
+}
+.test-ruler-h .test-tick {
+  width: 0.2mm;
+}
+.test-ruler-v .test-tick {
+  height: 0.2mm;
+}
+.test-tick-label {
+  position: absolute;
+  font-size: 2.6mm;
+  white-space: nowrap;
+}
+.test-ruler-h .test-tick-label {
+  top: 4.5mm;
+  left: -1mm;
+}
+.test-ruler-v .test-tick-label {
+  left: 5mm;
+  top: -1.5mm;
+}
+.test-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.3mm solid #0f172a;
+  border-radius: 3mm;
+  font-weight: 600;
+}
+.test-cross {
+  position: absolute;
+  background: #dc2626;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.test-cross-h {
+  width: 12mm;
+  height: 0.4mm;
+}
+.test-cross-v {
+  width: 0.4mm;
+  height: 12mm;
+}
+/* Gästebildschirm-Editor: gleiche Bausteine wie der Karteneditor */
+.ce-pill-static {
+  cursor: default;
+}
+.pe-canvas {
+  padding: 0.75rem;
+}
+.pe-canvas .pv {
+  width: 100%;
+}
+@media (min-width: 1000px) {
+  .pe-main {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  }
+}
+.pe .element-show {
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.pe .element-show legend {
+  font-weight: 700;
+  padding: 0;
+}
+.ce-tabs .tab {
+  font-size: 0.92rem;
+  padding: 0.5rem 0.25rem;
+}

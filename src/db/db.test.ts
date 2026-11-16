@@ -10,6 +10,7 @@ import {
   returnCards,
   setCardsBlocked,
   listCards,
+  markCardsPrinted,
   reissueToken,
   returnCard,
   setCardBlocked,
@@ -144,8 +145,11 @@ describe('Scan-Verarbeitung', () => {
     expect((await processScan('Hallo Welt', opts)).decision.reason).toBe('INVALID_CODE');
     await setCardBlocked(card!.id, true);
     expect((await processScan(oldCode, opts)).decision.reason).toBe('CARD_BLOCKED');
+    expect(await markCardsPrinted([card!.id], 5000)).toBe(1);
+    expect((await db.cards.get(card!.id))?.printedAt).toBe(5000);
     const reissued = await reissueToken(card!.id);
     expect(reissued.blocked).toBe(false);
+    expect(reissued.printedAt).toBeUndefined(); // neuer Code → neu drucken
     expect((await processScan(oldCode, opts)).decision.reason).toBe('UNKNOWN_CARD');
     expect((await processScan(encodeCardPayload(reissued.token), opts)).decision.outcome).toBe('granted');
   });
