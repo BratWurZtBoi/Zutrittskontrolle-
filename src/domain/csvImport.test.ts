@@ -66,11 +66,15 @@ describe('parseImport', () => {
       '„Zutritt erlaubt“ muss ja oder nein sein.',
       '„Gültig ab“ ist kein gültiges Datum (TT.MM.JJJJ).',
     ]);
-    expect(rows[1]?.errors).toEqual(['Gruppe fehlt.']);
+    // ohne Gruppe kein Fehler – die Person kommt beim Import unter „Nicht zugeordnet“
+    expect(rows[1]?.errors).toEqual([]);
+    expect(rows[1]?.groupRef).toBeUndefined();
   });
 
   it('erkennt fehlende Pflichtspalten', () => {
-    expect(parseImport('Spalte A;Spalte B\n1;2').fileErrors.length).toBe(2);
+    expect(parseImport('Spalte A;Spalte B\n1;2').fileErrors).toEqual(['Spalte „Vorname“ oder „Nachname“ fehlt. Bitte die Vorlage verwenden.']);
+    // Liste nur mit Namen ist erlaubt
+    expect(parseImport('Vorname;Nachname\nMax;Muster').fileErrors).toEqual([]);
     expect(parseImport('').fileErrors).toEqual(['Die Datei ist leer.']);
   });
 

@@ -60,6 +60,28 @@ export interface EncryptedData {
   data: Uint8Array;
 }
 
+/**
+ * Person aus dem CSV-Import ohne (bekannte) Gruppe – wartet unter „Nicht zugeordnet“
+ * darauf, einer Gruppe und damit einer Karte zugeordnet zu werden.
+ */
+export interface UnassignedRecord {
+  id: string;
+  /** Verschlüsselte Personendaten (CardHolder als JSON). */
+  holderEnc: EncryptedData;
+  /** Werden beim Zuordnen auf die Karte übernommen. */
+  accessGranted: boolean;
+  validFrom?: string;
+  validUntil?: string;
+  /** Gruppenname aus der Datei, den es nicht gibt (z. B. Tippfehler). */
+  groupHint?: string;
+  createdAt: number;
+}
+
+/** Nicht zugeordnete Person für die Oberfläche (`holder` nur, wenn entsperrt). */
+export interface UnassignedPerson extends Omit<UnassignedRecord, 'holderEnc'> {
+  holder?: CardHolder;
+}
+
 /** Karte, wie sie in der Datenbank liegt (Personendaten verschlüsselt). */
 export interface CardRecord {
   /** Interne, unveränderliche ID (UUID). */

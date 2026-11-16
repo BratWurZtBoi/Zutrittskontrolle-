@@ -30,6 +30,12 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   (`issueReplacementCard`) übernimmt verschlüsselte Personendaten + Anwesenheit, Verweis
   `replacedBy`/`replaces`. Gäste (Kiosk, Präsentation: `Audience 'guest'`) sehen bei verlorenen
   Karten weder Grund noch Person.
+- **Nicht zugeordnet** (`UnassignedRecord`, Tabelle `unassigned`, DB-Version 4): Personen aus dem
+  CSV-Import ohne bzw. mit unbekannter Gruppe (`groupHint`), noch ohne Karte; `holderEnc` +
+  Zutritt/Gültigkeit. `db/unassigned.ts`: `assignUnassigned` nimmt zuerst freie Karten der Gruppe
+  (`listFreeCards`), sonst neue, und zieht `holderEnc` je Person in einer Transaktion auf die Karte um.
+  Import-Plan `kind: 'unassigned'` (nur Zeilen ohne Kartennummer; Doppelte per Name+Firma abgelehnt).
+  Reiter auf `#/karten?ansicht=nicht-zugeordnet`. Im Backup (`unassigned`), bei „Alle Daten löschen“ weg.
 - **Ereignis** (`AccessEvent`): enthält Momentaufnahmen (Kartennummer, Gruppe, Name), damit
   die Historie nach Änderungen lesbar bleibt. **Anwesenheit** je Karte.
 - Gespeichert werden `CardRecord`/`AccessEventRecord` (Personendaten verschlüsselt), die
@@ -173,6 +179,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
     oder Kartendrucker (Version 0.10).
 11. ✅ USB-Scanner (Tastatur-Modus) mit Scanner-Test und Weiterleitung vom Gästebildschirm,
     Linux-Programm (.deb für PC und Raspberry Pi) (Version 0.11).
+12. ✅ CSV-Import: Zeilen ohne/mit unbekannter Gruppe → Reiter „Nicht zugeordnet“, dort Gruppe
+    zuordnen (freie Karte zuerst, sonst neue) oder löschen (Version 0.12).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

@@ -4,10 +4,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { StatusBadge } from '../components/StatusBadge';
+import { UnassignedList } from '../components/UnassignedList';
 import { MAX_CARDS, deleteCards, listCards, returnCards, setCardsBlocked } from '../db/cards';
 import { db } from '../db/db';
 import { listGroups } from '../db/groups';
 import { seedTestCards } from '../db/seed';
+import { countUnassigned } from '../db/unassigned';
 import { holderName } from '../domain/texts';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 
@@ -24,6 +26,9 @@ export function CardListPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const groupFilter = params.get('gruppe') ?? '';
+  // Reiter: Karten oder „Nicht zugeordnet“ (Personen aus dem Import ohne Gruppe)
+  const view = params.get('ansicht') === 'nicht-zugeordnet' ? 'unassigned' : 'cards';
+  const unassignedCount = useLiveQuery(countUnassigned, [], 0);
   const [assignment, setAssignment] = useState<Assignment>('all');
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
@@ -106,12 +111,12 @@ export function CardListPage() {
           <Link className="btn" to="/karten/import">
             CSV-Import
           </Link>
-          {filtered.length > 0 && !selecting && (
+          {view === 'cards' && filtered.length > 0 && !selecting && (
             <Link className="btn" to={`/druck?ids=${printIds}`}>
               Drucken ({filtered.length})
             </Link>
           )}
-          {cards.length > 0 && (
+          {view === 'cards' && cards.length > 0 && (
             <button type="button" className={selecting ? 'btn btn-primary' : 'btn'} onClick={() => (selecting ? endSelection() : setSelecting(true))}>
               {selecting ? 'Auswahl beenden' : 'Auswählen'}
             </button>
@@ -119,13 +124,41 @@ export function CardListPage() {
         </div>
       </header>
 
-      {message && (
+      {(unassignedCount > 0 || view === 'unassigned') && (
+        <div className="tabs card-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'cards'}
+            className={view === 'cards' ? 'tab active' : 'tab'}
+            onClick={() => setParams({}, { replace: true })}
+          >
+            Karten <span className="count-pill">{cards.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'unassigned'}
+            className={view === 'unassigned' ? 'tab active' : 'tab'}
+            onClick={() => {
+              endSelection();
+              setParams({ ansicht: 'nicht-zugeordnet' }, { replace: true });
+            }}
+          >
+            Nicht zugeordnet <span className={unassignedCount > 0 ? 'count-pill count-denied' : 'count-pill'}>{unassignedCount}</span>
+          </button>
+        </div>
+      )}
+
+      {message && view === 'cards' && (
         <p className="form-success" role="status">
           {message}
         </p>
       )}
 
-      {cards.length === 0 ? (
+      {view === 'unassigned' ? (
+        <UnassignedList groups={groups} />
+      ) : cards.length === 0 ? (
         <div className="empty">
           <p>Noch keine Karten vorhanden.</p>
           <p className="muted">

@@ -10,7 +10,8 @@ import { PasswordInput } from './PasswordInput';
 function SummaryText({ s }: { s: BackupSummary }) {
   return (
     <>
-      {s.groups} Gruppe(n), {s.cards} Karte(n) – davon {s.assignedCards} mit Person – und {s.events} Protokolleintrag/-einträge
+      {s.groups} Gruppe(n), {s.cards} Karte(n) (davon {s.assignedCards} mit Person)
+      {s.unassigned > 0 && <>, {s.unassigned} nicht zugeordnete Person(en)</>} und {s.events} Protokolleintrag/-einträge
     </>
   );
 }

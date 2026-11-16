@@ -409,19 +409,50 @@ try {
     ';Besucher;Anna;Import;Import GmbH;;ja;;',
     ';M;Ben;Import;Lager;;ja;;31.12.2030',
     'B-004;;Clara;Import;;Zuweisung;ja;;',
-    ';Hausmeister;Fehler;Zeile;;;ja;;',
+    ';Hausmeister;Udo;Unbekannt;;;ja;;',
+    ';;Nora;Ohnegruppe;Extern AG;;nein;;',
+    'X-9;;Fehler;Zeile;;;ja;;',
   ].join('\r\n');
   const importPath = `${OUT}/import.csv`;
   // wie Excel „CSV (Trennzeichen-getrennt)“: Windows-1252 statt UTF-8
   writeFileSync(importPath, Buffer.from(importCsv.replace('Gültig', 'Gültig'), 'latin1'));
   await page.locator('#csv-file').setInputFiles(importPath);
-  await page.locator('.import-table tbody tr').nth(3).waitFor();
+  await page.locator('.import-table tbody tr').nth(5).waitFor();
   const chips = await page.locator('.summary-chips').textContent();
-  check(chips.includes('2 neue Karte(n)') && chips.includes('1 Zuweisung(en)') && chips.includes('1 Fehler'), 'Import-Vorschau: 2 neu, 1 Zuweisung, 1 Fehler');
-  check((await page.locator('.import-table').textContent()).includes('Gruppe „Hausmeister“ gibt es nicht.'), 'Import-Vorschau zeigt Fehlergrund');
+  check(
+    chips.includes('2 neue Karte(n)') && chips.includes('1 Zuweisung(en)') && chips.includes('2 nicht zugeordnet') && chips.includes('1 Fehler'),
+    'Import-Vorschau: 2 neu, 1 Zuweisung, 2 nicht zugeordnet, 1 Fehler',
+  );
+  const previewText = await page.locator('.import-table').textContent();
+  check(previewText.includes('Gruppe „Hausmeister“ gibt es nicht – später zuordnen.') && previewText.includes('Ohne Gruppe – später zuordnen.'), 'Ohne bzw. mit unbekannter Gruppe → „Nicht zugeordnet“');
+  check(previewText.includes('Karte X-9 gibt es nicht'), 'Import-Vorschau zeigt Fehlergrund');
   await page.screenshot({ path: `${OUT}/12-import-vorschau.png`, fullPage: true });
-  await page.getByRole('button', { name: '3 Zeile(n) importieren' }).click();
+  await page.getByRole('button', { name: '5 Zeile(n) importieren' }).click();
   await page.getByText('Import abgeschlossen').waitFor();
+  check((await page.locator('.success-box').textContent()).includes('2 Person(en) unter „Nicht zugeordnet“ abgelegt'), 'Import: 2 Personen unter „Nicht zugeordnet“');
+  await page.getByRole('link', { name: 'Nicht zugeordnete Personen zuordnen' }).click();
+  await page.getByRole('tab', { name: /Nicht zugeordnet/, selected: true }).waitFor();
+  const waitingList = page.locator('[aria-label="Nicht zugeordnete Personen"] .card-list');
+  await waitingList.locator('.card-row').nth(1).waitFor();
+  const waitingText = await waitingList.textContent();
+  check(waitingText.includes('Udo Unbekannt') && waitingText.includes('Gruppe „Hausmeister“ unbekannt') && waitingText.includes('kein Zutritt'), 'Reiter „Nicht zugeordnet“ mit Hinweisen');
+  const unassignedEvents = (await readStore(page, 'unassigned')).length;
+  check(unassignedEvents === 2 && (await readStore(page, 'unassigned')).every((u) => u.holderEnc && !u.holder), 'Nicht zugeordnete Personen verschlüsselt gespeichert');
+  await waitingList.locator('.card-row', { hasText: 'Nora Ohnegruppe' }).click();
+  await page.getByLabel('Gruppe für die Zuordnung').selectOption({ label: 'Besucher' });
+  await page.getByText(/1 freie Karte\(n\) von „Besucher“/).waitFor();
+  await page.screenshot({ path: `${OUT}/12b-nicht-zugeordnet.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Zuordnen', exact: true }).click();
+  const assignedMsg = page.locator('.form-success', { hasText: 'zugeordnet' });
+  await assignedMsg.waitFor();
+  const assignedText = await assignedMsg.textContent();
+  check(/Nora Ohnegruppe → B-\d+/.test(assignedText) && !assignedText.includes('neue Karte'), `Zugeordnet: freie Besucherkarte verwendet (${assignedText.match(/B-\d+/)?.[0]})`);
+  const noraCard = (await readStore(page, 'cards')).find((c) => c.number === assignedText.match(/B-\d+/)?.[0]);
+  check(noraCard?.holderEnc && noraCard.nameEnc && noraCard.accessGranted === false, 'Karte hat die Personendaten und „kein Zutritt“ aus dem Import');
+  await waitingList.locator('.card-row', { hasText: 'Udo Unbekannt' }).click();
+  await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+  await page.getByText('Keine nicht zugeordneten Personen.').waitFor();
+  check((await readStore(page, 'unassigned')).length === 0, 'Person aus „Nicht zugeordnet“ gelöscht');
   await page.goto(`${URL}#/karten`);
   await page.locator('.card-row').nth(15).waitFor();
   const listText = await page.locator('.card-list').textContent();

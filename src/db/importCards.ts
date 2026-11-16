@@ -1,21 +1,30 @@
 /**
- * CSV-Import: plant für jede Zeile, was passiert (neue Karte oder bestehende
- * Karte zuweisen), prüft Konflikte und führt den Import anschließend aus.
+ * CSV-Import: plant für jede Zeile, was passiert (neue Karte, bestehende Karte
+ * zuweisen oder – ohne bzw. mit unbekannter Gruppe – unter „Nicht zugeordnet“
+ * ablegen), prüft Konflikte und führt den Import anschließend aus.
  */
 import type { ImportRow } from '../domain/csvImport';
 import { holderName } from '../domain/texts';
 import type { Card, CardHolder, Group } from '../domain/types';
 import { MAX_CARDS, createCards, listCards, updateCard } from './cards';
 import { listGroups } from './groups';
+import { MAX_UNASSIGNED, addUnassigned, listUnassigned } from './unassigned';
 
 export type PlanAction =
   | { kind: 'create'; groupId: string; number: string }
   | { kind: 'assign'; cardId: string; groupId: string; number: string; replaces?: string }
+  /** Ohne bzw. mit unbekannter Gruppe (`groupHint`) → „Nicht zugeordnet“, später einer Gruppe zuordnen. */
+  | { kind: 'unassigned'; groupHint?: string }
   | { kind: 'error' };
 
 export interface PlannedRow extends ImportRow {
   action: PlanAction;
   group?: Group;
+}
+
+/** Gleiche Person (Vorname, Nachname, Firma – ohne Groß-/Kleinschreibung). */
+function personKey(h: CardHolder): string {
+  return [h.firstName, h.lastName, h.company ?? ''].map((s) => s.trim().toLowerCase()).join('|');
 }
 
 function findGroup(groups: Group[], ref: string | undefined): Group | undefined {
@@ -26,7 +35,10 @@ function findGroup(groups: Group[], ref: string | undefined): Group | undefined 
 
 /** Plant den Import. `overwrite`: bestehende Personendaten auf Karten dürfen ersetzt werden. */
 export async function planImport(rows: ImportRow[], overwrite: boolean): Promise<PlannedRow[]> {
-  const [groups, cardList] = await Promise.all([listGroups(), listCards()]);
+  const [groups, cardList, waiting] = await Promise.all([listGroups(), listCards(), listUnassigned()]);
+  // Wer schon unter „Nicht zugeordnet“ steht, wird nicht doppelt abgelegt (z. B. Datei zweimal eingelesen)
+  const waitingKeys = new Set(waiting.flatMap((p) => (p.holder ? [personKey(p.holder)] : [])));
+  let waitingTotal = waiting.length;
   const byNumber = new Map<string, Card>(cardList.map(({ card }) => [card.number.toLowerCase(), card]));
   const used = new Set(cardList.map(({ card }) => card.number.toLowerCase()));
   const seenInFile = new Set<string>();
@@ -55,8 +67,18 @@ export async function planImport(rows: ImportRow[], overwrite: boolean): Promise
     const errors = [...row.errors];
     const error = (msg?: string): PlannedRow => ({ ...row, errors: msg ? [...errors, msg] : errors, action: { kind: 'error' } });
     if (errors.length) return error();
+    const toUnassigned = (groupHint?: string): PlannedRow => {
+      const key = personKey(row.holder);
+      if (waitingKeys.has(key)) return error('Steht bereits unter „Nicht zugeordnet“.');
+      if (waitingTotal >= MAX_UNASSIGNED) return error(`Höchstens ${MAX_UNASSIGNED} nicht zugeordnete Personen möglich.`);
+      waitingKeys.add(key);
+      waitingTotal++;
+      return { ...row, action: { kind: 'unassigned', groupHint } };
+    };
 
     const group = findGroup(groups, row.groupRef);
+    // Unbekannte Gruppe (z. B. Tippfehler): Person trotzdem übernehmen – außer bei einer Kartennummer
+    if (row.groupRef && !group && !row.cardNumber) return toUnassigned(row.groupRef);
     if (row.groupRef && !group) return error(`Gruppe „${row.groupRef}“ gibt es nicht.`);
 
     if (row.cardNumber) {
@@ -82,7 +104,7 @@ export async function planImport(rows: ImportRow[], overwrite: boolean): Promise
       return { ...row, group, action: { kind: 'create', groupId: group.id, number: row.cardNumber } };
     }
 
-    if (!group) return error('Gruppe fehlt.');
+    if (!group) return toUnassigned();
     if (total >= MAX_CARDS) return error(`Höchstzahl von ${MAX_CARDS} Karten erreicht.`);
     total++;
     return { ...row, group, action: { kind: 'create', groupId: group.id, number: nextNumber(group) } };
@@ -92,11 +114,13 @@ export async function planImport(rows: ImportRow[], overwrite: boolean): Promise
 export interface ImportResult {
   created: Card[];
   assigned: number;
+  /** Unter „Nicht zugeordnet“ abgelegt. */
+  unassigned: number;
 }
 
 /** Führt die gültigen Zeilen eines Plans aus (Daten müssen entsperrt sein). */
 export async function executeImport(plan: PlannedRow[]): Promise<ImportResult> {
-  const result: ImportResult = { created: [], assigned: 0 };
+  const result: ImportResult = { created: [], assigned: 0, unassigned: 0 };
   const existing = new Map((await listCards()).map(({ card }) => [card.id, card]));
   for (const row of plan) {
     const update = { accessGranted: row.accessGranted, validFrom: row.validFrom, validUntil: row.validUntil };
@@ -113,5 +137,11 @@ export async function executeImport(plan: PlannedRow[]): Promise<ImportResult> {
       result.assigned++;
     }
   }
+  const waiting = plan.flatMap((row) =>
+    row.action.kind === 'unassigned'
+      ? [{ holder: row.holder, accessGranted: row.accessGranted, validFrom: row.validFrom, validUntil: row.validUntil, groupHint: row.action.groupHint }]
+      : [],
+  );
+  result.unassigned = await addUnassigned(waiting);
   return result;
 }

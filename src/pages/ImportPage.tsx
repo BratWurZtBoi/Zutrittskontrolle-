@@ -36,12 +36,15 @@ export function ImportPage() {
 
   const valid = plan?.filter((r) => r.action.kind !== 'error') ?? [];
   const creates = valid.filter((r) => r.action.kind === 'create').length;
-  const assigns = valid.length - creates;
+  const unassigned = valid.filter((r) => r.action.kind === 'unassigned').length;
+  const assigns = valid.length - creates - unassigned;
   const errors = (plan?.length ?? 0) - valid.length;
 
   const onImport = async () => {
     if (!plan || valid.length === 0) return;
-    if (!window.confirm(`${valid.length} Zeile(n) importieren? ${creates} neue Karte(n), ${assigns} Zuweisung(en).`)) return;
+    const parts = [`${creates} neue Karte(n)`, `${assigns} Zuweisung(en)`];
+    if (unassigned) parts.push(`${unassigned} unter „Nicht zugeordnet“`);
+    if (!window.confirm(`${valid.length} Zeile(n) importieren? ${parts.join(', ')}.`)) return;
     setBusy(true);
     try {
       setResult(await executeImport(plan));
@@ -78,8 +81,9 @@ export function ImportPage() {
               bekommt die Person (z. B. bereits gedruckte Besucherkarte). Neue Nummer = Karte wird mit genau dieser Nummer angelegt.
             </li>
             <li>
-              <strong>Gruppe</strong>: Name oder Kürzel einer vorhandenen Gruppe, z. B. „Besucher“ oder „B“ (bei vorhandener Kartennummer
-              optional).
+              <strong>Gruppe</strong>: Name oder Kürzel einer vorhandenen Gruppe, z. B. „Besucher“ oder „B“. Leer oder unbekannt (z. B.
+              Tippfehler): Die Person wird trotzdem übernommen und kommt unter <strong>Karten → „Nicht zugeordnet“</strong> – dort
+              später einer Gruppe zuordnen. Bei vorhandener Kartennummer ergibt sich die Gruppe aus der Karte.
             </li>
             <li>
               <strong>Vorname</strong>, <strong>Nachname</strong> (mindestens eins), <strong>Firma/Abteilung</strong>, <strong>Notiz</strong>
@@ -127,6 +131,11 @@ export function ImportPage() {
               <span className="chip">
                 <strong>{assigns}</strong> Zuweisung(en)
               </span>
+              {unassigned > 0 && (
+                <span className="chip">
+                  <strong>{unassigned}</strong> nicht zugeordnet
+                </span>
+              )}
               <span className={errors ? 'chip chip-error' : 'chip'}>
                 <strong>{errors}</strong> Fehler
               </span>
@@ -151,11 +160,12 @@ export function ImportPage() {
                       <td>
                         {r.action.kind === 'create' && <>Neue Karte {r.action.number}</>}
                         {r.action.kind === 'assign' && <>Zuweisen {r.action.number}</>}
+                        {r.action.kind === 'unassigned' && <>→ Nicht zugeordnet</>}
                         {r.action.kind === 'error' && <>✕ Fehler</>}
                       </td>
                       <td>{holderName(r.holder) || '–'}</td>
                       <td>{r.holder.company ?? ''}</td>
-                      <td>{r.group ? <GroupBadge group={r.group} /> : (r.groupRef ?? '')}</td>
+                      <td>{r.group ? <GroupBadge group={r.group} /> : r.action.kind === 'unassigned' ? '–' : (r.groupRef ?? '')}</td>
                       <td>
                         {r.validFrom || r.validUntil ? `${formatIsoDate(r.validFrom) || '…'} – ${formatIsoDate(r.validUntil) || '…'}` : ''}
                         {!r.accessGranted && <span className="badge badge-no-permission">kein Zutritt</span>}
@@ -163,6 +173,8 @@ export function ImportPage() {
                       <td className="result-cell">
                         {r.errors.join(' ')}
                         {r.action.kind === 'assign' && r.action.replaces && `Ersetzt ${r.action.replaces}.`}
+                        {r.action.kind === 'unassigned' &&
+                          (r.action.groupHint ? `Gruppe „${r.action.groupHint}“ gibt es nicht – später zuordnen.` : 'Ohne Gruppe – später zuordnen.')}
                       </td>
                     </tr>
                   ))}
@@ -181,12 +193,18 @@ export function ImportPage() {
         <section className="card success-box">
           <h2>Import abgeschlossen</h2>
           <p>
-            {result.created.length} neue Karte(n) angelegt, {result.assigned} Karte(n) zugewiesen.
+            {result.created.length} neue Karte(n) angelegt, {result.assigned} Karte(n) zugewiesen
+            {result.unassigned > 0 && <>, {result.unassigned} Person(en) unter „Nicht zugeordnet“ abgelegt</>}.
           </p>
           <div className="button-row">
             {result.created.length > 0 && (
               <Link className="btn btn-primary" to={`/druck?ids=${result.created.map((c) => c.id).join(',')}`}>
                 Neue Karten drucken
+              </Link>
+            )}
+            {result.unassigned > 0 && (
+              <Link className="btn btn-primary" to="/karten?ansicht=nicht-zugeordnet">
+                Nicht zugeordnete Personen zuordnen
               </Link>
             )}
             <Link className="btn" to="/karten">

@@ -25,7 +25,7 @@ export async function toCard(record: CardRecord, key: CryptoKey | null = getData
   return { ...rest, hasHolder: Boolean(holderEnc || legacy), holder };
 }
 
-function requireKey(): CryptoKey {
+export function requireKey(): CryptoKey {
   const key = getDataKey();
   if (!key) throw new ValidationError('Die Daten sind gesperrt. Bitte zuerst mit dem Admin-Passwort entsperren.');
   return key;
@@ -138,7 +138,7 @@ export async function listCards(): Promise<CardWithGroup[]> {
     );
 }
 
-function normalizeHolder(holder: CardHolder | undefined): CardHolder | undefined {
+export function normalizeHolder(holder: CardHolder | undefined): CardHolder | undefined {
   if (!holder) return undefined;
   const h: CardHolder = {
     firstName: holder.firstName.trim(),

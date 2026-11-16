@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { CardLayout } from '../domain/cardLayout';
 import type { PresentationLayout } from '../domain/presentationLayout';
-import type { AccessEventRecord, CardRecord, Group, PresenceRecord } from '../domain/types';
+import type { AccessEventRecord, CardRecord, Group, PresenceRecord, UnassignedRecord } from '../domain/types';
 
 export interface SettingRecord {
   key: string;
@@ -26,6 +26,7 @@ export class ZkDatabase extends Dexie {
   settings!: EntityTable<SettingRecord, 'key'>;
   layouts!: EntityTable<PresentationLayout, 'id'>;
   cardLayouts!: EntityTable<CardLayout, 'id'>;
+  unassigned!: EntityTable<UnassignedRecord, 'id'>;
 
   constructor(name = DB_NAME) {
     super(name);
@@ -43,6 +44,10 @@ export class ZkDatabase extends Dexie {
     // v3: Kartenlayouts (gedruckte Karten)
     this.version(3).stores({
       cardLayouts: 'id',
+    });
+    // v4: Personen aus dem Import ohne Gruppe („Nicht zugeordnet“)
+    this.version(4).stores({
+      unassigned: 'id, createdAt',
     });
   }
 }
@@ -86,7 +91,7 @@ export const DEVICE_SECRET_KEYS = [VAULT_KEY, OPERATOR_PIN_KEY, AUTO_BACKUP_KEY,
  * Admin-Passwort und Bediener-PIN bleiben erhalten, außer `includePassword` ist gesetzt.
  */
 export async function clearAllData(includePassword = false): Promise<void> {
-  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings, db.layouts, db.cardLayouts], async () => {
+  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings, db.layouts, db.cardLayouts, db.unassigned], async () => {
     await Promise.all([
       db.groups.clear(),
       db.cards.clear(),
@@ -94,6 +99,7 @@ export async function clearAllData(includePassword = false): Promise<void> {
       db.presence.clear(),
       db.layouts.clear(),
       db.cardLayouts.clear(),
+      db.unassigned.clear(),
     ]);
     if (includePassword) await db.settings.clear();
     else await db.settings.where('key').noneOf(DEVICE_SECRET_KEYS).delete();
