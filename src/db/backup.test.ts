@@ -8,6 +8,7 @@ import { VAULT_KEY, clearAllData, db } from './db';
 import { createGroup, ensureDefaultGroups, listGroups } from './groups';
 import { listPresentCards, listRecentEvents, processScan } from './scans';
 import { loadSettings, saveSettings } from './settings';
+import { addUnassigned, listUnassigned } from './unassigned';
 
 const FAST = 1000;
 const PW = 'Backup-Passwort';
@@ -30,6 +31,7 @@ async function sampleData() {
   await processScan(encodeCardPayload(b!.token), opts);
   await processScan('fremder Code', opts);
   await saveSettings({ orgName: 'Testfirma', cooldownSec: 45, camera: 'device:xyz' });
+  await addUnassigned([{ holder: { firstName: 'Nina', lastName: 'Wartend', company: 'Extern' }, accessGranted: false, validUntil: '2030-01-31', groupHint: 'Besuchr' }]);
   return { a: a!, b: b! };
 }
 
@@ -41,9 +43,9 @@ describe('Backup', () => {
     const before = await listCards();
     const { blob, filename, summary } = await createBackupFile(PW, '0.5.0', FAST);
     expect(filename).toMatch(/^zutrittskontrolle-backup-\d{4}-\d{2}-\d{2}-\d{4}\.zkb$/);
-    expect(summary).toMatchObject({ groups: 3, cards: 3, assignedCards: 2, events: 3, appVersion: '0.5.0' });
+    expect(summary).toMatchObject({ groups: 3, cards: 3, assignedCards: 2, events: 3, unassigned: 1, appVersion: '0.5.0' });
     const text = await blob.text();
-    expect(text).not.toMatch(/Mustermann|Musterfrau|Testfirma/); // nichts im Klartext
+    expect(text).not.toMatch(/Mustermann|Musterfrau|Testfirma|Wartend/); // nichts im Klartext
 
     // Neues Gerät mit anderem Admin-Passwort (= anderer Datenschlüssel)
     await freshDevice();
@@ -58,6 +60,9 @@ describe('Backup', () => {
     const events = await listRecentEvents();
     expect(events.map((e) => e.holderName).filter(Boolean).sort()).toEqual(['Erika Musterfrau', 'Max Mustermann']);
     expect((await db.cards.toArray()).every((c) => c.holder === undefined)).toBe(true); // wieder verschlüsselt
+    expect((await listUnassigned()).map((u) => [u.holder, u.accessGranted, u.validUntil, u.groupHint])).toEqual([
+      [{ firstName: 'Nina', lastName: 'Wartend', company: 'Extern' }, false, '2030-01-31', 'Besuchr'],
+    ]);
 
     const settings = await loadSettings();
     expect(settings.orgName).toBe('Testfirma');

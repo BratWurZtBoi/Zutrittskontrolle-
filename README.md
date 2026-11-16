@@ -132,6 +132,13 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   zuweisen), Gruppe (Name oder Kürzel), Vorname, Nachname, Firma/Abteilung, Notiz,
   Zutritt erlaubt (ja/nein), Gültig ab, Gültig bis (TT.MM.JJJJ).
 - Bestehende Personendaten werden nur überschrieben, wenn das ausdrücklich angehakt ist.
+- **Zeilen ohne Gruppe oder mit unbekannter Gruppe** (z. B. Tippfehler „Besuchr“) werden trotzdem
+  übernommen: Die Personen landen unter *Karten* → Reiter **„Nicht zugeordnet“** (noch ohne Karte –
+  können nicht scannen). Dort auswählen, Gruppe wählen und **Zuordnen**: Jede Person bekommt
+  zuerst eine **freie Karte** der Gruppe, sonst wird eine neue angelegt; Zutritt und Gültigkeit aus
+  der Datei werden übernommen. Danach „Diese Karten drucken“. Personen lassen sich dort auch löschen.
+  Eine Liste nur mit Vor- und Nachnamen reicht also aus. Wer dort schon steht, wird beim erneuten
+  Einlesen nicht doppelt abgelegt. Die Personendaten sind verschlüsselt und im Backup enthalten.
 
 ### Mehrfachauswahl
 
@@ -339,6 +346,7 @@ Merge nach `main` automatisch gebaut.
 | Helles und dunkles Layout | ✅ |
 | Programm für Windows (Installationsdatei) und Linux (.deb, auch Raspberry Pi) | ✅ |
 | USB-Scanner (Tastatur-Modus) mit Scanner-Test | ✅ |
+| CSV-Import: Personen ohne Gruppe unter „Nicht zugeordnet“, später zuordnen | ✅ |
 
 ## Technik
 

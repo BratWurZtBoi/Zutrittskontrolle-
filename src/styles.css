@@ -2723,3 +2723,13 @@ code.path {
 .scanner-setup li + li {
   margin-top: 0.3rem;
 }
+
+/* Karten-Seite: Reiter „Nicht zugeordnet“ */
+.unassigned-bar select {
+  width: auto;
+  min-width: 11rem;
+  min-height: 40px;
+}
+.unassigned-hint {
+  flex-basis: 100%;
+}

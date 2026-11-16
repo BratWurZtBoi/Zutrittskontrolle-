@@ -6,6 +6,7 @@ import { createCards, listCards, updateCard } from './cards';
 import { clearAllData, db } from './db';
 import { ensureDefaultGroups, listGroups } from './groups';
 import { executeImport, planImport } from './importCards';
+import { listUnassigned } from './unassigned';
 
 const HEADER = 'Kartennummer;Gruppe;Vorname;Nachname;Firma/Abteilung;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis';
 
@@ -65,11 +66,11 @@ describe('CSV-Import planen und ausführen', () => {
     expect(card.holder).toMatchObject({ company: 'Neue Abteilung', photo: 'data:image/jpeg;base64,AAAA' });
   });
 
-  it('meldet unbekannte Gruppen, falsche Gruppen, Doppelte und neue Nummern ohne Gruppe', async () => {
+  it('meldet unbekannte Gruppen bei Kartennummern, falsche Gruppen, Doppelte und neue Nummern ohne Gruppe', async () => {
     const [staff] = await listGroups();
     await createCards({ groupId: staff!.id, count: 1 }); // M-001
     const p = await plan([
-      ';Hausmeister;A;B;;;ja;;',
+      'M-001;Hausmeister;A;B;;;ja;;',
       'M-001;Besucher;A;B;;;ja;;',
       'X-9;;A;B;;;ja;;',
       'NEU-1;Besucher;A;B;;;ja;;',
@@ -84,5 +85,35 @@ describe('CSV-Import planen und ausführen', () => {
     ]);
     const result = await executeImport(p);
     expect(result.created.map((c) => c.number)).toEqual(['NEU-1']); // nur gültige Zeilen
+  });
+
+  it('legt Personen ohne oder mit unbekannter Gruppe unter „Nicht zugeordnet“ ab', async () => {
+    const p = await plan([
+      ';;Nina;Ohnegruppe;Beispiel AG;Notiz;nein;;31.12.2026',
+      ';Besuchr;Tim;Tippfehler;;;ja;;',
+      ';Besucher;Felix;Gast;;;ja;;',
+      ';;nina;ohnegruppe;beispiel ag;;ja;;',
+    ]);
+    expect(p.map((r) => r.action)).toEqual([
+      { kind: 'unassigned', groupHint: undefined },
+      { kind: 'unassigned', groupHint: 'Besuchr' },
+      expect.objectContaining({ kind: 'create', number: 'B-001' }),
+      { kind: 'error' },
+    ]);
+    expect(p[3]?.errors).toEqual(['Steht bereits unter „Nicht zugeordnet“.']);
+
+    const result = await executeImport(p);
+    expect(result).toMatchObject({ assigned: 0, unassigned: 2 });
+    expect(result.created).toHaveLength(1);
+    const waiting = await listUnassigned();
+    expect(waiting.map((w) => [w.holder?.lastName, w.holder?.company, w.accessGranted, w.validUntil, w.groupHint])).toEqual([
+      ['Ohnegruppe', 'Beispiel AG', false, '2026-12-31', undefined],
+      ['Tippfehler', undefined, true, undefined, 'Besuchr'],
+    ]);
+    expect((await db.unassigned.toArray()).every((r) => r.holderEnc && !('holder' in r))).toBe(true); // verschlüsselt
+
+    // Datei erneut eingelesen: keine Doppelten
+    const again = await plan([';;Nina;Ohnegruppe;Beispiel AG;;ja;;']);
+    expect(again[0]?.errors).toEqual(['Steht bereits unter „Nicht zugeordnet“.']);
   });
 });

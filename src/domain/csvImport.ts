@@ -166,9 +166,7 @@ export function parseImport(text: string): ParsedImport {
   if (map.firstName === undefined && map.lastName === undefined) {
     fileErrors.push('Spalte „Vorname“ oder „Nachname“ fehlt. Bitte die Vorlage verwenden.');
   }
-  if (map.group === undefined && map.number === undefined) {
-    fileErrors.push('Spalte „Gruppe“ (oder „Kartennummer“) fehlt. Bitte die Vorlage verwenden.');
-  }
+  // Ohne Spalte „Gruppe“ landen alle Personen unter „Nicht zugeordnet“ (Liste nur mit Namen)
   if (table.length === 1) fileErrors.push('Die Datei enthält nur die Kopfzeile.');
   if (fileErrors.length) return { rows: [], fileErrors };
 
@@ -187,7 +185,6 @@ export function parseImport(text: string): ParsedImport {
     if (validFrom && validUntil && validFrom > validUntil) errors.push('„Gültig bis“ liegt vor „Gültig ab“.');
     const cardNumber = cell(r, 'number') || undefined;
     const groupRef = cell(r, 'group') || undefined;
-    if (!cardNumber && !groupRef) errors.push('Gruppe fehlt.');
     if (cardNumber && cardNumber.length > 20) errors.push('Kartennummer ist zu lang (max. 20 Zeichen).');
     return {
       line: i + 2,
