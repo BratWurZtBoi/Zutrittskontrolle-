@@ -79,3 +79,14 @@ export async function cardLayoutUsage(): Promise<Map<string, string[]>> {
   }
   return usage;
 }
+
+/** Gruppen, die dieses Kartenlayout verwenden, festlegen (andere Gruppen bleiben unverändert). */
+export async function setCardLayoutGroups(layoutId: string, groupIds: Iterable<string>): Promise<void> {
+  const wanted = new Set(groupIds);
+  await db.transaction('rw', db.groups, async () => {
+    await db.groups.where('id').notEqual('').modify((g) => {
+      if (wanted.has(g.id)) g.cardLayoutId = layoutId;
+      else if (g.cardLayoutId === layoutId) delete g.cardLayoutId;
+    });
+  });
+}

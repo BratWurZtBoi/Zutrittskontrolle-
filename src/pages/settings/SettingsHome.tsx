@@ -5,7 +5,7 @@ import { db } from '../../db/db';
 import { loadOperatorPin } from '../../db/vault';
 import { formatDateTime } from '../../domain/dates';
 import { useSettings } from '../../hooks/useSettings';
-import { SETTINGS_SECTIONS } from './SettingsShell';
+import { SETTINGS_GROUPS, sectionsOf } from './SettingsShell';
 
 const THEME_LABEL = { auto: 'automatisch', light: 'hell', dark: 'dunkel' } as const;
 const MODE_LABEL = { auto: 'automatisch', in: 'nur Eingang', out: 'nur Ausgang' } as const;
@@ -20,6 +20,8 @@ export function SettingsHome() {
       events: await db.events.count(),
       pin: Boolean(await loadOperatorPin()),
       autoBackup: Boolean(await loadAutoBackup()),
+      cardLayouts: await db.cardLayouts.count(),
+      layouts: await db.layouts.count(),
     }),
     [],
   );
@@ -33,6 +35,8 @@ export function SettingsHome() {
     '/einstellungen/datensicherung': `Letztes Backup: ${settings.lastBackupAt ? formatDateTime(settings.lastBackupAt) : 'noch nie'}${info?.autoBackup ? ' · automatisch an' : ''}`,
     '/einstellungen/daten': info ? `${info.cards} Karten, ${info.events} Protokolleinträge` : '',
     '/einstellungen/geraet': `Version ${__APP_VERSION__}`,
+    '/einstellungen/karten': info ? `${info.cardLayouts} eigene(s) Layout(s)` : '',
+    '/einstellungen/praesentation': info ? `${info.layouts} eigene(s) Layout(s)` : '',
   };
 
   return (
@@ -40,17 +44,22 @@ export function SettingsHome() {
       <header className="page-header">
         <h1>Einstellungen</h1>
       </header>
-      <ul className="settings-grid">
-        {SETTINGS_SECTIONS.map((s) => (
-          <li key={s.path}>
-            <Link to={s.path} className="card settings-tile">
-              <strong>{s.title}</strong>
-              <span className="muted small">{s.description}</span>
-              {status[s.path] && <span className="settings-status small">{status[s.path]}</span>}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {SETTINGS_GROUPS.map((g) => (
+        <section key={g.id} className="settings-group" aria-labelledby={`settings-group-${g.id}`}>
+          <h2 id={`settings-group-${g.id}`}>{g.title}</h2>
+          <ul className="settings-grid">
+            {sectionsOf(g.id).map((s) => (
+              <li key={s.path}>
+                <Link to={s.path} className="card settings-tile">
+                  <strong>{s.title}</strong>
+                  <span className="muted small">{s.description}</span>
+                  {status[s.path] && <span className="settings-status small">{status[s.path]}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

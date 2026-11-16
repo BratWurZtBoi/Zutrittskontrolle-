@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { CardsNav } from '../components/CardsNav';
 import { GroupBadge } from '../components/GroupBadge';
 import { executeImport, planImport, type ImportResult, type PlannedRow } from '../db/importCards';
 import { decodeCsvBytes, importTemplateCsv, parseImport, TEMPLATE_HEADER, type ImportRow } from '../domain/csvImport';
@@ -59,10 +60,8 @@ export function ImportPage() {
     <div className="page page-wide">
       <header className="page-header">
         <h1>CSV-Import</h1>
-        <Link className="btn btn-ghost" to="/karten">
-          Zurück
-        </Link>
       </header>
+      <CardsNav active="import" />
 
       <section className="card">
         <h2>1. Vorlage ausfüllen</h2>

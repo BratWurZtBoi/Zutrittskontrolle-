@@ -16,6 +16,10 @@ import {
   type LayoutElement,
   type PresentationLayout,
   type ResultInput,
+  SCREEN_PRESETS,
+  friendlyScreenText,
+  resizeElement,
+  snapElement,
 } from './presentationLayout';
 
 const text = (id: string, t: string, extra: Partial<LayoutElement> = {}): LayoutElement => ({
@@ -191,5 +195,35 @@ describe('Layouts der Version 0.7 übernehmen', () => {
     const texts = idle.elements.filter((e) => e.type === 'text').map((e) => e.text);
     expect(texts).toEqual(['{organisation}', 'Willkommen bei uns', 'Karte bitte scannen']);
     expect(idle.elements.some((e) => e.type === 'clock')).toBe(false); // Uhr war ausgeschaltet
+  });
+});
+
+describe('Editor: Bausteine, Anfasser, Einrasten', () => {
+  it('Bausteine je Bildschirmart', () => {
+    expect(SCREEN_PRESETS.idle.map((p) => p.id)).toContain('clock');
+    expect(SCREEN_PRESETS.idle.map((p) => p.id)).not.toContain('photo'); // Ruhebildschirm ohne Personendaten
+    const title = SCREEN_PRESETS.result.find((p) => p.id === 'title')!.make('t');
+    expect(title).toMatchObject({ text: '{titel}', withIcon: true });
+    expect(friendlyScreenText('Hallo {vorname}!')).toBe('Hallo Vorname!');
+    expect(friendlyScreenText('{titel} – {meldung}')).toBe('Titel – Meldung');
+  });
+
+  it('Größe ändern: Ecke skaliert Text, Seite nur Breite, Foto behält die Unterkante', () => {
+    const t = { ...newElement('text', 't'), x: 10, y: 10, w: 40, size: 5 };
+    expect(resizeElement(t, 'se', 20, 0)).toMatchObject({ w: 60, size: 7.5 });
+    expect(resizeElement(t, 'e', 20, 0)).toMatchObject({ w: 60, size: 5 });
+    expect(resizeElement(t, 'w', 5, 0)).toMatchObject({ x: 15, w: 35 });
+    const photo = { ...newElement('photo', 'p'), x: 40, y: 30, w: 12 };
+    const bigger = resizeElement(photo, 'nw', -3, 0);
+    expect(bigger.w).toBe(15);
+    const bottom = (e: typeof photo) => e.y + e.w * (16 / 9) * (4 / 3);
+    expect(bottom(bigger)).toBeCloseTo(bottom(photo), 0);
+  });
+
+  it('rastet an der Mitte ein', () => {
+    const t = { ...newElement('text', 't'), w: 40 };
+    const r = snapElement(t, 30.4, 20, []);
+    expect(r).toMatchObject({ x: 30, guides: { x: [50], y: [] } });
+    expect(snapElement(t, 20, 20, []).guides.x).toEqual([]);
   });
 });

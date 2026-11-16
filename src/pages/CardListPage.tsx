@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { CardsNav } from '../components/CardsNav';
 import { GroupBadge } from '../components/GroupBadge';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { StatusBadge } from '../components/StatusBadge';
@@ -9,11 +10,10 @@ import { MAX_CARDS, deleteCards, listCards, returnCards, setCardsBlocked } from 
 import { db } from '../db/db';
 import { listGroups } from '../db/groups';
 import { seedTestCards } from '../db/seed';
-import { countUnassigned } from '../db/unassigned';
 import { holderName } from '../domain/texts';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 
-type Assignment = 'all' | 'assigned' | 'free' | 'lost';
+type Assignment = 'all' | 'assigned' | 'free' | 'lost' | 'unprinted';
 
 export function CardListPage() {
   const cards = useSecureLiveQuery(listCards, []);
@@ -28,7 +28,6 @@ export function CardListPage() {
   const groupFilter = params.get('gruppe') ?? '';
   // Reiter: Karten oder „Nicht zugeordnet“ (Personen aus dem Import ohne Gruppe)
   const view = params.get('ansicht') === 'nicht-zugeordnet' ? 'unassigned' : 'cards';
-  const unassignedCount = useLiveQuery(countUnassigned, [], 0);
   const [assignment, setAssignment] = useState<Assignment>('all');
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
@@ -43,6 +42,7 @@ export function CardListPage() {
       if (assignment === 'assigned' && !card.hasHolder) return false;
       if (assignment === 'free' && (card.hasHolder || card.lostAt)) return false;
       if (assignment === 'lost' && !card.lostAt) return false;
+      if (assignment === 'unprinted' && card.printedAt) return false;
       if (!q) return true;
       const h = card.holder;
       return `${card.number} ${h?.firstName ?? ''} ${h?.lastName ?? ''} ${h?.company ?? ''}`.toLowerCase().includes(q);
@@ -108,9 +108,6 @@ export function CardListPage() {
           <Link className="btn btn-primary" to={`/karten/neu${groupFilter ? `?gruppe=${groupFilter}` : ''}`}>
             + Karten erstellen
           </Link>
-          <Link className="btn" to="/karten/import">
-            CSV-Import
-          </Link>
           {view === 'cards' && filtered.length > 0 && !selecting && (
             <Link className="btn" to={`/druck?ids=${printIds}`}>
               Drucken ({filtered.length})
@@ -124,31 +121,7 @@ export function CardListPage() {
         </div>
       </header>
 
-      {(unassignedCount > 0 || view === 'unassigned') && (
-        <div className="tabs card-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'cards'}
-            className={view === 'cards' ? 'tab active' : 'tab'}
-            onClick={() => setParams({}, { replace: true })}
-          >
-            Karten <span className="count-pill">{cards.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'unassigned'}
-            className={view === 'unassigned' ? 'tab active' : 'tab'}
-            onClick={() => {
-              endSelection();
-              setParams({ ansicht: 'nicht-zugeordnet' }, { replace: true });
-            }}
-          >
-            Nicht zugeordnet <span className={unassignedCount > 0 ? 'count-pill count-denied' : 'count-pill'}>{unassignedCount}</span>
-          </button>
-        </div>
-      )}
+      <CardsNav active={view === 'unassigned' ? 'unassigned' : 'cards'} />
 
       {message && view === 'cards' && (
         <p className="form-success" role="status">
@@ -196,6 +169,7 @@ export function CardListPage() {
               <option value="assigned">Nur zugeordnet</option>
               <option value="free">Nur freie Karten</option>
               <option value="lost">Nur verlorene Karten</option>
+              <option value="unprinted">Noch nicht gedruckt</option>
             </select>
           </div>
 

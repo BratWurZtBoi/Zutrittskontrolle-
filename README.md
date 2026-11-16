@@ -106,11 +106,15 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - **Ruhebildschirm:** beliebig viele Designs, eines ist **aktiv** (z. B. Alltag und Betriebsfest).
 - **Scan-Anzeige:** zuweisbar an Gruppen (*Gruppen verwalten*) oder einzelne Karten (Kartenseite);
   es gilt Karte vor Gruppe vor Standard.
-- **Elemente frei platzieren:** Textfeld, Foto, Gruppe, Uhrzeit, Datum, Logo hinzufügen und
-  entfernen; in der Vorschau **anklicken und ziehen** (Maus oder Finger), Feinschritte mit den
-  **Pfeiltasten** (Umschalt = größere Schritte) oder als Zahl. Je Element: Schriftgröße, Breite,
-  Ausrichtung, fett, eigene Farbe; bei der Scan-Anzeige **„Anzeigen bei“** Eingang / Ausgang /
-  Kein Zutritt / Bitte warten.
+- **Editor wie beim Kartenlayout:** oben Name, **Rückgängig/Wiederholen**, Speichern; links die
+  Vorschau (bei der Scan-Anzeige umschaltbar Eingang / Ausgang / Kein Zutritt / Bitte warten);
+  rechts Reiter **Hinzufügen** (Bausteine wie Titel, Name, Gruß mit Vorname, Meldung, Foto, Gruppe,
+  Uhrzeit, Datum, Logo, freier Text), **Bearbeiten** (Inhalt mit Platzhalter-Knöpfen, Schrift, Farbe,
+  Position, Ebenen, „Anzeigen bei“), **Design** (Hintergrund, Schriftfarbe, Logo), **Texte** (nur
+  Scan-Anzeige: Titel/Meldung je Ergebnis, Datenschutz) und **Allgemein** (Vorlagen, Gruppen
+  zuweisen, Standard bzw. aktiver Ruhebildschirm).
+- **Direkt in der Vorschau:** ziehen (rastet mit Hilfslinien ein), **Ecken ziehen = Größe**,
+  Pfeiltasten = Feinschritt, Entf = löschen, Strg+Z = rückgängig.
 - **Vorlagen:** Zentriert, Foto links, Nur Text (Scan-Anzeige); Klassisch, Große Uhr, Nur Text
   (Ruhebildschirm).
 - **Texte mit Platzhaltern:** `{titel}` und `{meldung}` (je Ergebnis einstellbar, z. B.
@@ -124,7 +128,7 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 ### Personenlisten importieren (CSV)
 
-- *Karten* → **CSV-Import** → **Vorlage herunterladen** (liegt auch im Repository unter
+- *Karten* → Reiter **CSV-Import** → **Vorlage herunterladen** (liegt auch im Repository unter
   [`vorlagen/zutritt-import-vorlage.csv`](vorlagen/zutritt-import-vorlage.csv)).
 - In Excel/LibreOffice ausfüllen, als CSV speichern, im Import wählen. Vor dem Import zeigt eine
   **Vorschau** jede Zeile mit Aktion (neue Karte / Zuweisung) oder Fehlergrund.
@@ -150,6 +154,8 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - *Einstellungen* zeigt eine Übersicht mit allen Bereichen (Allgemein, Scanner, Gruppen,
   Präsentation, Sicherheit, Bediener & Bestätigung, Datensicherung, Daten, Gerät & App) und dem
   aktuellen Stand. Am Computer wechselt man über die Seitenleiste, am Handy über „← Einstellungen“.
+- Die Übersicht ist in Gruppen gegliedert: **Betrieb** (Scanner, Gruppen, Bediener), **Gestaltung**
+  (Kartenlayout, Präsentation), **Daten & Sicherheit** und **Allgemein & Gerät** – ebenso die Seitenleiste.
 
 ### Hell und dunkel
 
@@ -190,24 +196,41 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 ### Kartenlayout (gedruckte Karten)
 
-- *Einstellungen → Kartenlayout*. Mitgeliefert ist „Standard“ (bisheriges Aussehen, unverändert,
-  als Vorlage kopierbar). Vorlagen: **Querformat**, **Hochformat** (für Kartenhalter am Band),
-  **Schlicht** (QR-Code und Nummer).
-- **Elemente frei platzieren:** Textfeld, QR-Code, Foto, Logo, Farbfläche – hinzufügen, entfernen,
-  in der Vorschau ziehen oder per Pfeiltasten/Zahl verschieben. Größen werden in Millimetern
-  angezeigt; der QR-Code bleibt mindestens 18 mm groß, damit er sicher gelesen wird.
-- **Platzhalter:** `{vorname}`, `{nachname}`, `{name}`, `{firma}`, `{karte}`, `{gruppe}`,
-  `{organisation}`, `{gueltig_ab}`, `{gueltig_bis}`; „ausblenden, wenn leer“ z. B. für
-  „gültig bis …“ ohne Datum.
-- **Farben:** Gruppenfarbe, Schwarz/Weiß passend zur Gruppenfarbe oder eigene; Hintergrund weiß,
-  Gruppenfarbe, eigene Farbe oder Bild.
-- **Mit/ohne Person:** Elemente „immer“, „nur mit Person“ oder „nur ohne Person (anonyme
-  Karte)“. Name und Foto werden nur gedruckt, wenn die Gruppe „Name und Foto auf die Karte
-  drucken“ erlaubt (z. B. anonyme Besucherkarten).
-- **Zuweisen** je Gruppe (*Gruppen verwalten → Kartenlayout*), sonst gilt das Standardlayout.
-- **Drucken:** *A4-Bogen* zum Ausschneiden (quer 8, hoch 9 je Seite) oder *Kartendrucker* – jede
-  Karte auf einer eigenen Seite in Kartengröße (im Druckdialog den Kartendrucker und „Ränder:
-  keine“ wählen).
+- *Einstellungen → Kartenlayout*. Mitgeliefert ist „Standard“ (unverändert, als Vorlage
+  kopierbar). Vorlagen: **Querformat**, **Hochformat** (für Kartenhalter am Band), **Schlicht**.
+- **Editor:** oben Name, Format, **Rückgängig/Wiederholen** (Strg+Z/Strg+Y) und Speichern; links die
+  Karte (Vorder-/Rückseite, Vorschau mit/ohne Person, Vorschau-Gruppe); rechts vier Reiter:
+  - **Hinzufügen:** fertige Bausteine – Name, Firma/Abteilung, Kartennummer, Gruppe, Gültig bis,
+    Organisation, freier Text, QR-Code, Foto, Logo, Farbfläche.
+  - **Bearbeiten:** Inhalt mit Knöpfen „+ Vorname“, „+ Firma“ … (Platzhalter), Ergebnis im
+    Beispiel, Schrift, Farbe, Position und Größe in mm, mittig, nach vorne/hinten, Duplizieren,
+    Löschen, Anzeigen immer/nur mit Person/nur ohne Person.
+  - **Design:** Format, Rückseite an/aus, Hintergrund je Seite (Farbe, Bild), Schriftfarbe, Logo.
+  - **Allgemein:** für welche Gruppen das Layout gilt, Standard für alle übrigen, Vorlagen.
+- **Direkt auf der Karte:** ziehen = verschieben (rastet mit Hilfslinien an der Mitte und an anderen
+  Elementen ein, Umschalt = frei), **Ecken ziehen = Größe**, Pfeiltasten = Feinschritt, Entf =
+  löschen. Der QR-Code bleibt mindestens 18 mm groß.
+- **Formate:** **Scheckkarte** (85,6 × 54 mm, passt in Kartendrucker), **A7** (74 × 105 mm),
+  **A6** (105 × 148 mm) oder **eigene Größe** – jeweils hoch oder quer. Beim Wechsel zwischen Hoch-
+  und Querformat bietet der Editor die passende Vorlage an.
+- **Rückseite:** z. B. Hinweis bei Fund, Hausordnung, Notfallnummer – mit denselben Bausteinen.
+- Beim Verlassen mit ungespeicherten Änderungen fragt die App nach.
+- Name und Foto werden nur gedruckt, wenn die Gruppe „Name und Foto auf die Karte drucken“ erlaubt.
+- **Drucken:**
+  - **A4-Bogen** mit Seitenvorschau und **Schnittmarken**: Scheckkarte 9 je Seite, A7 4, A6 2
+    (Karten verschiedener Größe auf getrennten Seiten). Maßstab 100 % wählen.
+  - **Beidseitig (Duplex):** nach jeder Seite die Rückseiten gespiegelt angeordnet – „Wenden an
+    langer/kurzer Kante“ wie im Druckdialog wählen; erst eine Probeseite drucken.
+  - **Zum Falten:** Rück- und Vorderseite nebeneinander, ausschneiden und an der gestrichelten
+    Marke falten (ideal für Ausweishüllen, ohne Duplexdrucker).
+  - **Kartendrucker:** jede Kartenseite auf einer eigenen Seite in Kartengröße, beidseitig
+    abwechselnd Vorder-/Rückseite (im Druckdialog „Ränder: keine“).
+  - **Probeseite zum Nachmessen:** Lineale (100 mm) und eine Scheckkarte in Originalgröße; bei
+    „beidseitig“ zusätzlich ein Kreuz auf der Rückseite zum Prüfen der Ausrichtung (gegen das Licht).
+  - **Nach dem Drucken** fragt die App „Wurden die Karten gedruckt?“ – dann gelten sie als gedruckt.
+    Filter **„Nur noch nicht gedruckte“** beim Druck und **„Noch nicht gedruckt“** in der Kartenliste;
+    ein neuer QR-Code setzt die Markierung zurück.
+- **Karten-Bereich** mit Reitern: Karten | Nicht zugeordnet | CSV-Import | Drucken.
 
 ### USB-Scanner (QR-Code-Scanner im Tastatur-Modus)
 
@@ -345,6 +368,7 @@ Merge nach `main` automatisch gebaut.
 | Präsentationsansicht für Gäste auf zweitem Bildschirm | ✅ |
 | Helles und dunkles Layout | ✅ |
 | Programm für Windows (Installationsdatei) und Linux (.deb, auch Raspberry Pi) | ✅ |
+| Karteneditor mit Reitern, Rückgängig, Anfassern; Formate A7/A6/eigene; Rückseite; Duplex/Falten | ✅ |
 | USB-Scanner (Tastatur-Modus) mit Scanner-Test | ✅ |
 | CSV-Import: Personen ohne Gruppe unter „Nicht zugeordnet“, später zuordnen | ✅ |
 

@@ -126,3 +126,14 @@ export async function layoutUsage(): Promise<Map<string, { groups: string[]; car
   });
   return usage;
 }
+
+/** Gruppen, die diese Scan-Anzeige verwenden, festlegen (andere Gruppen bleiben unverändert). */
+export async function setLayoutGroups(layoutId: string, groupIds: Iterable<string>): Promise<void> {
+  const wanted = new Set(groupIds);
+  await db.transaction('rw', db.groups, async () => {
+    await db.groups.where('id').notEqual('').modify((g) => {
+      if (wanted.has(g.id)) g.presentationLayoutId = layoutId;
+      else if (g.presentationLayoutId === layoutId) delete g.presentationLayoutId;
+    });
+  });
+}

@@ -277,12 +277,18 @@ export async function reissueToken(id: string, now = Date.now()): Promise<Card> 
   const record = await db.transaction('rw', db.cards, async () => {
     const current = await db.cards.get(id);
     if (!current) throw new ValidationError('Karte nicht gefunden.');
-    const { lostAt: _lost, ...rest } = current;
+    // neuer Code → die gedruckte Karte gilt nicht mehr, muss neu gedruckt werden
+    const { lostAt: _lost, printedAt: _printed, ...rest } = current;
     const updated: CardRecord = { ...rest, token: generateCardToken(), tokenIssuedAt: now, blocked: false, updatedAt: now };
     await db.cards.put(updated);
     return updated;
   });
   return toCard(record);
+}
+
+/** Karten als gedruckt markieren (nach Rückfrage im Druck). */
+export async function markCardsPrinted(ids: string[], now = Date.now()): Promise<number> {
+  return db.cards.where('id').anyOf(ids).modify({ printedAt: now });
 }
 
 // ---------------------------------------------------------------------------

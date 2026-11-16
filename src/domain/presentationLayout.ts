@@ -10,6 +10,8 @@
  * fertigen Texte und nur die Angaben, die das Layout anzeigt.
  */
 
+import type { ResizeHandle, SnapGuides } from './editorGeometry';
+
 export type ScreenKind = 'idle' | 'result';
 /** Ergebnisarten der Scan-Anzeige. „wait“ umfasst auch Hinweise wie „Bereits erfasst“. */
 export type ResultKind = 'in' | 'out' | 'deny' | 'wait';
@@ -283,6 +285,97 @@ export const ELEMENT_TYPES: Record<ScreenKind, { type: ElementType; label: strin
     { type: 'logo', label: 'Logo' },
   ],
 };
+
+/** Bausteine für „Hinzufügen“ je Bildschirmart. */
+export const SCREEN_PRESETS: Record<ScreenKind, { id: string; label: string; hint: string; make: (id: string) => LayoutElement }[]> = {
+  idle: [
+    { id: 'welcome', label: 'Begrüßung', hint: '„Herzlich willkommen“', make: (id) => el({ id, type: 'text', text: 'Herzlich willkommen', x: 5, y: 40, w: 90, size: 10, bold: true }) },
+    { id: 'org', label: 'Organisation', hint: 'Name aus den Einstellungen', make: (id) => el({ id, type: 'text', text: '{organisation}', x: 5, y: 10, w: 90, size: 5.5, bold: true }) },
+    { id: 'hint', label: 'Hinweis', hint: 'z. B. „Karte vor die Kamera halten“', make: (id) => el({ id, type: 'text', text: 'Bitte Karte vor die Kamera halten', x: 5, y: 80, w: 90, size: 4.5 }) },
+    { id: 'text', label: 'Freier Text', hint: 'eigener Text, mehrzeilig', make: (id) => newElement('text', id) },
+    { id: 'clock', label: 'Uhrzeit', hint: 'läuft mit', make: (id) => newElement('clock', id) },
+    { id: 'date', label: 'Datum', hint: 'z. B. Montag, 16. November', make: (id) => newElement('date', id) },
+    { id: 'logo', label: 'Logo', hint: 'Bild unter „Design“', make: (id) => newElement('logo', id) },
+  ],
+  result: [
+    { id: 'title', label: 'Titel', hint: '„Willkommen“ / „Kein Zutritt“ …', make: (id) => el({ id, type: 'text', text: '{titel}', withIcon: true, x: 5, y: 7, w: 90, size: 11, bold: true }) },
+    { id: 'name', label: 'Name', hint: 'Vor- und Nachname (Datenschutz unter „Texte“)', make: (id) => el({ id, type: 'text', text: '{name}', x: 5, y: 55, w: 90, size: 8, bold: true }) },
+    { id: 'greeting', label: 'Gruß mit Vorname', hint: '„Hallo Erika!“', make: (id) => el({ id, type: 'text', text: 'Hallo {vorname}!', x: 5, y: 45, w: 90, size: 7, bold: true }) },
+    { id: 'message', label: 'Meldung', hint: 'z. B. „Eingang gebucht · 08:15 Uhr“', make: (id) => el({ id, type: 'text', text: '{meldung}', x: 10, y: 82, w: 80, size: 4.4, bold: true }) },
+    { id: 'company', label: 'Firma / Abteilung', hint: 'aus den Personendaten', make: (id) => el({ id, type: 'text', text: '{firma}', x: 5, y: 66, w: 90, size: 4 }) },
+    { id: 'photo', label: 'Foto', hint: 'Foto bzw. Initialen', make: (id) => newElement('photo', id) },
+    { id: 'group', label: 'Gruppe', hint: 'farbiges Schild', make: (id) => newElement('group', id) },
+    { id: 'text', label: 'Freier Text', hint: 'eigener Text', make: (id) => newElement('text', id) },
+    { id: 'clock', label: 'Uhrzeit', hint: 'läuft mit', make: (id) => newElement('clock', id) },
+    { id: 'date', label: 'Datum', hint: 'heutiges Datum', make: (id) => newElement('date', id) },
+    { id: 'logo', label: 'Logo', hint: 'Bild unter „Design“', make: (id) => newElement('logo', id) },
+  ],
+};
+
+/** Bildschirm im Editor und in der Vorschau: 16:9. */
+const SCREEN_RATIO = 16 / 9;
+
+/** Höhe in % der Bildschirmhöhe, soweit bekannt (Foto 3:4; Texte hängen vom Inhalt ab). */
+export function screenElementHeight(element: LayoutElement): number | undefined {
+  return element.type === 'photo' ? element.w * SCREEN_RATIO * (4 / 3) : undefined;
+}
+
+/** Größe ändern an den Anfassern (wie im Karteneditor): Text, Uhr, Datum, Gruppe skalieren an den Ecken mit. */
+export function resizeElement(start: LayoutElement, handle: ResizeHandle, dx: number, dy: number): LayoutElement {
+  const east = handle.includes('e');
+  const west = handle.includes('w');
+  const corner = handle.length === 2;
+  const rightEdge = start.x + start.w;
+  let w = east ? start.w + dx : west ? start.w - dx : start.w;
+  w = round(clamp(w, 5, east ? 100 - start.x : rightEdge));
+  let next: LayoutElement = { ...start, w, x: west ? round(rightEdge - w) : start.x };
+  const scalesText = start.type === 'text' || start.type === 'clock' || start.type === 'date' || start.type === 'group';
+  if (scalesText && corner && start.w > 0) next.size = round(clamp(start.size * (w / start.w), 1, 40));
+  if (handle.startsWith('n') && start.type === 'photo') {
+    const h0 = screenElementHeight(start) ?? 0;
+    const h1 = screenElementHeight(next) ?? 0;
+    next = { ...next, y: round(clamp(start.y + h0 - h1, 0, 97)) };
+  }
+  void dy;
+  return moveElement(next, next.x, next.y);
+}
+
+/** Einrasten beim Verschieben: Bildschirmmitte und Kanten/Mitten anderer Elemente (Toleranz 0,8 %). */
+export function snapElement(element: LayoutElement, x: number, y: number, others: LayoutElement[]): { x: number; y: number; guides: SnapGuides } {
+  const tol = 0.8;
+  const eh = screenElementHeight(element);
+  const linesX = [50];
+  const linesY = [50];
+  for (const o of others) {
+    if (o.id === element.id) continue;
+    linesX.push(o.x, o.x + o.w / 2, o.x + o.w);
+    linesY.push(o.y);
+    const oh = screenElementHeight(o);
+    if (oh !== undefined) linesY.push(o.y + oh / 2, o.y + oh);
+  }
+  const best = (anchors: number[], lines: number[]) => {
+    let found: { shift: number; line: number } | undefined;
+    for (const a of anchors) for (const l of lines) {
+      const d = l - a;
+      if (Math.abs(d) <= tol && (!found || Math.abs(d) < Math.abs(found.shift))) found = { shift: d, line: l };
+    }
+    return found;
+  };
+  const sx = best([x, x + element.w / 2, x + element.w], linesX);
+  const sy = best(eh === undefined ? [y] : [y, y + eh / 2, y + eh], linesY);
+  const moved = moveElement(element, x + (sx?.shift ?? 0), y + (sy?.shift ?? 0));
+  return { x: moved.x, y: moved.y, guides: { x: sx ? [round(sx.line)] : [], y: sy ? [round(sy.line)] : [] } };
+}
+
+/** Platzhalter lesbar machen: „{titel}“ → „Titel“, „Hallo {vorname}!“ → „Hallo Vorname!“. */
+export function friendlyScreenText(text: string): string {
+  return text.replace(/\{(\w+)\}/g, (m, key: string) => {
+    const k = `{${key.toLowerCase()}}`;
+    if (k === '{titel}') return 'Titel';
+    if (k === '{meldung}') return 'Meldung';
+    return PLACEHOLDERS.result.find((p) => p.key === k)?.label ?? PLACEHOLDERS.idle.find((p) => p.key === k)?.label ?? m;
+  });
+}
 
 export function isVisibleFor(element: LayoutElement, kind: ResultKind): boolean {
   return !element.showOn || element.showOn.length === 0 || element.showOn.includes(kind);

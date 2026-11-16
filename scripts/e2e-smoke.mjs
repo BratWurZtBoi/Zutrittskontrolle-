@@ -396,6 +396,7 @@ try {
 
   console.log('14) CSV-Import mit Vorlage');
   await page.goto(`${URL}#/karten/import`);
+  check((await page.locator('.card-tabs a.active').textContent()).includes('CSV-Import'), 'Karten-Bereich mit Reitern (CSV-Import aktiv)');
   const [templateDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Vorlage herunterladen' }).click(),
@@ -431,7 +432,7 @@ try {
   await page.getByText('Import abgeschlossen').waitFor();
   check((await page.locator('.success-box').textContent()).includes('2 Person(en) unter „Nicht zugeordnet“ abgelegt'), 'Import: 2 Personen unter „Nicht zugeordnet“');
   await page.getByRole('link', { name: 'Nicht zugeordnete Personen zuordnen' }).click();
-  await page.getByRole('tab', { name: /Nicht zugeordnet/, selected: true }).waitFor();
+  await page.locator('.card-tabs a.active', { hasText: 'Nicht zugeordnet' }).waitFor();
   const waitingList = page.locator('[aria-label="Nicht zugeordnete Personen"] .card-list');
   await waitingList.locator('.card-row').nth(1).waitFor();
   const waitingText = await waitingList.textContent();
@@ -635,38 +636,57 @@ try {
   await page.setViewportSize({ width: 1536, height: 900 });
   await page.goto(`${URL}#/einstellungen/praesentation`);
   await page.getByRole('button', { name: '+ Neue Scan-Anzeige' }).click();
-  await page.getByLabel('Name', { exact: true }).fill('Empfang Personal');
+  await page.locator('.pe').waitFor();
+  await page.getByLabel('Name des Layouts').fill('Empfang Personal');
+  await page.getByRole('tab', { name: 'Allgemein' }).click();
   await page.getByLabel('Vorlage anwenden (ersetzt die Elemente)').selectOption('side');
-  await page.getByLabel('Hintergrundart').selectOption('color');
-  await page.locator('.layout-form input[type="color"]').first().fill('#7c3aed');
+  await page.getByRole('tab', { name: 'Design' }).click();
+  await page.getByRole('radio', { name: 'Einfarbig' }).click();
+  await page.locator('.ce-design input[type="color"]').first().fill('#7c3aed');
   await page.getByLabel(/Eigener Hintergrund mit farbigem Streifen/).check();
+  await page.getByRole('tab', { name: 'Texte' }).click();
   await page.getByLabel('Eingang – Titel').fill('Hallo {vorname}!');
-  await page.locator('.layout-preview .pv-text', { hasText: 'Hallo Erika!' }).waitFor();
+  await page.locator('.ce-canvas .pv-text', { hasText: 'Hallo Erika!' }).waitFor();
   check(true, 'Editor: Live-Vorschau mit Platzhaltern (fiktive Beispieldaten)');
   // neues Textfeld, nur beim Eingang sichtbar
-  await page.getByRole('button', { name: '+ Textfeld' }).click();
-  const elementEditor = page.locator('.element-editor');
-  await elementEditor.getByLabel('Text', { exact: true }).fill('Schön, dass Sie da sind');
+  await page.getByRole('tab', { name: 'Hinzufügen' }).click();
+  await page.locator('.ce-tile', { hasText: 'Freier Text' }).click();
+  const elementEditor = page.locator('.ce-edit');
+  await elementEditor.getByLabel('Inhalt').fill('Schön, dass Sie da sind');
   for (const name of ['Ausgang', 'Kein Zutritt', 'Bitte warten / Hinweis']) await elementEditor.getByLabel(name, { exact: true }).uncheck();
-  const topOf = async () => Number(await elementEditor.getByLabel('Abstand oben (%)').inputValue());
+  const topOf = async () => Number((await elementEditor.locator('.ce-grid label', { hasText: 'oben' }).locator('input').inputValue()).replace(',', '.'));
   const yStart = await topOf();
-  await page.locator('.layout-preview .pv-selected').scrollIntoViewIfNeeded();
-  const dragBox = await page.locator('.layout-preview .pv-selected').boundingBox();
+  await page.locator('.ce-canvas .pv-selected').scrollIntoViewIfNeeded();
+  const dragBox = await page.locator('.ce-canvas .pv-selected').boundingBox();
   await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + dragBox.height / 2);
   await page.mouse.down();
   await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + dragBox.height / 2 - 70, { steps: 10 });
   await page.mouse.up();
   const yDragged = await topOf();
   check(yDragged < yStart - 12, `Textfeld per Ziehen verschoben (oben ${yStart} % → ${yDragged} %)`);
-  await page.locator('.layout-preview .presentation').focus();
+  await page.locator('.ce-canvas .presentation').focus();
   await page.keyboard.press('Shift+ArrowUp');
-  check((await topOf()) === yDragged - 5, 'Feinschritte mit den Pfeiltasten');
-  const elementCount = await page.locator('.element-list li').count();
-  await page.getByRole('button', { name: '+ Datum' }).click();
-  await page.getByRole('button', { name: 'Element entfernen' }).click();
-  check((await page.locator('.element-list li').count()) === elementCount, 'Element hinzufügen und entfernen');
-  await page.getByRole('tab', { name: 'Ausgang' }).click();
-  check((await page.locator('.layout-preview .pv-hidden-here').count()) === 1, 'Vorschau „Ausgang“: Eingangs-Text ausgeblendet');
+  await page.waitForFunction((y) => Number(document.querySelector('.ce-edit .ce-grid label:nth-child(2) input')?.value.replace(',', '.')) === y, yDragged - 5);
+  check(true, 'Feinschritte mit den Pfeiltasten');
+  const sizeBefore = await page.locator('.ce-canvas .pv-selected').boundingBox();
+  const seHandle = await page.locator('.ce-canvas .pv-selected .cv-handle-se').boundingBox();
+  await page.mouse.move(seHandle.x + seHandle.width / 2, seHandle.y + seHandle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(seHandle.x - 60, seHandle.y + 10, { steps: 6 });
+  await page.mouse.up();
+  const sizeAfter = await page.locator('.ce-canvas .pv-selected').boundingBox();
+  check(sizeAfter.width < sizeBefore.width - 20, 'Größe am Anfasser geändert');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((w) => (document.querySelector('.ce-canvas .pv-selected')?.getBoundingClientRect().width ?? 0) > w + 20, sizeAfter.width);
+  check(true, 'Strg+Z macht die Größenänderung rückgängig');
+  await page.getByRole('tab', { name: 'Hinzufügen' }).click();
+  const elementCount = await page.locator('.ce .element-list li').count();
+  await page.locator('.ce-tile', { hasText: 'Datum' }).click();
+  await elementEditor.getByRole('button', { name: 'Löschen' }).click();
+  await page.getByRole('tab', { name: 'Hinzufügen' }).click();
+  check((await page.locator('.ce .element-list li').count()) === elementCount, 'Element hinzufügen und entfernen');
+  await page.getByRole('radio', { name: 'Ausgang' }).click();
+  check((await page.locator('.ce-canvas .pv-hidden-here').count()) === 1, 'Vorschau „Ausgang“: Eingangs-Text ausgeblendet');
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await page.getByText('Gespeichert.').waitFor();
   await page.screenshot({ path: `${OUT}/23-layout-editor.png` });
@@ -675,9 +695,9 @@ try {
 
   // eigener Ruhebildschirm – unabhängig von der Scan-Anzeige
   await page.getByRole('button', { name: '+ Neuer Ruhebildschirm' }).click();
-  await page.getByLabel('Name', { exact: true }).fill('Betriebsfest');
-  await page.getByRole('button', { name: '+ Textfeld' }).click();
-  await page.locator('.element-editor').getByLabel('Text', { exact: true }).fill('Heute ab 15 Uhr: Sommerfest');
+  await page.getByLabel('Name des Layouts').fill('Betriebsfest');
+  await page.locator('.ce-tile', { hasText: 'Freier Text' }).click();
+  await page.locator('.ce-edit').getByLabel('Inhalt').fill('Heute ab 15 Uhr: Sommerfest');
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await page.getByText('Gespeichert.').waitFor();
   await page.screenshot({ path: `${OUT}/23b-ruhebildschirm-editor.png` });
@@ -779,61 +799,149 @@ try {
   check(true, 'Seitenleiste wechselt den Bereich');
   await page.screenshot({ path: `${OUT}/28-einstellungen-computer.png` });
 
-  console.log('17f) Kartenlayout gestalten, Gruppe zuweisen, drucken (A4-Bogen und Kartendrucker)');
-  await page.setViewportSize({ width: 1536, height: 900 });
+  console.log('17f) Kartenlayout: neuer Editor, Formate, Rückseite, Druckarten');
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${URL}#/einstellungen/karten`);
   await page.getByRole('button', { name: '+ Neues Kartenlayout' }).click();
-  await page.getByLabel('Name', { exact: true }).fill('Besucher hoch');
-  await page.getByLabel('Vorlage anwenden (ersetzt die Elemente)').selectOption('portrait');
-  await page.locator('.layout-preview .card-view.card-portrait').waitFor();
-  check(true, 'Vorlage Hochformat angewendet');
-  await page.getByRole('button', { name: '+ Textfeld' }).click();
-  const cardEditor = page.locator('.element-editor');
-  await cardEditor.getByLabel('Text', { exact: true }).fill('Bitte gut sichtbar tragen');
-  await page.locator('.layout-preview .cv-text', { hasText: 'Bitte gut sichtbar tragen' }).waitFor();
-  const cardTop = async () => Number(await cardEditor.getByLabel('Abstand oben (%)').inputValue());
-  const cardY0 = await cardTop();
-  await page.locator('.layout-preview .cv-selected').scrollIntoViewIfNeeded();
-  const cardBox = await page.locator('.layout-preview .cv-selected').boundingBox();
-  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+  await page.locator('.ce').waitFor();
+  await page.getByLabel('Name des Kartenlayouts').fill('Besucher hoch');
+  await page.getByRole('tab', { name: 'Design' }).click();
+  await page.getByRole('radio', { name: 'Hochformat' }).click(); // Rückfrage „Vorlage übernehmen?“ → OK
+  await page.locator('.ce-canvas .card-view.card-portrait').waitFor();
+  check((await page.locator('.ce-canvas .cv-el').count()) >= 8, 'Hochformat: passende Vorlage übernommen');
+
+  await page.getByRole('tab', { name: 'Hinzufügen' }).click();
+  await page.locator('.ce-tile', { hasText: 'Freier Text' }).click();
+  await page.getByRole('tab', { name: 'Bearbeiten', selected: true }).waitFor();
+  await page.getByLabel('Inhalt').fill('Bitte gut sichtbar tragen');
+  await page.locator('.ce-canvas .cv-text', { hasText: 'Bitte gut sichtbar tragen' }).waitFor();
+  check(true, 'Baustein „Freier Text“ hinzugefügt und beschriftet');
+  await page.locator('.ce-insert').getByRole('button', { name: '+ Kartennummer' }).click();
+  check((await page.getByLabel('Inhalt').inputValue()).includes('{karte}'), 'Platzhalter per Knopf eingefügt');
+
+  const mmValue = async (label) => Number((await page.locator('.ce-grid label', { hasText: label }).locator('input').inputValue()).replace(',', '.'));
+  const top0 = await mmValue('oben');
+  await page.locator('.ce-canvas .cv-selected').scrollIntoViewIfNeeded();
+  let box = await page.locator('.ce-canvas .cv-selected').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2 - 60, { steps: 8 });
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 80, { steps: 8 });
   await page.mouse.up();
-  check((await cardTop()) < cardY0 - 5, `Textfeld auf der Karte verschoben (oben ${cardY0} % → ${await cardTop()} %)`);
-  await page.locator('.element-list').getByRole('button', { name: 'QR-Code' }).click();
-  check((await cardEditor.textContent()).includes('Mindestens 18'), 'QR-Code: Mindestgröße wird angezeigt');
-  await page.getByRole('tab', { name: 'Ohne Person (anonym)' }).click();
-  await page.locator('.layout-preview .cv-text', { hasText: 'M-007' }).first().waitFor();
-  check((await page.locator('.layout-preview .cv-hidden-here').count()) > 0, 'Vorschau ohne Person: Namensfelder ausgeblendet');
+  const top1 = await mmValue('oben');
+  check(top1 < top0 - 3, `Element auf der Karte verschoben (oben ${top0} → ${top1} mm)`);
+
+  const width0 = await mmValue('Breite');
+  const handle = await page.locator('.ce-canvas .cv-selected .cv-handle-w').boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2 + 60, handle.y + handle.height / 2, { steps: 6 });
+  await page.mouse.up();
+  const width1 = await mmValue('Breite');
+  check(width1 < width0 - 3, `Breite am Anfasser geändert (${width0} → ${width1} mm)`);
+  await page.locator('.ce-topbar').click({ position: { x: 5, y: 5 } }); // Fokus aus Eingabefeldern
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((w) => Number(document.querySelector('.ce-grid label:nth-child(3) input')?.value.replace(',', '.')) === w, width0);
+  check(true, 'Strg+Z macht die Größenänderung rückgängig');
+  check((await mmValue('oben')) === top1, 'Rückgängig betrifft nur den letzten Zieh-Vorgang (Position bleibt)');
+  await page.getByRole('button', { name: 'Wiederholen' }).click();
+  await page.waitForFunction((w) => Number(document.querySelector('.ce-grid label:nth-child(3) input')?.value.replace(',', '.')) === w, width1);
+  check(true, 'Wiederholen stellt sie wieder her');
+
+  await page.getByRole('tab', { name: 'Hinzufügen' }).click();
+  await page.locator('.ce .element-list').getByRole('button', { name: 'QR-Code' }).click();
+  check((await page.locator('.ce-edit').textContent()).includes('Mindestens 18'), 'QR-Code: Mindestgröße wird angezeigt');
+  await page.getByRole('radio', { name: 'Ohne Person', exact: true }).click();
+  check((await page.locator('.ce-canvas .cv-hidden-here').count()) > 0, 'Vorschau ohne Person: Namensfelder ausgeblendet');
+
+  await page.getByRole('tab', { name: 'Design' }).click();
+  await page.getByLabel('Kartengröße').selectOption('a7');
+  await page.locator('.ce-format-pill', { hasText: 'A7 hoch · 74 × 105 mm' }).waitFor();
+  check(true, 'Format A7 hoch gewählt');
+  await page.getByLabel('Rückseite gestalten').check();
+  await page.locator('.ce-canvas .card-back .cv-text', { hasText: 'Bei Fund' }).waitFor();
+  check(true, 'Rückseite angelegt (Vorschlag mit Hinweis bei Fund)');
+  await page.getByRole('tab', { name: 'Allgemein' }).click();
+  await page.getByRole('checkbox', { name: 'Besucher' }).check();
+  await page.screenshot({ path: `${OUT}/29-kartenlayout-editor.png` });
+
+  // ungespeicherte Änderungen: Navigation fragt nach
+  page.removeAllListeners('dialog');
+  let leaveQuestion = '';
+  page.once('dialog', (d) => {
+    leaveQuestion = d.message();
+    void d.dismiss();
+  });
+  await page.locator('.app-nav').getByRole('link', { name: 'Karten' }).click();
+  await page.waitForTimeout(300);
+  check(leaveQuestion.includes('ungespeicherte') && page.url().includes('#/einstellungen/karten'), 'Verlassen mit ungespeicherten Änderungen fragt nach');
+  page.on('dialog', (d) => void d.accept());
+
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await page.getByText('Gespeichert.').waitFor();
-  await page.screenshot({ path: `${OUT}/29-kartenlayout-editor.png` });
   await page.getByRole('button', { name: 'Fertig' }).click();
-  await page.locator('.layout-row', { hasText: 'Besucher hoch' }).waitFor();
-  check(true, 'Kartenlayout gespeichert');
-
-  await page.goto(`${URL}#/einstellungen/gruppen`);
-  await page.locator('.group-list li', { hasText: 'Besucher' }).getByRole('button', { name: 'Bearbeiten' }).click();
-  await page.getByLabel('Kartenlayout (gedruckte Karte)').selectOption({ label: 'Besucher hoch' });
-  await page.getByRole('button', { name: 'Speichern' }).click();
-  await page.locator('.group-list li', { hasText: 'Besucher' }).getByRole('button', { name: 'Bearbeiten' }).waitFor();
+  const row = page.locator('.layout-row', { hasText: 'Besucher hoch' });
+  await row.waitFor();
+  check((await row.textContent()).includes('A7 hoch') && (await row.textContent()).includes('mit Rückseite'), 'Liste zeigt Format und Rückseite');
+  const savedLayout = (await readStore(page, 'cardLayouts')).find((l) => l.name === 'Besucher hoch');
+  const visitorGroupNow = (await readStore(page, 'groups')).find((g) => g.prefix === 'B');
+  check(savedLayout?.format === 'a7' && savedLayout.back?.elements.length > 0 && visitorGroupNow.cardLayoutId === savedLayout.id, 'Gespeichert: A7, Rückseite, Gruppe Besucher zugewiesen');
 
   await page.goto(`${URL}#/druck`);
-  await page.locator('.card-view .cv-qr[src]').first().waitFor();
-  const portraitCards = await page.locator('.card-view.card-portrait').count();
-  const landscapeCards = await page.locator('.card-view.card-landscape').count();
-  check(portraitCards > 0 && landscapeCards > 0, `Druck: Besucher im Hochformat (${portraitCards}), übrige quer (${landscapeCards})`);
+  await page.locator('.print-sheet .card-view .cv-qr[src]').first().waitFor();
+  const a7Cards = await page.locator('.print-sheet .card-view.card-format-a7').count();
+  const id1Cards = await page.locator('.print-sheet .card-view.card-format-id1').count();
+  check(a7Cards > 0 && id1Cards > 0, `Druck: Besucher als A7 (${a7Cards}), übrige als Scheckkarte (${id1Cards}) – auf getrennten Seiten`);
   await page.screenshot({ path: `${OUT}/30-druck-layouts.png`, fullPage: true });
-  await page.getByRole('radio', { name: 'Kartendrucker' }).click();
-  await page.locator('.print-card-printer').waitFor();
-  await page.emulateMedia({ media: 'print' });
-  const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
-  await page.emulateMedia({ media: 'screen' });
-  const boxes = [...pdf.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  const pdfBoxes = async () => {
+    await page.emulateMedia({ media: 'print' });
+    const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
+    await page.emulateMedia({ media: 'screen' });
+    return [...pdf.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  };
   const near = (a, b) => Math.abs(a - b) < 2;
+  const isA4 = ([w, h]) => (near(w, 595.3) && near(h, 841.9)) || (near(w, 841.9) && near(h, 595.3));
+
+  await page.getByRole('radio', { name: 'Beidseitig' }).click();
+  await page.locator('.sheet-label', { hasText: 'Rückseiten' }).first().waitFor();
+  const duplexSheets = await page.locator('.print-sheet').count();
+  check((await page.locator('.print-sheet .card-back').count()) === a7Cards, `Beidseitig: Rückseiten auf eigenen Seiten (${duplexSheets} Seiten)`);
+  const duplexBoxes = await pdfBoxes();
+  check(duplexBoxes.length === duplexSheets && duplexBoxes.every(isA4), `PDF beidseitig: ${duplexBoxes.length} A4-Seiten`);
+  await page.getByRole('radio', { name: 'Zum Falten' }).click();
+  await page.locator('.sheet-label', { hasText: 'zum Falten' }).first().waitFor();
+  check((await page.locator('.print-sheet .card-back').count()) === a7Cards, 'Zum Falten: Rück- und Vorderseite nebeneinander');
+  await page.screenshot({ path: `${OUT}/30b-druck-falten.png`, fullPage: true });
+
+  await page.getByRole('radio', { name: 'Beidseitig' }).click();
+  await page.getByRole('button', { name: 'Probeseite zum Nachmessen' }).click();
+  await page.locator('.test-sheet').nth(1).waitFor();
+  check((await page.locator('.test-sheet .test-ruler').count()) === 2 && (await page.locator('.test-sheet').count()) === 2, 'Probeseite mit Linealen, beidseitig mit Rückseite zum Prüfen der Ausrichtung');
+  await page.getByRole('button', { name: 'Zurück zu den Karten' }).click();
+
+  // nach dem Drucken: als gedruckt markieren, danach „nur noch nicht gedruckte“
+  await page.getByRole('radio', { name: 'Ohne Rückseite' }).click();
+  await page.getByRole('button', { name: 'Drucken / PDF' }).click();
+  await page.getByRole('button', { name: 'Ja, als gedruckt markieren' }).click();
+  await page.getByText(/Karte\(n\) als gedruckt markiert/).waitFor();
+  const printedNow = (await readStore(page, 'cards')).filter((c) => c.printedAt).length;
+  check(printedNow === a7Cards + id1Cards, `Nach Rückfrage als gedruckt markiert (${printedNow})`);
+  await page.goto(`${URL}#/karten`);
+  await page.locator('.card-row').first().waitFor();
+  await page.getByLabel('Zuordnung').selectOption('unprinted');
+  const unprintedRows = await page.locator('.card-row').count();
+  check(unprintedRows === (await readStore(page, 'cards')).filter((c) => !c.printedAt).length, `Kartenliste: Filter „Noch nicht gedruckt“ (${unprintedRows})`);
+  await page.locator('.card-tabs').getByRole('link', { name: 'Drucken' }).click();
+  await page.locator('.print-page').waitFor();
+  check((await page.locator('.card-tabs a.active').textContent()).includes('Drucken'), 'Reiter im Karten-Bereich: Drucken');
+
+  await page.getByRole('radio', { name: 'Kartendrucker' }).click();
+  await page.getByRole('radio', { name: 'Beidseitig' }).click();
+  await page.locator('.print-cardpage .card-back').first().waitFor();
+  const boxes = await pdfBoxes();
   const quer = boxes.filter(([w, h]) => near(w, 242.6) && near(h, 153.1)).length;
-  const hoch = boxes.filter(([w, h]) => near(w, 153.1) && near(h, 242.6)).length;
-  check(quer === landscapeCards && hoch === portraitCards, `Kartendrucker: je Karte eine Seite in Kartengröße (${quer} quer, ${hoch} hoch, ${boxes.length} Seiten)`);
+  const a7 = boxes.filter(([w, h]) => near(w, 209.8) && near(h, 297.6)).length;
+  check(quer === id1Cards * 2 && a7 === a7Cards * 2, `Kartendrucker beidseitig: je Kartenseite eine Seite in Kartengröße (${quer} Scheckkarte, ${a7} A7, ${boxes.length} Seiten)`);
+  await page.getByRole('radio', { name: 'Ohne Rückseite' }).click();
   await page.getByRole('radio', { name: 'A4-Bogen' }).click();
 
   console.log('17g) USB-Scanner (Tastatur-Modus)');
@@ -964,6 +1072,7 @@ try {
   await page.goto(`${URL}#/einstellungen`);
   await page.locator('.settings-tile').first().waitFor();
   check((await page.locator('.settings-tile').count()) === 10, 'Einstellungen: aufgeräumte Übersicht mit 10 Bereichen');
+  check((await page.locator('.settings-group h2').allTextContents()).join(' | ') === 'Betrieb | Gestaltung | Daten & Sicherheit | Allgemein & Gerät', 'Einstellungen in Gruppen gegliedert');
   await page.screenshot({ path: `${OUT}/27-einstellungen-handy.png`, fullPage: true });
   await page.locator('.settings-tile', { hasText: 'Sicherheit' }).click();
   await page.getByRole('link', { name: '← Einstellungen' }).waitFor();

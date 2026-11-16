@@ -1,14 +1,20 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { textColorOn } from '../domain/color';
 import {
+  cardSize,
   cardText,
   cardValues,
   isShownOnCard,
   moveCardElement,
+  resizeCardElement,
   resolveCardColor,
+  sideOf,
+  snapCardElement,
   type CardData,
   type CardElement,
+  type CardFace,
   type CardLayout,
+  type ResizeHandle,
 } from '../domain/cardLayout';
 import { useElementDrag, type EditHandlers } from '../hooks/useElementDrag';
 import { QrImage } from './QrImage';
@@ -18,27 +24,42 @@ interface Props {
   data: CardData;
   /** Token für den QR-Code. */
   token: string;
-  /** Große Vorschau im Editor (füllt die Breite) statt Originalgröße 85,6 × 54 mm. */
+  /** Vorder- oder Rückseite. */
+  face?: CardFace;
+  /** Große Vorschau im Editor (füllt die Breite) statt Originalgröße in mm. */
   large?: boolean;
   edit?: EditHandlers<CardElement>;
+  /** Druck: Ecken nicht abrunden (Kartendrucker, Bogen mit Schnittmarken). */
+  square?: boolean;
 }
 
+const CORNERS: ResizeHandle[] = ['nw', 'ne', 'sw', 'se'];
+
 /**
- * Eine Karte nach Layout. Positionen in % der Karte, Schriftgrößen in % der Kartenhöhe
+ * Eine Kartenseite nach Layout. Positionen in % der Karte, Schriftgrößen in % der Kartenhöhe
  * (cqh) – dieselbe Darstellung im Druck (echte Millimeter) und in der großen Vorschau.
  */
-export function CardView({ layout, data, token, large = false, edit }: Props) {
+export function CardView({ layout, data, token, face = 'front', large = false, edit, square = false }: Props) {
+  const size = cardSize(layout);
+  const side = sideOf(layout, face);
   const onGroup = textColorOn(data.groupColor);
   const values = cardValues(data);
   const hasHolder = Boolean(data.holder);
-  const { surfaceRef, elementHandlers, surfaceHandlers } = useElementDrag(edit, layout.elements, (e, x, y) =>
-    moveCardElement(e, x, y, layout.orientation),
+  const { surfaceRef, elementHandlers, surfaceHandlers, handleHandlers, guides } = useElementDrag(
+    edit,
+    side.elements,
+    (e, x, y) => moveCardElement(e, x, y, size),
+    {
+      snap: (e, x, y) => snapCardElement(e, x, y, side.elements, size),
+      resize: (start, handle, dx, dy) => resizeCardElement(start, handle, dx, dy, size),
+    },
   );
   const color = (c: CardElement['color'], fallback: string) => resolveCardColor(c, data.groupColor, onGroup, fallback);
   const style: CSSProperties = {
-    backgroundColor: color(layout.background.color, '#ffffff'),
+    backgroundColor: color(side.background.color, '#ffffff'),
     color: layout.textColor,
-    ...(layout.background.image ? { backgroundImage: `url("${layout.background.image}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+    ...(large ? { aspectRatio: `${size.w} / ${size.h}` } : { width: `${size.w}mm`, height: `${size.h}mm` }),
+    ...(side.background.image ? { backgroundImage: `url("${side.background.image}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
   };
 
   const renderElement = (element: CardElement) => {
@@ -81,6 +102,7 @@ export function CardView({ layout, data, token, large = false, edit }: Props) {
         break;
     }
     const selected = edit?.selectedId === element.id;
+    const handles: ResizeHandle[] = selected ? (element.type === 'text' ? [...CORNERS, 'w', 'e'] : CORNERS) : [];
     return (
       <div
         key={element.id}
@@ -90,6 +112,9 @@ export function CardView({ layout, data, token, large = false, edit }: Props) {
         {...elementHandlers(element)}
       >
         {content}
+        {handles.map((h) => (
+          <span key={h} className={`cv-handle cv-handle-${h}`} data-handle={h} aria-hidden="true" {...handleHandlers(element, h)} />
+        ))}
       </div>
     );
   };
@@ -97,12 +122,18 @@ export function CardView({ layout, data, token, large = false, edit }: Props) {
   return (
     <article
       ref={surfaceRef}
-      className={`card-view card-${layout.orientation}${large ? ' card-view-large' : ''}`}
+      className={`card-view card-${layout.orientation} card-format-${layout.format ?? 'id1'}${large ? ' card-view-large' : ''}${square ? ' card-square' : ''}${face === 'back' ? ' card-back' : ''}`}
       style={style}
-      aria-label={edit ? 'Vorschau der Karte – Elemente anklicken und ziehen, Pfeiltasten verschieben' : `Karte ${data.number}`}
+      aria-label={edit ? 'Vorschau der Karte – Elemente anklicken und ziehen, Ecken ziehen ändert die Größe, Pfeiltasten verschieben' : `Karte ${data.number}${face === 'back' ? ' (Rückseite)' : ''}`}
       {...surfaceHandlers}
     >
-      {layout.elements.map(renderElement)}
+      {side.elements.map(renderElement)}
+      {guides.x.map((x) => (
+        <span key={`gx${x}`} className="cv-guide cv-guide-x" style={{ left: `${x}%` }} aria-hidden="true" />
+      ))}
+      {guides.y.map((y) => (
+        <span key={`gy${y}`} className="cv-guide cv-guide-y" style={{ top: `${y}%` }} aria-hidden="true" />
+      ))}
     </article>
   );
 }
