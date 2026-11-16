@@ -9,6 +9,7 @@ import { playFeedback, type FeedbackKind } from '../lib/feedback';
 import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { broadcastScan, type LayoutContext } from '../lib/presentation';
 import { staffRole } from '../security/session';
+import type { KeyboardScan } from './useKeyboardScanner';
 import { useSettings } from './useSettings';
 
 /** Derselbe Code gilt erst wieder als neu, wenn er so lange nicht im Bild war. */
@@ -76,7 +77,8 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
 
   const handleText = useCallback(
     async (text: string, source: AccessEventRecord['source']) => {
-      if (source === 'camera' && !deduper.current.accept(text, Date.now())) return;
+      // Kamera sieht dieselbe Karte mehrmals, Präsentationsscanner lesen sie bei längerem Hinhalten erneut
+      if ((source === 'camera' || source === 'scanner') && !deduper.current.accept(text, Date.now())) return;
       if (busy.current) return;
       busy.current = true;
       try {
@@ -167,9 +169,11 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
   );
 
   const onCamera = useCallback((text: string) => void handleText(text, 'camera'), [handleText]);
+  /** USB-Scanner: korrigierter Karten-Code, sonst der Rohtext (wird als unbekannter Code protokolliert). */
+  const onScanner = useCallback((scan: KeyboardScan) => void handleText(scan.payload ?? scan.raw, 'scanner'), [handleText]);
   const clearResult = useCallback(() => setResult(null), []);
 
-  return { settings, result, clearResult, handleText, onCamera, pending, resolvePending, bookCard, undo };
+  return { settings, result, clearResult, handleText, onCamera, onScanner, pending, resolvePending, bookCard, undo };
 }
 
 /** Hält den Bildschirm an, solange die Komponente angezeigt wird. */

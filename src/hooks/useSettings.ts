@@ -5,3 +5,8 @@ import { DEFAULT_SETTINGS, loadSettings, type AppSettings } from '../db/settings
 export function useSettings(): AppSettings {
   return useLiveQuery(loadSettings, [], DEFAULT_SETTINGS);
 }
+
+/** Wie useSettings, aber undefined, solange die Einstellungen noch nicht geladen sind. */
+export function useLoadedSettings(): AppSettings | undefined {
+  return useLiveQuery(loadSettings, []);
+}

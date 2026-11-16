@@ -2612,3 +2612,114 @@ code.path {
 .card-editor .layout-preview .card-view-large {
   margin: 0.5rem 0;
 }
+
+/* ---------------------------------------------------------------------------
+   USB-Scanner (Tastatur-Modus)
+   --------------------------------------------------------------------------- */
+/* Kiosk ohne Kamera – fest dunkel wie der Scanner */
+.scanner-only {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #e2e8f0;
+}
+.scanner-only strong {
+  font-size: clamp(1.5rem, 4.5vw, 3rem);
+}
+.scanner-only span {
+  font-size: clamp(1rem, 2.4vw, 1.4rem);
+  color: #94a3b8;
+}
+.scanner-only-icon {
+  width: clamp(72px, 14vw, 140px);
+  height: auto;
+  color: #4ade80;
+}
+.scanner-only-inactive .scanner-only-icon {
+  color: #fbbf24;
+}
+.scanner-only-inactive span {
+  color: #fde68a;
+}
+/* Warnung „Fenster nicht aktiv“ (steht in dunklen Bereichen) */
+.scanner-inactive-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  background: #78350f;
+  color: #fef3c7;
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+.scanner-inactive-note svg {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+.scanner-inactive-overlay {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  width: min(92%, 640px);
+  border-radius: var(--radius);
+}
+.dash-scanner-ready {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0.85rem 0.75rem;
+  font-weight: 600;
+}
+/* Einstellungen: Scanner testen */
+.scanner-test {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+}
+.scanner-test p {
+  margin: 0;
+}
+.scanner-test-result {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+}
+.scanner-test-result dt {
+  color: var(--muted);
+}
+.scanner-test-result dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.scanner-test .ok-text {
+  color: var(--ok-text);
+  font-weight: 700;
+}
+.scanner-test .warn-text {
+  color: var(--warn-text);
+  font-weight: 600;
+}
+.scanner-test .danger-text {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+.scanner-setup ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+.scanner-setup li + li {
+  margin-top: 0.3rem;
+}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { PresentationView } from '../components/PresentationView';
 import { listLayouts } from '../db/layouts';
 import { BUILT_IN_LAYOUTS, pickLayout } from '../domain/presentationLayout';
+import { useScanForwarding } from '../hooks/useKeyboardScanner';
 import { useSettings } from '../hooks/useSettings';
 import { setKeepScreenOn } from '../lib/device';
 import { announcePresentation, listenForScans, type PresentationScan } from '../lib/presentation';
@@ -28,6 +29,8 @@ export function PresentationPage() {
   const now = useClock();
   const [scan, setScan] = useState<PresentationScan | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+  // Wurde zuletzt hier geklickt, landen Eingaben des USB-Scanners hier → an das Bedienfenster weiterreichen
+  useScanForwarding({ enabled: settings.scanInput !== 'camera', speed: settings.scannerSpeed });
 
   useEffect(() => {
     document.title = 'Zutrittskontrolle – Präsentation';

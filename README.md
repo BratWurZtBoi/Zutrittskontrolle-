@@ -1,7 +1,8 @@
 # Zutrittskontrolle
 
 Offlinefähige Zutritts- und Anwesenheitskontrolle mit QR-Karten –
-als **Web-App (PWA)** für Android-Smartphones, Tablets und Windows-Rechner mit Webcam.
+als **Web-App (PWA)** für Android-Smartphones, Tablets und Computer mit Webcam – zusätzlich als
+**Programm für Windows und Linux** (auch Raspberry Pi). Scannen per Kamera oder **USB-Scanner**.
 Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 > **Testbetrieb:** Es werden ausschließlich fiktive Testdaten verwendet.
@@ -201,6 +202,28 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Karte auf einer eigenen Seite in Kartengröße (im Druckdialog den Kartendrucker und „Ränder:
   keine“ wählen).
 
+### USB-Scanner (QR-Code-Scanner im Tastatur-Modus)
+
+QR-Code-Scanner, die wie eine Tastatur arbeiten (USB, „HID“/„Tastatur-Modus“), funktionieren ohne
+Treiber – im Dashboard, im Kiosk-Scanner und bei „Besucher anmelden“ einfach scannen, ohne vorher
+etwas anzuklicken.
+
+- **Einstellungen → Scanner → USB-Scanner:** „Scannen mit“ Kamera und USB-Scanner / nur Kamera /
+  nur USB-Scanner (Kamera aus), Scanner-Tempo normal oder langsam (Bluetooth), **Scanner testen**
+  (zeigt erkannte Karte, Tempo, Abschlusstaste – ohne zu buchen).
+- Die App erkennt den Scanner am Tempo (viele Zeichen in wenigen Millisekunden). Menschliches
+  Tippen wird nicht verwechselt; ist ein Suchfeld aktiv, werden die gescannten Zeichen dort wieder
+  entfernt. Das Enter am Ende eines Scans löst keine Schaltfläche aus (z. B. „Einlassen“).
+- **Tastaturlayout:** Scanner auf **Deutsch (QWERTZ)** und **Enter** nach jedem Code einstellen
+  (meist durch Scannen von Einstell-Codes aus der Anleitung). Ein Scanner auf US-Tastatur wird
+  erkannt und korrigiert (Y/Z vertauscht, „:“ als „Ö“).
+- **Zwei Bildschirme:** Der Scanner tippt in das Fenster, das gerade aktiv ist. Hat jemand auf den
+  Gästebildschirm geklickt, reicht dieser den Scan an das Dashboard weiter. Ist keines der beiden
+  aktiv, zeigt die App „Fenster nicht aktiv – hier klicken“.
+- Im Protokoll und im CSV-Export steht als Quelle „Scanner“.
+- Kaufempfehlung: 2D-Scanner (Imager, kein reiner Laserscanner), ideal ein Tisch- bzw.
+  Präsentationsscanner (Karte nur davorhalten).
+
 ### Verlorene Karten
 
 - Kartenseite → **„Als verloren melden“**: Die Karte ist sofort gesperrt (Status „Verloren“,
@@ -231,15 +254,16 @@ Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner o
 
 **Updates:** App schließen und neu öffnen – neue Versionen werden automatisch geladen.
 
-### Windows-Programm (ohne Browser)
+### Programm für Windows und Linux (ohne Browser)
 
-Zusätzlich zur Web-App gibt es ein eigenständiges Windows-Programm (Electron) – gleiche Funktionen,
-gleicher Programmcode.
+Zusätzlich zur Web-App gibt es ein eigenständiges Programm (Electron) – gleiche Funktionen,
+gleicher Programmcode. Alle Dateien liegen auf GitHub unter **Releases**
+(https://github.com/adminzirkel/Zutrittskontrolle-/releases), je Version eine Ausgabe – bei jedem
+Merge nach `main` automatisch gebaut.
 
-- **Herunterladen:** auf GitHub unter **Releases**
-  (https://github.com/adminzirkel/Zutrittskontrolle-/releases) die Datei
-  `Zutrittskontrolle-Setup-<Version>.exe` (wird bei jedem Merge nach `main` automatisch gebaut,
-  je Version eine Ausgabe).
+#### Windows
+
+- **Herunterladen:** `Zutrittskontrolle-Setup-<Version>.exe`.
 - **Installieren:** Datei starten. Windows meldet „Unbekannter Herausgeber“, weil das Programm
   (noch) nicht signiert ist → **Weitere Informationen** → **Trotzdem ausführen**. Danach gibt es
   einen Eintrag im Startmenü und auf dem Desktop.
@@ -253,6 +277,25 @@ gleicher Programmcode.
   zweiten Bildschirm; Kamera ohne Rückfrage; automatische Sicherung in einen Ordner ohne erneute
   Freigabe nach dem Neustart; *Einstellungen → Gerät & App*: „Beim Anmelden an Windows automatisch
   starten“; **F11** = Vollbild. Das Programm baut keine Verbindungen ins Internet auf.
+
+#### Linux (PC, Laptop, Raspberry Pi)
+
+- **Herunterladen:** `Zutrittskontrolle-<Version>-amd64.deb` für normale PCs und Laptops
+  (empfohlen: **Linux Mint** oder Ubuntu), `Zutrittskontrolle-<Version>-arm64.deb` für den
+  **Raspberry Pi 4/5** mit **Raspberry Pi OS (64-Bit)**.
+- **Installieren:** Datei doppelt anklicken → *Installieren* (Paketinstallation), oder im Terminal
+  `sudo apt install ./Zutrittskontrolle-<Version>-amd64.deb`. Danach steht „Zutrittskontrolle“ im
+  Startmenü (Kategorie Büro).
+- **Daten:** liegen in `~/.config/Zutrittskontrolle` und bleiben bei Updates erhalten.
+- **Updates:** neues Paket herunterladen und genauso installieren – es ersetzt die alte Version.
+- **Zwei Bildschirme:** in den Bildschirmeinstellungen „Erweitern“ (nicht „Spiegeln“) wählen. Das
+  Programm läuft im X11-Kompatibilitätsmodus, damit die Präsentation auch unter Wayland
+  (Ubuntu, Raspberry Pi OS) auf dem zweiten Bildschirm landet.
+- **Raspberry Pi:** als Kamera eine USB-Webcam verwenden (Pi-Kameramodule werden im Programm nicht
+  unterstützt) – oder einen USB-Scanner.
+- **Ausprobieren ohne Installation:** Linux Mint als „Live-System“ vom USB-Stick starten (verändert
+  den Rechner nicht) und das Paket dort installieren.
+- *Einstellungen → Gerät & App:* „Beim Anmelden automatisch starten“.
 
 ## Erste Schritte zum Testen
 
@@ -294,6 +337,8 @@ gleicher Programmcode.
 | Mehrfachauswahl: Personendaten entfernen, sperren, drucken, löschen | ✅ |
 | Präsentationsansicht für Gäste auf zweitem Bildschirm | ✅ |
 | Helles und dunkles Layout | ✅ |
+| Programm für Windows (Installationsdatei) und Linux (.deb, auch Raspberry Pi) | ✅ |
+| USB-Scanner (Tastatur-Modus) mit Scanner-Test | ✅ |
 
 ## Technik
 
@@ -324,6 +369,8 @@ npm run dev         # Entwicklungsserver
 npm run check       # Typprüfung + Unit-Tests + Build (vor jedem Commit)
 npm run e2e:local   # End-to-End-Test mit simulierter Kamera (Cloud-Umgebung)
 npm run icons       # App-Icons aus public/favicon.svg neu erzeugen
+npm run desktop:smoke        # Programm testen (Linux: xvfb-run -a …)
+npm run desktop:build:linux  # Linux-Pakete (.deb amd64 + arm64) bauen
 ```
 
 GitHub Actions prüft jeden Push; Merges nach `main` werden veröffentlicht.

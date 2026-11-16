@@ -28,7 +28,7 @@ const time = (ts: number) => {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-const SOURCE: Record<AccessEvent['source'], string> = { camera: 'Kamera', test: 'Test', system: 'automatisch', manual: 'manuell' };
+const SOURCE: Record<AccessEvent['source'], string> = { camera: 'Kamera', scanner: 'Scanner', test: 'Test', system: 'automatisch', manual: 'manuell' };
 
 export function eventsToCsv(events: AccessEvent[]): string {
   return toCsv([
