@@ -1670,9 +1670,9 @@ table.data-table {
   container: dash-list / inline-size;
   padding: 0.6rem 0 0;
 }
-/* Schmale Liste (Tablet, große Kamera): Firma ausblenden, damit die Tabelle nie breiter wird */
+/* Schmale Liste (Tablet, große Kamera): Raum ausblenden, damit die Tabelle nie breiter wird */
 @container dash-list (max-width: 720px) {
-  .col-company {
+  .col-optional {
     display: none;
   }
 }

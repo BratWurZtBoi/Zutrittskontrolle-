@@ -2,6 +2,7 @@ import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { GroupBadge } from '../components/GroupBadge';
+import { HolderFields } from '../components/HolderFields';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { QrImage } from '../components/QrImage';
 import { StatusBadge } from '../components/StatusBadge';
@@ -121,20 +122,7 @@ export function CardDetailPage() {
           <h2>Karteninhaber</h2>
           {form.holder ? (
             <>
-              <div className="form-grid">
-                <label>
-                  Vorname
-                  <input value={form.holder.firstName} onChange={(e) => setHolder({ firstName: e.target.value })} autoComplete="off" />
-                </label>
-                <label>
-                  Nachname
-                  <input value={form.holder.lastName} onChange={(e) => setHolder({ lastName: e.target.value })} autoComplete="off" />
-                </label>
-                <label>
-                  Firma / Abteilung
-                  <input value={form.holder.company ?? ''} onChange={(e) => setHolder({ company: e.target.value })} autoComplete="off" />
-                </label>
-              </div>
+              <HolderFields holder={form.holder} onChange={setHolder} />
               <h3>Foto</h3>
               <PhotoCapture value={form.holder.photo} onChange={(photo) => setHolder({ photo })} />
               <label>

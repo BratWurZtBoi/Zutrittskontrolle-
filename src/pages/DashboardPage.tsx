@@ -19,6 +19,7 @@ import {
   DEFAULT_EVENT_FILTER,
   filterEvents,
   filterStatusRows,
+  holdersByCard,
   type EventFilter,
   type EventSortKey,
   type RangePreset,
@@ -26,6 +27,7 @@ import {
   type StatusSortKey,
   undoableSeqs,
 } from '../domain/overview';
+import { holderName } from '../domain/texts';
 import type { Direction, Group } from '../domain/types';
 import { useDashboardStats } from '../hooks/useDashboardData';
 import { useRangeEvents, useStatusRows } from '../hooks/useOverviewData';
@@ -244,6 +246,7 @@ function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: Da
   const [limit, setLimit] = useState(100);
 
   const rows = useStatusRows();
+  const holders = useMemo(() => (rows ? holdersByCard(rows) : undefined), [rows]);
   // Bei der Suche auch Abwesende zeigen – z. B. um jemanden ohne Karte manuell einzubuchen
   const effectiveStatus: StatusFilter['status'] = query.trim() ? 'all' : presenceStatus;
   // Erst ohne Gruppe filtern (für die Anzahl je Gruppe auf den Knöpfen), dann nach Gruppe
@@ -256,8 +259,9 @@ function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: Da
 
   const raw = useRangeEvents({ range: events.range });
   const ungroupedEvents = useMemo(
-    () => (raw ? filterEvents(raw, { query, groupId: '', range: events.range, direction: events.direction, outcome: 'all' }, new Date()) : []),
-    [raw, query, events.range, events.direction],
+    () =>
+      raw ? filterEvents(raw, { query, groupId: '', range: events.range, direction: events.direction, outcome: 'all' }, new Date(), holders) : [],
+    [raw, query, events.range, events.direction, holders],
   );
   const baseEvents = groupId ? ungroupedEvents.filter((e) => e.groupId === groupId) : ungroupedEvents;
   const allEvents = events.outcome === 'all' ? baseEvents : baseEvents.filter((e) => e.outcome === events.outcome);
@@ -311,7 +315,7 @@ function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: Da
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Suchen: Name, Firma, Karte …"
+            placeholder="Suchen: Name, Dienstgrad, Einheit, Raum, Karte …"
             aria-label="Suchen"
           />
           <GroupChips groups={groups} counts={chipCounts} total={chipBase.length} value={groupId} onChange={setGroupId} />
@@ -389,11 +393,11 @@ function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: Da
               linkRows={linkRows}
               onBook={(row) => {
                 const direction: Direction = row.present ? 'out' : 'in';
-                const name = row.card.holder ? `${row.card.holder.firstName} ${row.card.holder.lastName}` : `Karte ${row.card.number}`;
+                const name = row.card.holder ? holderName(row.card.holder) : `Karte ${row.card.number}`;
                 if (window.confirm(`${name} manuell ${direction === 'in' ? 'einbuchen' : 'ausbuchen'}?`)) onBook(row.card.id, direction);
               }}
               onReturn={(row) =>
-                onReturn(row.card.id, row.card.holder ? `${row.card.holder.firstName} ${row.card.holder.lastName}`.trim() : `Karte ${row.card.number}`)
+                onReturn(row.card.id, row.card.holder ? (holderName(row.card.holder) ?? '') : `Karte ${row.card.number}`)
               }
             />
         ) : (

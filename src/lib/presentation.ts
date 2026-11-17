@@ -62,9 +62,12 @@ export function toPresentationScan(result: ScanOutcome, displaySec: number, ctx:
     person: hidden
       ? undefined
       : {
+          rank: holder?.rank,
           firstName: holder?.firstName,
           lastName: holder?.lastName,
           company: holder?.company,
+          position: holder?.position,
+          room: holder?.room,
           photo: holder?.photo,
           groupName: group?.name,
           groupColor: group?.color,

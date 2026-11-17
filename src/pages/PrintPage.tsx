@@ -26,7 +26,17 @@ export function cardDataFor(card: Card, group: Group | undefined, orgName: strin
     orgName,
     validFrom: card.validFrom,
     validUntil: card.validUntil,
-    holder: holder ? { firstName: holder.firstName, lastName: holder.lastName, company: holder.company, photo: holder.photo } : undefined,
+    holder: holder
+      ? {
+          rank: holder.rank,
+          firstName: holder.firstName,
+          lastName: holder.lastName,
+          company: holder.company,
+          position: holder.position,
+          room: holder.room,
+          photo: holder.photo,
+        }
+      : undefined,
   };
 }
 

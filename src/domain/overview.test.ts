@@ -6,6 +6,8 @@ import {
   countByGroupId,
   countPerGroup,
   filterEvents,
+  holderFieldValues,
+  holdersByCard,
   filterStatusRows,
   rangeBounds,
   sortEvents,
@@ -159,5 +161,50 @@ describe('Kennzahlen', () => {
       ['g1', 2],
       ['g2', 1],
     ]);
+  });
+});
+
+describe('Dienstgrad, Einheit, Stellung/Posten, Raum', () => {
+  const soldier = (id: string, number: string, holder: Partial<import('./types').CardHolder>) => ({
+    card: { ...card(id, number, 'g1', ['Max', 'Muster']), holder: { firstName: 'Max', lastName: 'Muster', ...holder } },
+    group: staff,
+  });
+  const people = [
+    soldier('s1', 'M-101', { rank: 'Hptm', company: '1./Btl 1', position: 'Kompaniechef', room: '2.14' }),
+    soldier('s2', 'M-102', { firstName: 'Anna', lastName: 'Beispiel', rank: 'OFw', company: 'Stab', position: 'S4', room: '1.03' }),
+    soldier('s3', 'M-103', { firstName: 'Tom', lastName: 'Test', company: 'Stab', position: 'Admin' }),
+  ];
+  const rows = buildStatusRows(people, []);
+  const f = { ...DEFAULT_STATUS_FILTER };
+
+  it('Suche findet Dienstgrad, Einheit, Stellung/Posten und Raum', () => {
+    const find = (query: string) => filterStatusRows(rows, { ...f, query }).map((r) => r.card.number);
+    expect(find('hptm')).toEqual(['M-101']);
+    expect(find('stab')).toEqual(['M-102', 'M-103']);
+    expect(find('s4')).toEqual(['M-102']);
+    expect(find('2.14')).toEqual(['M-101']);
+  });
+
+  it('Auswahlfilter nach genauem Wert, kombinierbar', () => {
+    expect(filterStatusRows(rows, { ...f, unit: 'Stab' }).map((r) => r.card.number)).toEqual(['M-102', 'M-103']);
+    expect(filterStatusRows(rows, { ...f, unit: 'Stab', position: 'Admin' }).map((r) => r.card.number)).toEqual(['M-103']);
+    expect(filterStatusRows(rows, { ...f, room: '1.03' }).map((r) => r.card.number)).toEqual(['M-102']);
+    expect(holderFieldValues(people.map((p) => p.card.holder), 'company')).toEqual(['1./Btl 1', 'Stab']);
+    expect(holderFieldValues(people.map((p) => p.card.holder), 'rank')).toEqual(['Hptm', 'OFw']);
+  });
+
+  it('sortiert nach Raum, ohne Raum ans Ende', () => {
+    expect(sortStatusRows(rows, 'room', 'asc').map((r) => r.card.number)).toEqual(['M-102', 'M-101', 'M-103']);
+  });
+
+  it('Protokoll: Suche/Filter über die aktuelle Person – nur wenn es noch dieselbe ist', () => {
+    const ev = (cardId: string, holderName: string) =>
+      ({ seq: 1, timestamp: Date.now(), cardId, cardNumber: 'M', holderName, outcome: 'granted', direction: 'in', source: 'camera' }) as AccessEvent;
+    const events = [ev('s1', 'Hptm Max Muster'), ev('s2', 'OFw Anna Beispiel'), ev('s3', 'Frühere Person')];
+    const holders = holdersByCard(rows);
+    const base = { ...DEFAULT_EVENT_FILTER, range: 'all' as const };
+    expect(filterEvents(events, { ...base, query: 'kompaniechef' }, new Date(), holders).map((e) => e.cardId)).toEqual(['s1']);
+    expect(filterEvents(events, { ...base, unit: 'Stab' }, new Date(), holders).map((e) => e.cardId)).toEqual(['s2']); // s3: andere Person
+    expect(filterEvents(events, { ...base, query: 'ofw' }, new Date()).map((e) => e.cardId)).toEqual(['s2']); // Dienstgrad steht im Protokoll
   });
 });

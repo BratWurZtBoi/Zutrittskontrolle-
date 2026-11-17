@@ -310,6 +310,7 @@ export function PresentationLayoutEditor({ initial, orgName, groups, activeId, o
                     Name des Gastes ({'{name}'}, {'{vorname}'}, Foto-Initialen)
                     <select value={layout.nameFormat} onChange={(e) => setLayout({ nameFormat: e.target.value as PresentationLayout['nameFormat'] })}>
                       <option value="full">Vor- und Nachname</option>
+                      <option value="rank-last">Dienstgrad und Nachname (ohne Dienstgrad: Vor- und Nachname)</option>
                       <option value="first">Nur Vorname</option>
                       <option value="none">Keinen Namen anzeigen</option>
                     </select>

@@ -46,6 +46,15 @@ describe('Inhalte der Karte', () => {
     expect(cardText(text('gültig bis {gueltig_bis}'), v)).toBe('gültig bis 31.12.2030');
   });
 
+  it('Dienstgrad, Einheit, Stellung/Posten, Raum – leerer Dienstgrad hinterlässt keine Lücke', () => {
+    const v = cardValues({ ...data, holder: { ...data.holder!, rank: 'Hptm', position: 'S4', room: '1.03' } });
+    expect(cardText(text('{dienstgrad} {vorname} {nachname}'), v)).toBe('Hptm Max Mustermann');
+    expect(cardText(text('{einheit} · {posten} · Raum {raum}'), v)).toBe('Technik · S4 · Raum 1.03');
+    expect(cardText(text('{dienstgrad} {vorname}'), cardValues(data))).toBe('Max');
+    expect(cardText(text('Raum {raum}', { hideIfEmpty: true }), cardValues(data))).toBeNull();
+    expect(friendlyText('{firma} / {einheit} / {posten}')).toBe('Einheit/Abteilung / Einheit/Abteilung / Stellung/Posten');
+  });
+
   it('„ausblenden, wenn leer“ – z. B. ohne Ablaufdatum', () => {
     const v = cardValues({ ...data, validUntil: undefined });
     expect(cardText(text('gültig bis {gueltig_bis}', { hideIfEmpty: true }), v)).toBeNull();
@@ -154,8 +163,8 @@ describe('Formate und Rückseite', () => {
 
   it('Bausteine erzeugen passende Elemente', () => {
     const name = CARD_PRESETS.find((p) => p.id === 'name')!.make('n', HOCH);
-    expect(name).toMatchObject({ type: 'text', text: '{vorname} {nachname}', showWhen: 'holder' });
-    expect(friendlyText(name.text!)).toBe('Vorname Nachname');
+    expect(name).toMatchObject({ type: 'text', text: '{dienstgrad} {vorname} {nachname}', showWhen: 'holder' });
+    expect(friendlyText(name.text!)).toBe('Dienstgrad Vorname Nachname');
     expect(friendlyText('gültig bis {gueltig_bis}')).toBe('gültig bis gültig bis');
     const qr = CARD_PRESETS.find((p) => p.id === 'qr')!.make('q', HOCH);
     expect(qr.w).toBeGreaterThanOrEqual(minWidth('qr', HOCH));

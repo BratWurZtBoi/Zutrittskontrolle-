@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
 import { isCorrectable } from '../domain/overview';
-import { holderName } from '../domain/texts';
+import { holderName, holderUnitLine } from '../domain/texts';
 import { describeOutcome, hideIdentityFor, type Audience } from '../lib/resultText';
 import { GroupBadge } from './GroupBadge';
 import { HolderPhoto } from './HolderPhoto';
@@ -46,7 +46,7 @@ function ResultContent({ result, audience }: { result: ScanOutcome; audience: Au
       {card && (
         <div className="result-id">
           <GroupBadge group={group} className="result-group" /> {holder ? `Karte ${card.number}` : ''}
-          {holder?.company ? ` · ${holder.company}` : ''}
+          {holderUnitLine(holder) ? ` · ${holderUnitLine(holder)}` : ''}
         </div>
       )}
       <div className="result-detail">{detail}</div>

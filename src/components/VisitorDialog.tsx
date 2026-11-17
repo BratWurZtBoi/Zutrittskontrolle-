@@ -4,7 +4,9 @@ import { assignHolderToFreeCard, listFreeCards } from '../db/cards';
 import { db } from '../db/db';
 import { parseCardPayload } from '../domain/cardCode';
 import { toLocalDateString } from '../domain/dates';
-import type { Group } from '../domain/types';
+import { holderName } from '../domain/texts';
+import type { CardHolder, Group } from '../domain/types';
+import { HolderFields } from './HolderFields';
 import { PhotoCapture } from './PhotoCapture';
 
 type Validity = 'today' | 'open' | 'until';
@@ -25,15 +27,14 @@ function defaultGroup(groups: Group[]): Group | undefined {
 
 /**
  * Besucher-Schnellerfassung am Empfang: freie Karte wählen (oder vor die Kamera
- * halten), Name/Firma/Foto eintragen, gültig nur heute, auf Wunsch gleich einbuchen.
+ * halten), Dienstgrad/Name/Einheit/Foto eintragen, gültig nur heute, auf Wunsch gleich einbuchen.
  */
 export function VisitorDialog({ groups, registerScanTarget, onClose, onDone }: Props) {
   const [groupId, setGroupId] = useState(() => defaultGroup(groups)?.id ?? '');
   const freeCards = useLiveQuery(() => (groupId ? listFreeCards(groupId) : []), [groupId], undefined);
   const [cardId, setCardId] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [company, setCompany] = useState('');
+  const [person, setPerson] = useState<CardHolder>({ firstName: '', lastName: '' });
+  const { firstName, lastName } = person;
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<string | undefined>();
   const [validity, setValidity] = useState<Validity>('today');
@@ -91,11 +92,11 @@ export function VisitorDialog({ groups, registerScanTarget, onClose, onDone }: P
     setBusy(true);
     try {
       const card = await assignHolderToFreeCard(cardId, {
-        holder: { firstName, lastName, company: company || undefined, note: note || undefined, photo },
+        holder: { ...person, note: note || undefined, photo },
         validFrom,
         validUntil,
       });
-      onDone(card.id, checkIn, `${[firstName, lastName].filter(Boolean).join(' ')} → Karte ${card.number}`);
+      onDone(card.id, checkIn, `${holderName(person)} → Karte ${card.number}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Anmelden fehlgeschlagen.');
     } finally {
@@ -148,24 +149,11 @@ export function VisitorDialog({ groups, registerScanTarget, onClose, onDone }: P
             {scanInfo}
           </p>
         )}
-        <div className="form-grid">
-          <label>
-            Vorname
-            <input ref={firstField} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="off" />
-          </label>
-          <label>
-            Nachname
-            <input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
-          </label>
-          <label>
-            Firma / Abteilung
-            <input value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="off" />
-          </label>
-          <label>
-            Notiz (z. B. „Besuch bei …“)
-            <input value={note} onChange={(e) => setNote(e.target.value)} autoComplete="off" />
-          </label>
-        </div>
+        <HolderFields holder={person} onChange={(patch) => setPerson((p) => ({ ...p, ...patch }))} short firstNameRef={firstField} />
+        <label>
+          Notiz (z. B. „Besuch bei …“)
+          <input value={note} onChange={(e) => setNote(e.target.value)} autoComplete="off" />
+        </label>
         <details className="visitor-photo">
           <summary>Foto aufnehmen (optional)</summary>
           <PhotoCapture value={photo} onChange={setPhoto} />

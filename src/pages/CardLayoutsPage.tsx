@@ -58,7 +58,7 @@ export function CardLayoutsPage() {
     >
       <p className="muted">
         Aussehen der gedruckten Karten: Scheckkarte (85,6 × 54 mm), A7, A6 oder eigene Größe, hoch oder quer – auf Wunsch mit
-        Rückseite. Bausteine wie Name, Firma, QR-Code, Foto und Logo frei platzieren. Zuweisen je Gruppe im Editor unter
+        Rückseite. Bausteine wie Name, Dienstgrad, Einheit, QR-Code, Foto und Logo frei platzieren. Zuweisen je Gruppe im Editor unter
         „Allgemein“ oder unter <Link to="/einstellungen/gruppen">Gruppen verwalten</Link>; Gruppen ohne eigenes Layout nutzen
         das Standardlayout. Name und Foto erscheinen nur bei Gruppen mit „Name und Foto auf die Karte drucken“.
       </p>

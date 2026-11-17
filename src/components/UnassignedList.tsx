@@ -4,7 +4,8 @@ import { Link } from 'react-router';
 import { listFreeCards } from '../db/cards';
 import { assignUnassigned, deleteUnassigned, listUnassigned, type AssignUnassignedResult } from '../db/unassigned';
 import { formatIsoDate } from '../domain/dates';
-import { holderName } from '../domain/texts';
+import { holderName, holderUnitLine } from '../domain/texts';
+import { holderSearchText } from '../domain/overview';
 import type { Group } from '../domain/types';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 
@@ -34,7 +35,7 @@ export function UnassignedList({ groups }: { groups: Group[] }) {
     return (people ?? []).filter((p) => {
       if (!q) return true;
       const h = p.holder;
-      return `${h?.firstName ?? ''} ${h?.lastName ?? ''} ${h?.company ?? ''} ${p.groupHint ?? ''}`.toLowerCase().includes(q);
+      return `${holderSearchText(h)} ${p.groupHint ?? ''}`.toLowerCase().includes(q);
     });
   }, [people, query]);
 
@@ -129,7 +130,7 @@ export function UnassignedList({ groups }: { groups: Group[] }) {
       ) : (
         <>
           <div className="filter-bar">
-            <input type="search" placeholder="Suchen: Name, Firma …" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Personen suchen" />
+            <input type="search" placeholder="Suchen: Name, Dienstgrad, Einheit …" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Personen suchen" />
           </div>
 
           <div className="selection-bar unassigned-bar" role="toolbar" aria-label="Aktionen für ausgewählte Personen">
@@ -176,7 +177,7 @@ export function UnassignedList({ groups }: { groups: Group[] }) {
                     <div className="card-row-title">
                       <strong>{holderName(p.holder)}</strong>
                     </div>
-                    {p.holder?.company && <div className="muted">{p.holder.company}</div>}
+                    {holderUnitLine(p.holder) && <div className="muted">{holderUnitLine(p.holder)}</div>}
                     {p.holder?.note && <div className="muted small">Notiz: {p.holder.note}</div>}
                   </div>
                   <div className="card-row-badges">

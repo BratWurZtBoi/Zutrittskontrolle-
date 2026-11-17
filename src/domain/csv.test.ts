@@ -51,13 +51,14 @@ describe('CSV', () => {
       card: {
         id: 'a', number: 'M-001', groupId: 'g', token: 't', tokenIssuedAt: 0, blocked: false, accessGranted: true,
         validUntil: '2026-12-31', createdAt: 0, updatedAt: 0, hasHolder: true,
-        holder: { firstName: 'Max', lastName: 'Mustermann', company: 'Technik' },
+        holder: { rank: 'Hptm', firstName: 'Max', lastName: 'Mustermann', company: 'Technik', position: 'S4', room: '2.14' },
       },
       group: { name: 'Bestandspersonal' } as StatusRow['group'],
       present: true,
       lastBookingAt: new Date(2026, 5, 15, 7, 30, 0).getTime(),
     };
     const lines = statusToCsv([row]).slice(1).split('\r\n');
-    expect(lines[1]).toBe('M-001;Bestandspersonal;Mustermann;Max;Technik;anwesend;15.06.2026 07:30:00;ja;nein;;31.12.2026;');
+    expect(lines[0]).toContain('Dienstgrad;Nachname;Vorname;Einheit/Abteilung;Stellung/Posten;Raum');
+    expect(lines[1]).toBe('M-001;Bestandspersonal;Hptm;Mustermann;Max;Technik;S4;2.14;anwesend;15.06.2026 07:30:00;ja;nein;;31.12.2026;');
   });
 });

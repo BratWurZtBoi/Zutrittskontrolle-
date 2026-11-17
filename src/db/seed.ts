@@ -25,9 +25,12 @@ export function placeholderAvatar(firstName: string, lastName: string, index: nu
 }
 
 interface SeedCard {
+  rank?: string;
   firstName?: string;
   lastName?: string;
   company?: string;
+  position?: string;
+  room?: string;
   accessGranted?: boolean;
   blocked?: boolean;
   validFromDays?: number;
@@ -35,16 +38,17 @@ interface SeedCard {
   note?: string;
 }
 
+// Fiktive Personen, Einheiten und Räume
 const STAFF: SeedCard[] = [
-  { firstName: 'Max', lastName: 'Mustermann', company: 'Verwaltung' },
-  { firstName: 'Erika', lastName: 'Musterfrau', company: 'Vertrieb' },
-  { firstName: 'Hans', lastName: 'Beispiel', company: 'Technik' },
-  { firstName: 'Lena', lastName: 'Probe', company: 'Technik' },
-  { firstName: 'Tom', lastName: 'Testmann', company: 'Lager' },
-  { firstName: 'Paul', lastName: 'Platzhalter', company: 'Lager', blocked: true, note: 'Vorübergehend gesperrt' },
-  { firstName: 'Clara', lastName: 'Fiktiv', company: 'Vertrieb', accessGranted: false, note: 'Keine Berechtigung' },
+  { rank: 'Hptm', firstName: 'Max', lastName: 'Mustermann', company: '1. Kompanie', position: 'Kompaniechef', room: '2.14' },
+  { rank: 'OFw', firstName: 'Erika', lastName: 'Musterfrau', company: 'Stab', position: 'S4', room: '1.03' },
+  { rank: 'StFw', firstName: 'Hans', lastName: 'Beispiel', company: 'Stab', position: 'Admin', room: '1.05' },
+  { rank: 'Lt', firstName: 'Lena', lastName: 'Probe', company: '2. Kompanie', position: 'Zugführerin', room: '3.02' },
+  { rank: 'HptGefr', firstName: 'Tom', lastName: 'Testmann', company: 'Versorgung', position: 'Kraftfahrer', room: 'H1' },
+  { rank: 'Uffz', firstName: 'Paul', lastName: 'Platzhalter', company: 'Versorgung', blocked: true, note: 'Vorübergehend gesperrt' },
+  { rank: 'OGefr', firstName: 'Clara', lastName: 'Fiktiv', company: 'Stab', accessGranted: false, note: 'Keine Berechtigung' },
   { firstName: 'Jonas', lastName: 'Demo', company: 'Aushilfe', validFromDays: -90, validUntilDays: -1, note: 'Vertrag beendet' },
-  { firstName: 'Sophie', lastName: 'Zukunft', company: 'Technik', validFromDays: 30, note: 'Beginnt in 30 Tagen' },
+  { rank: 'Fhr', firstName: 'Sophie', lastName: 'Zukunft', company: '1. Kompanie', validFromDays: 30, note: 'Beginnt in 30 Tagen' },
 ];
 
 const VISITORS: SeedCard[] = [
@@ -80,9 +84,12 @@ export async function seedTestCards(today = new Date()): Promise<number> {
       created++;
       if (!s.firstName || !s.lastName) continue;
       const holder: CardHolder = {
+        rank: s.rank,
         firstName: s.firstName,
         lastName: s.lastName,
         company: s.company,
+        position: s.position,
+        room: s.room,
         photo: placeholderAvatar(s.firstName, s.lastName, avatar++),
         note: s.note ? `Fiktive Testperson – ${s.note}` : 'Fiktive Testperson',
       };

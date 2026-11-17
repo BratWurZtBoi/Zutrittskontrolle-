@@ -61,7 +61,9 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   - Nur die Seite scrollt, keine Scrollbereiche innerhalb der Kacheln. Auf dem Handy untereinander.
 - **Auswertung** (im Menü rechts neben dem Dashboard) **→ Anwesenheit:** alle Personen mit Status
   anwesend/abwesend und „seit wann“,
-  Suche (Name, Firma, Karte), Filter nach Status und Gruppe, Sortierung per Spaltenkopf,
+  Suche (Name, Dienstgrad, Einheit, Stellung/Posten, Raum, Karte), Filter nach Status, Gruppe,
+  **Einheit/Abteilung, Stellung/Posten und Raum** (Auswahl aus den vorhandenen Werten), Sortierung
+  per Spaltenkopf (auch nach Raum),
   **„Alle ausbuchen“** (z. B. am Tagesende).
 - **Auswertung → Protokoll:** Zutrittsprotokoll mit Zeitraum (heute, gestern, 7/30 Tage, frei
   wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche, Sortierung und CSV-Export.
@@ -77,7 +79,7 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - **Fehlbuchung korrigieren:** **↺ Rückgängig** am letzten Ergebnis oder im Reiter *Aktionen*
   (je Karte die letzte Buchung). Es wird eine Gegenbuchung „Korrektur“ eingetragen, nichts gelöscht.
 - **+ Besucher anmelden** (Statusleiste): freie Karte wählen – oder die ausgegebene Karte einfach
-  vor die Kamera halten –, Name, Firma, Notiz und optional Foto eintragen, gültig „nur heute“,
+  vor die Kamera halten –, Dienstgrad, Name, Einheit/Abteilung, Notiz und optional Foto eintragen, gültig „nur heute“,
   auf Wunsch gleich einbuchen. Vergebene Karten werden nie überschrieben.
 - **Zurückgeben** (bei Besucherkarten in der Anwesenheitsliste): ausbuchen und Personendaten
   entfernen – die Karte ist wieder frei.
@@ -93,7 +95,7 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 - *Einstellungen → Gruppen verwalten → Bearbeiten*: **„Eintritt muss bestätigt werden“**.
   Ohne Häkchen wird wie bisher automatisch eingelassen.
-- Mit Häkchen erscheint beim Scan im Dashboard eine Anfrage mit großem Foto, Name, Firma und
+- Mit Häkchen erscheint beim Scan im Dashboard eine Anfrage mit großem Foto, Name, Einheit und
   Notiz: **Einlassen** (Taste **Enter**) oder **Abweisen** (Taste **Esc**). Der Gast sieht auf dem
   Präsentationsbildschirm „Bitte kurz warten“. Gebucht wird erst nach der Bestätigung.
 - Mehrere Anfragen werden der Reihe nach angezeigt. Unbeantwortete Anfragen verfallen nach
@@ -148,8 +150,10 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - In Excel/LibreOffice ausfüllen, als CSV speichern, im Import wählen. Vor dem Import zeigt eine
   **Vorschau** jede Zeile mit Aktion (neue Karte / Zuweisung) oder Fehlergrund.
 - Spalten: Kartennummer (optional: leer = neue Karte, vorhandene Nummer = Person dieser Karte
-  zuweisen), Gruppe (Name oder Kürzel), Vorname, Nachname, Firma/Abteilung, Notiz,
-  Zutritt erlaubt (ja/nein), Gültig ab, Gültig bis (TT.MM.JJJJ).
+  zuweisen), Gruppe (Name oder Kürzel), Dienstgrad, Vorname, Nachname, Einheit/Abteilung,
+  Stellung/Posten, Raum, Notiz,
+  Zutritt erlaubt (ja/nein), Gültig ab, Gültig bis (TT.MM.JJJJ). Ältere Dateien mit der Spalte
+  „Firma/Abteilung“ werden weiter gelesen.
 - Bestehende Personendaten werden nur überschrieben, wenn das ausdrücklich angehakt ist.
 - **Zeilen ohne Gruppe oder mit unbekannter Gruppe** (z. B. Tippfehler „Besuchr“) werden trotzdem
   übernommen: Die Personen landen unter *Karten* → Reiter **„Nicht zugeordnet“** (noch ohne Karte –
@@ -200,8 +204,12 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 - **Karten** werden eigenständig erstellt – einzeln oder in Serie (z. B. 20 Besucherkarten).
   Jede Karte hat eine Kartennummer (z. B. `B-001`), einen QR-Code und eine **Gruppe**.
-- **Personendaten** (Name, Firma/Abteilung, Foto, Notiz) werden einer Karte zugewiesen und
-  können jederzeit geändert oder entfernt werden. **„Karte zurückgeben“** bucht aus und entfernt
+- **Personendaten** (Dienstgrad, Vor- und Nachname, Einheit/Abteilung, Stellung/Posten wie
+  „Kompaniechef“ oder „S4“, Raum, Foto, Notiz) werden einer Karte zugewiesen und
+  können jederzeit geändert oder entfernt werden. Dienstgrad, Einheit, Stellung/Posten und Raum
+  schlagen beim Tippen die schon verwendeten Werte vor (einheitliche Schreibweise). Der Dienstgrad
+  steht überall vor dem Namen („Hptm Mustermann, Max“) und wird im Protokoll mitgespeichert; eine
+  Beförderung zählt nicht als Personenwechsel. **„Karte zurückgeben“** bucht aus und entfernt
   die Personendaten – ideal für Besucherkarten.
 - **Gruppen** (z. B. Bestandspersonal = blau, Besucher = orange) werden unter
   *Einstellungen → Gruppen verwalten* angelegt: Name, Farbe, Kürzel für die Kartennummern und
@@ -214,9 +222,10 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   kopierbar). Vorlagen: **Querformat**, **Hochformat** (für Kartenhalter am Band), **Schlicht**.
 - **Editor:** oben Name, Format, **Rückgängig/Wiederholen** (Strg+Z/Strg+Y) und Speichern; links die
   Karte (Vorder-/Rückseite, Vorschau mit/ohne Person, Vorschau-Gruppe); rechts vier Reiter:
-  - **Hinzufügen:** fertige Bausteine – Name, Firma/Abteilung, Kartennummer, Gruppe, Gültig bis,
+  - **Hinzufügen:** fertige Bausteine – Name, Dienstgrad, Einheit/Abteilung, Stellung/Posten, Raum,
+    Kartennummer, Gruppe, Gültig bis,
     Organisation, freier Text, QR-Code, Foto, Logo, Farbfläche.
-  - **Bearbeiten:** Inhalt mit Knöpfen „+ Vorname“, „+ Firma“ … (Platzhalter), Ergebnis im
+  - **Bearbeiten:** Inhalt mit Knöpfen „+ Dienstgrad“, „+ Vorname“, „+ Einheit/Abteilung“ … (Platzhalter), Ergebnis im
     Beispiel, Schrift, Farbe, Position und Größe in mm, mittig, nach vorne/hinten, Duplizieren,
     Löschen, Anzeigen immer/nur mit Person/nur ohne Person.
   - **Design:** Format, Rückseite an/aus, Hintergrund je Seite (Farbe, Bild), Schriftfarbe, Logo.

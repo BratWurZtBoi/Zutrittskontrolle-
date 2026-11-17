@@ -126,6 +126,15 @@ describe('Scan-Anzeige für den Gästebildschirm', () => {
     expect(buildLayoutResult(vip, noPhoto).initials).toBe('EM');
   });
 
+  it('Dienstgrad + Nachname, ohne Dienstgrad Vor- und Nachname; neue Platzhalter', () => {
+    const soldier = { ...input, person: { ...input.person, rank: 'Hptm', firstName: 'Max', lastName: 'Muster', company: 'Stab', position: 'S4', room: '1.03' } };
+    const named = (layout: typeof vip) => ({ ...layout, elements: [{ ...layout.elements[0]!, id: 'n', type: 'text' as const, text: 'Willkommen, {name}! {einheit} · {posten} · Raum {raum}' }] });
+    expect(buildLayoutResult(named({ ...vip, nameFormat: 'rank-last' }), soldier).texts.n).toBe('Willkommen, Hptm Muster! Stab · S4 · Raum 1.03');
+    expect(buildLayoutResult(named({ ...vip, nameFormat: 'rank-last' }), input).texts.n).toContain('Willkommen, Erika Musterfrau!');
+    expect(buildLayoutResult(named({ ...vip, nameFormat: 'none' }), soldier).texts.n).toBe('Willkommen! Stab · S4 · Raum 1.03');
+    expect(fillPlaceholders('{firma}', { firma: 'Stab' })).toBe('Stab'); // alter Platzhalter geht weiter
+  });
+
   it('sendet Foto und Gruppe nur, wenn das Layout sie zeigt', () => {
     const textOnly = { ...vip, elements: vip.elements.filter((e) => e.type === 'text') };
     const r = buildLayoutResult(textOnly, input);

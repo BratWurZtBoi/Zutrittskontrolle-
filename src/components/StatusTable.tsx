@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { formatShortDateTime } from '../domain/dates';
 import { sortStatusRows, type StatusRow, type StatusSortKey } from '../domain/overview';
+import { holderListName, holderUnitLine } from '../domain/texts';
 import type { SortState } from '../hooks/useSort';
 import { GroupBadge } from './GroupBadge';
 import { GroupBarCell } from './GroupBar';
@@ -25,7 +26,7 @@ interface Props {
 
 function nameText(row: StatusRow) {
   const { card } = row;
-  if (card.holder) return <span className="cell-strong">{`${card.holder.lastName}, ${card.holder.firstName}`}</span>;
+  if (card.holder) return <span className="cell-strong">{holderListName(card.holder)}</span>;
   if (card.hasHolder) return <span className="muted">🔒 Name gesperrt</span>;
   return <span className="muted">Karte ohne Person</span>;
 }
@@ -49,7 +50,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
             <tr>
               <th aria-label="Gruppe" className="group-bar-cell" />
               <SortableTh label="Name" sortKey="name" sort={sort} />
-              <th className="th-plain col-company">Firma / Abteilung</th>
+              <SortableTh label="Raum" sortKey="room" sort={sort} className="col-optional" />
               <SortableTh label="Karte" sortKey="card" sort={sort} />
               {showStatus && <SortableTh label="Status" sortKey="status" sort={sort} />}
               <SortableTh label="Seit / zuletzt" sortKey="time" sort={sort} />
@@ -61,7 +62,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
               <tr key={row.card.id} {...rowProps(row.card.id)}>
                 <GroupBarCell group={row.group} />
                 <td>{nameText(row)}</td>
-                <td className="muted cell-ellipsis col-company">{row.card.holder?.company ?? ''}</td>
+                <td className="muted cell-ellipsis col-optional">{row.card.holder?.room ?? ''}</td>
                 <td>{row.card.number}</td>
                 {showStatus && (
                   <td>
@@ -114,6 +115,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
           <tr>
             <SortableTh label="Status" sortKey="status" sort={sort} />
             <SortableTh label="Name" sortKey="name" sort={sort} />
+            <SortableTh label="Raum" sortKey="room" sort={sort} />
             <SortableTh label="Karte" sortKey="card" sort={sort} />
             <SortableTh label="Gruppe" sortKey="group" sort={sort} />
             <SortableTh label="Seit / zuletzt" sortKey="time" sort={sort} />
@@ -130,11 +132,12 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
                 <div className="name-cell">
                   <HolderPhoto holder={card.holder} fallback={group?.prefix} className="mini-photo" />
                   <div>
-                    <div className="cell-strong">{card.holder ? `${card.holder.lastName}, ${card.holder.firstName}` : 'frei'}</div>
-                    {card.holder?.company && <div className="muted small">{card.holder.company}</div>}
+                    <div className="cell-strong">{card.holder ? holderListName(card.holder) : 'frei'}</div>
+                    {holderUnitLine(card.holder) && <div className="muted small">{holderUnitLine(card.holder)}</div>}
                   </div>
                 </div>
               </td>
+              <td>{card.holder?.room ?? ''}</td>
               <td>{card.number}</td>
               <td>
                 <GroupBadge group={group} />
