@@ -101,6 +101,14 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   (`splitTopGroups`) + „+n weitere“, Kürzen per Ellipse/Container-Query – nichts darf je nach Daten
   umbrechen (E2E vergleicht die Größen). Gruppenknöpfe `components/GroupChips` (Anzahl, eine Zeile,
   Pfeile); schmale Liste blendet die Spalte Firma aus (`col-company`).
+  **Notfall-Schnelldruck:** roter Knopf „⚠ Notfall“ nur in der Navigation (Admin + Bediener) – auf jeder
+  Seite genau **einmal** (vom Nutzer gewünscht, E2E prüft das; nicht zusätzlich in Statusleiste o. Ä.)
+  → `EMERGENCY_PRINT_PATH` (`/notfallliste?drucken=1`, `state.from`).
+  `EmergencyListPage` druckt nach dem Laden einmal (Parameter wird entfernt): Plan in
+  `domain/emergencyPrint.ts` – Browser `window.print()` (blockiert es > 400 ms = Dialog am Computer
+  geschlossen → zurück; Handy bleibt auf der Liste), Programm mit `emergencyDirectPrint` ohne Dialog über
+  `zkDesktop.printDirect` (Drucker `emergencyPrinter`, '' = Standard; `emergencyCopies` 1–5). Einstellungen
+  je Gerät (nicht im Backup) in „Allgemein & Gerät“ (`settings/EmergencyPrintSettings.tsx`).
   Kameravorschau „Aus“ deckt das Video nur ab (Video muss sichtbar bleiben, sonst pausiert es).
   Präsentation: Herzschlag per BroadcastChannel (`announcePresentation`/`watchPresentation`),
   Öffnen auf dem zweiten Bildschirm über `getScreenDetails()` (Fensterverwaltung). Entschlüsselte Namen
@@ -144,7 +152,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   Neustart, weil Wayland keine Fensterplatzierung erlaubt), Autostart über `~/.config/autostart`
   (`ZK_AUTOSTART_DIR` für Tests). `preload.cjs` stellt `window.zkDesktop` bereit
   (`lib/desktop.ts`: Präsentation, Sicherungsordner – Schreiben nur in den im Dialog gewählten
-  Ordner und nur Backup-Dateinamen –, Autostart, Info). Im Browser ist `getDesktop()` null.
+  Ordner und nur Backup-Dateinamen –, Autostart, Info, Drucker + Drucken ohne Dialog
+  `printDirect` = `webContents.print({ silent })` der aufrufenden Seite). Im Browser ist `getDesktop()` null.
   Kein Service Worker im Programm. Test: `npm run build && xvfb-run -a npm run desktop:smoke`
   (gepackt: `ZK_DESKTOP_EXE=…`, z. B. installiertes .deb `/opt/Zutrittskontrolle/zutrittskontrolle`).
   `.github/workflows/desktop.yml`: Windows-Installationsdatei auf `windows-latest`
@@ -215,6 +224,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
     Anmeldung), „Übersicht“ → „Auswertung“ (Reiter Protokoll) neben dem Dashboard, Dashboard nur
     Heute/Gestern, „Letzte Scans“ und doppelter Druckknopf entfernt (Druck mit Gruppenfilter), Modus/Kamera
     nur im Dashboard, „Vorschau aus“, „Allgemein & Gerät“ zusammengelegt, alter Code/CSS entfernt (Version 0.15).
+16. ✅ Starre Statusleiste (feste Plätze, max. 3 Gruppen + „+n weitere“), Gruppenknöpfe mit Anzahl (0.15.1);
+    roter Notfall-Knopf (nur Navigation, je Seite einmal) mit Sofortdruck, im Programm ohne Druckdialog
+    (Drucker, Kopien) (Version 0.16).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

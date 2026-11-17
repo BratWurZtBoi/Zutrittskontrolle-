@@ -16,4 +16,6 @@ contextBridge.exposeInMainWorld('zkDesktop', {
   backupRemove: (filename) => ipcRenderer.invoke('zk:backup-remove', filename),
   getAutostart: () => ipcRenderer.invoke('zk:get-autostart'),
   setAutostart: (on) => ipcRenderer.invoke('zk:set-autostart', on),
+  printers: () => ipcRenderer.invoke('zk:printers'),
+  printDirect: (options) => ipcRenderer.invoke('zk:print-direct', options),
 });

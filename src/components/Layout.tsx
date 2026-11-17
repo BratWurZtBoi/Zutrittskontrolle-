@@ -1,8 +1,9 @@
-import { NavLink, Outlet, useNavigate } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useSettings } from '../hooks/useSettings';
 import { requestExit } from '../security/exit';
 import { useSecurity } from '../security/useSecurity';
-import { CardIcon, DashboardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon } from './Icons';
+import { EMERGENCY_PRINT_PATH, type EmergencyNavState } from '../lib/emergency';
+import { AlertIcon, CardIcon, DashboardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon } from './Icons';
 
 const ADMIN_NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
@@ -16,6 +17,7 @@ const OPERATOR_NAV = ADMIN_NAV.filter((n) => n.to === '/dashboard' || n.to === '
 export function Layout() {
   const security = useSecurity();
   const navigate = useNavigate();
+  const location = useLocation();
   // Vollbild-Scanner nur im Kiosk-Modus (Gerät am Eingang ohne Bediener)
   const { kioskMode } = useSettings();
 
@@ -40,6 +42,16 @@ export function Layout() {
                 <span>{label}</span>
               </NavLink>
             ))}
+            {/* Einziger Notfall-Knopf (auf jeder Seite genau einmal): Notfallliste sofort drucken */}
+            <NavLink
+              to={EMERGENCY_PRINT_PATH}
+              state={{ from: `${location.pathname}${location.search}` } satisfies EmergencyNavState}
+              className="nav-link nav-emergency"
+              title="Notfallliste: alle Anwesenden sofort drucken"
+            >
+              <AlertIcon />
+              <span>Notfall</span>
+            </NavLink>
             <button
               type="button"
               aria-label="Abmelden"

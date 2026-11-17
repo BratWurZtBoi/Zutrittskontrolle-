@@ -36,7 +36,8 @@ interface Props {
 const MAX_GROUPS = 3;
 
 /**
- * Kompakte Statusleiste: Modus, Kennzahlen, Präsentation, Notfallliste, Backup.
+ * Kompakte Statusleiste: Modus, Kennzahlen, Präsentation, Backup. Die Notfallliste steht nur
+ * oben im Menü (roter Knopf „Notfall“ – auf jeder Seite genau einmal).
  * Starr: jedes Feld hat einen festen Platz und eine feste Größe (je Bildschirmbreite) –
  * nichts kommt hinzu, verschwindet oder bricht um, wenn sich Zahlen oder Zustände ändern.
  */
@@ -121,9 +122,6 @@ export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisit
             Präsentation öffnen
           </button>
         )}
-        <Link to="/notfallliste" className="btn btn-small ds-emergency" title="Alle Anwesenden zum Ausdrucken (Evakuierung)">
-          Notfallliste
-        </Link>
         <BackupState lastBackupAt={settings.lastBackupAt} error={autoBackupError} />
       </div>
 

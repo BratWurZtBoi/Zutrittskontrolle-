@@ -29,7 +29,7 @@ export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
   { path: '/einstellungen/sicherheit', title: 'Sicherheit', description: 'Admin-Passwort, automatische Abmeldung, Löschfrist', group: 'daten' },
   { path: '/einstellungen/datensicherung', title: 'Datensicherung', description: 'Backup erstellen, einspielen, automatisch sichern', group: 'daten' },
   { path: '/einstellungen/daten', title: 'Daten', description: 'Testkarten, Protokoll leeren, alles löschen', group: 'daten' },
-  { path: '/einstellungen/allgemein', title: 'Allgemein & Gerät', description: 'Hell/dunkel, Organisation, Version, Installation, Speicher', group: 'allgemein' },
+  { path: '/einstellungen/allgemein', title: 'Allgemein & Gerät', description: 'Hell/dunkel, Organisation, Notfallliste-Drucker, Version, Installation', group: 'allgemein' },
 ];
 
 /** Bereiche einer Gruppe. */

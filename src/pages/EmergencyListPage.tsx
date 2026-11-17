@@ -1,14 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { listGroups } from '../db/groups';
 import { listPresentCards, type PresentCard } from '../db/scans';
+import { DEFAULT_SETTINGS } from '../db/settings';
 import { formatDateTime, formatShortDateTime } from '../domain/dates';
+import { directPrintDone, emergencyPrintPlan, printErrorText } from '../domain/emergencyPrint';
 import type { Group } from '../domain/types';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
-import { useSettings } from '../hooks/useSettings';
+import { useLoadedSettings } from '../hooks/useSettings';
+import { getDesktop } from '../lib/desktop';
 import { printCurrentPage } from '../lib/device';
+import type { EmergencyNavState } from '../lib/emergency';
 
 /** Anwesende nach Gruppen (Reihenfolge der Gruppen), innerhalb nach Name. */
 function byGroup(present: PresentCard[], groups: Group[]): { group: Group | undefined; rows: PresentCard[] }[] {
@@ -20,18 +24,83 @@ function byGroup(present: PresentCard[], groups: Group[]): { group: Group | unde
   return sections.filter((s) => s.rows.length > 0);
 }
 
+/** Warten, bis die Seite gezeichnet ist und Fotos geladen sind (sonst fehlen sie auf dem Papier). */
+async function pageReady(): Promise<void> {
+  await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50)));
+  const images = [...document.querySelectorAll<HTMLImageElement>('.emergency-page img')].filter((img) => !img.complete);
+  await Promise.all(
+    images.map(
+      (img) =>
+        new Promise((done) => {
+          img.addEventListener('load', done, { once: true });
+          img.addEventListener('error', done, { once: true });
+        }),
+    ),
+  );
+}
+
+type PrintStatus = { kind: 'info' | 'ok' | 'error'; text: string };
+
 /**
  * Notfall- bzw. Evakuierungsliste: alle Anwesenden auf einen Blick, zum Ausdrucken
  * und Abhaken am Sammelplatz. Funktioniert offline.
+ *
+ * Mit `?drucken=1` (roter Knopf „Notfall“ im Menü) wird sofort gedruckt: im Browser
+ * über den Druckdialog, im Windows-/Linux-Programm auf Wunsch ohne Dialog. Danach geht es zurück.
  */
 export function EmergencyListPage() {
   const navigate = useNavigate();
-  const settings = useSettings();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const loaded = useLoadedSettings();
+  const settings = loaded ?? DEFAULT_SETTINGS;
   const present = useSecureLiveQuery(listPresentCards, []);
-  const groups = useLiveQuery(listGroups, [], []);
-  const [withPhotos, setWithPhotos] = useState(false);
+  const groups = useLiveQuery(listGroups, []);
+  const [photoChoice, setPhotoChoice] = useState<boolean>();
+  const withPhotos = photoChoice ?? settings.emergencyPhotos;
   const [createdAt] = useState(() => Date.now());
-  const sections = useMemo(() => (present ? byGroup(present, groups) : []), [present, groups]);
+  const [status, setStatus] = useState<PrintStatus | null>(null);
+  const sections = useMemo(() => (present ? byGroup(present, groups ?? []) : []), [present, groups]);
+  const autoPrint = params.get('drucken') === '1';
+  const started = useRef(false);
+  const from = useRef((location.state as EmergencyNavState | null)?.from);
+
+  const goBack = () => (from.current ? navigate(-1) : navigate('/dashboard', { replace: true }));
+
+  useEffect(() => {
+    if (!autoPrint || started.current || !present || !groups || !loaded) return;
+    started.current = true;
+    // Parameter entfernen: Zurück/Neuladen druckt nicht noch einmal
+    navigate('/notfallliste', { replace: true, state: location.state });
+    if (present.length === 0) {
+      setStatus({ kind: 'info', text: 'Zurzeit ist niemand eingebucht – es wurde nichts gedruckt.' });
+      return;
+    }
+    const plan = emergencyPrintPlan(loaded, Boolean(getDesktop()));
+    void (async () => {
+      await pageReady();
+      if (plan.mode === 'direct') {
+        setStatus({ kind: 'info', text: 'Notfallliste wird gedruckt …' });
+        const result = await getDesktop()!
+          .printDirect({ printer: plan.printer, copies: plan.copies })
+          .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+        if (result.ok) {
+          setStatus({ kind: 'ok', text: directPrintDone(plan.printer, plan.copies) });
+          window.setTimeout(goBack, 2500);
+        } else {
+          setStatus({ kind: 'error', text: `Nicht gedruckt: ${printErrorText(result.error)}. Bitte oben über „Drucken“ mit Druckdialog drucken.` });
+        }
+        return;
+      }
+      const t0 = performance.now();
+      printCurrentPage();
+      // Am Computer wartet print(), bis der Dialog geschlossen ist → zurück. Auf Handy/Tablet kehrt
+      // print() sofort zurück (Druckansicht läuft noch) – dann bleibt die Liste stehen.
+      if (performance.now() - t0 > 400) goBack();
+    })();
+    // nur einmal, sobald Liste, Gruppen und Einstellungen geladen sind (started verhindert Wiederholung)
+  }, [autoPrint, present, groups, loaded]);
+
   if (!present) return null;
   let n = 0;
 
@@ -43,13 +112,18 @@ export function EmergencyListPage() {
           <button type="button" className="btn btn-primary" onClick={printCurrentPage} disabled={present.length === 0}>
             Drucken
           </button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
+          <button type="button" className="btn btn-ghost" onClick={goBack}>
             Zurück
           </button>
         </div>
       </header>
+      {status && (
+        <p className={`no-print emergency-status emergency-status-${status.kind}`} role="status">
+          {status.text}
+        </p>
+      )}
       <label className="checkbox-inline no-print emergency-photos">
-        <input type="checkbox" checked={withPhotos} onChange={(e) => setWithPhotos(e.target.checked)} /> mit Fotos (hilft beim
+        <input type="checkbox" checked={withPhotos} onChange={(e) => setPhotoChoice(e.target.checked)} /> mit Fotos (hilft beim
         Erkennen, braucht mehr Papier)
       </label>
 

@@ -22,6 +22,15 @@ export interface DesktopApi {
   backupRemove(filename: string): Promise<void>;
   getAutostart(): Promise<boolean>;
   setAutostart(on: boolean): Promise<boolean>;
+  /** Installierte Drucker (für den Direktdruck der Notfallliste). */
+  printers(): Promise<DesktopPrinter[]>;
+  /** Aktuelle Seite ohne Druckdialog drucken ('' = Standarddrucker). */
+  printDirect(options: { printer: string; copies: number }): Promise<{ ok: boolean; error?: string }>;
+}
+
+export interface DesktopPrinter {
+  name: string;
+  displayName: string;
 }
 
 declare global {
