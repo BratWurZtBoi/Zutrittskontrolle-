@@ -49,7 +49,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
             <tr>
               <th aria-label="Gruppe" className="group-bar-cell" />
               <SortableTh label="Name" sortKey="name" sort={sort} />
-              <th className="th-plain">Firma / Abteilung</th>
+              <th className="th-plain col-company">Firma / Abteilung</th>
               <SortableTh label="Karte" sortKey="card" sort={sort} />
               {showStatus && <SortableTh label="Status" sortKey="status" sort={sort} />}
               <SortableTh label="Seit / zuletzt" sortKey="time" sort={sort} />
@@ -61,7 +61,7 @@ export function StatusTable({ rows, sort, compact = false, showStatus = true, li
               <tr key={row.card.id} {...rowProps(row.card.id)}>
                 <GroupBarCell group={row.group} />
                 <td>{nameText(row)}</td>
-                <td className="muted cell-ellipsis">{row.card.holder?.company ?? ''}</td>
+                <td className="muted cell-ellipsis col-company">{row.card.holder?.company ?? ''}</td>
                 <td>{row.card.number}</td>
                 {showStatus && (
                   <td>

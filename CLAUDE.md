@@ -95,6 +95,12 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Dashboard-Kennzahlen ohne
   Entschlüsseln in `hooks/useDashboardData.ts`. Dashboard-Layout: Statusleiste, linke Spalte
   sticky, rechts **eine** Liste mit Reitern – keine Scrollbereiche in Kacheln (E2E prüft das).
+  Statusleiste und Werkzeugzeile der Liste sind **starr** (vom Nutzer gewünscht): Grid mit festen
+  Plätzen je Bildschirmbreite (Handy/ab 700 px zwei Zeilen/ab 1800 px eine Zeile), alle Felder immer
+  da (auch „0 abgewiesen“, Backup-Stand), Hinweise als Overlay, höchstens 3 Gruppen
+  (`splitTopGroups`) + „+n weitere“, Kürzen per Ellipse/Container-Query – nichts darf je nach Daten
+  umbrechen (E2E vergleicht die Größen). Gruppenknöpfe `components/GroupChips` (Anzahl, eine Zeile,
+  Pfeile); schmale Liste blendet die Spalte Firma aus (`col-company`).
   Kameravorschau „Aus“ deckt das Video nur ab (Video muss sichtbar bleiben, sonst pausiert es).
   Präsentation: Herzschlag per BroadcastChannel (`announcePresentation`/`watchPresentation`),
   Öffnen auf dem zweiten Bildschirm über `getScreenDetails()` (Fensterverwaltung). Entschlüsselte Namen

@@ -44,9 +44,13 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 ### Dashboard und Auswertung
 
 - **Dashboard** (für den Windows-Rechner am Empfang, auch Tablet quer):
-  - **Statusleiste** oben: Scan-Modus, Anwesende je Gruppe, Buchungen und Abweisungen von heute
-    (antippen öffnet die passende Liste), Präsentation öffnen bzw. „Präsentation läuft“,
-    Backup-Erinnerung.
+  - **Statusleiste** oben: Scan-Modus, Anwesende (die drei größten Gruppen, der Rest als
+    „+n weitere“), Buchungen und Abweisungen von heute (antippen öffnet die passende Liste),
+    Präsentation öffnen bzw. „Präsentation läuft“, Notfallliste, Backup-Stand. Die Leiste ist
+    **starr**: Jedes Feld hat seinen festen Platz und ändert seine Größe nicht, egal wie viele
+    Gruppen anwesend sind (schmales Feld: nur Farbpunkt + Anzahl).
+  - Über der Liste **Gruppenknöpfe mit Anzahl** (nur Gruppen mit Treffern, immer eine Zeile –
+    passen nicht alle hinein, wischen bzw. Pfeil am Rand).
   - **Links** eine kleine Kameravorschau (**Klein / Groß / Vorschau aus** – bei „Vorschau aus“
     wird weiter gescannt), Scan-Modus und Kamera-Auswahl, darunter wartende Bestätigungen und das
     letzte Ergebnis mit Foto. Die Spalte bleibt beim Scrollen stehen.

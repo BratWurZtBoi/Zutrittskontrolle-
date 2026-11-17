@@ -48,3 +48,12 @@ export function formatShortDateTime(ts: number, now = new Date()): string {
   const dm = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.`;
   return d.getFullYear() === now.getFullYear() ? `${dm} ${formatTime(ts)}` : `${dm}${d.getFullYear()} ${formatTime(ts)}`;
 }
+
+/** Wie lange ist das her (in Kalendertagen)? „heute“, „gestern“, „vor 3 Tagen“. */
+export function daysAgoLabel(ts: number, now = new Date()): string {
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((day(now) - day(new Date(ts))) / 86_400_000);
+  if (days <= 0) return 'heute';
+  if (days === 1) return 'gestern';
+  return `vor ${days} Tagen`;
+}

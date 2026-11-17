@@ -211,6 +211,22 @@ export function countPerGroup(groupIds: string[], groups: Group[]): { group: Gro
   return groups.filter((g) => counts.has(g.id)).map((group) => ({ group, count: counts.get(group.id) ?? 0 }));
 }
 
+/**
+ * Für die Statusleiste: die `max` größten Gruppen (bei Gleichstand in Gruppenreihenfolge)
+ * und der Rest – so bleibt die Leiste gleich breit, egal wie viele Gruppen anwesend sind.
+ */
+export function splitTopGroups<T extends { count: number }>(perGroup: T[], max: number): { shown: T[]; rest: T[] } {
+  const sorted = [...perGroup].sort((a, b) => b.count - a.count); // sort ist stabil
+  return { shown: sorted.slice(0, max), rest: sorted.slice(max) };
+}
+
+/** Anzahl je Gruppen-ID (für die Gruppenknöpfe der Listen). */
+export function countByGroupId(groupIds: (string | undefined)[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const id of groupIds) if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return counts;
+}
+
 // ---------------------------------------------------------------------------
 // Korrekturen
 // ---------------------------------------------------------------------------
