@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CameraSelect } from '../components/CameraSelect';
 import { DashStatusBar } from '../components/DashStatusBar';
 import { EventTable } from '../components/EventTable';
+import { GroupChips } from '../components/GroupChips';
 import { PendingPanel, usePendingShortcuts } from '../components/PendingPanel';
 import { ResultPanel } from '../components/ScanResult';
 import { ScannerInactiveNote } from '../components/ScannerStatus';
@@ -14,6 +15,7 @@ import { returnCard } from '../db/cards';
 import { listGroups } from '../db/groups';
 import { saveSettings, type AppSettings, type DashCameraSize, type ScanInput } from '../db/settings';
 import {
+  countByGroupId,
   DEFAULT_EVENT_FILTER,
   filterEvents,
   filterStatusRows,
@@ -244,19 +246,29 @@ function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: Da
   const rows = useStatusRows();
   // Bei der Suche auch Abwesende zeigen – z. B. um jemanden ohne Karte manuell einzubuchen
   const effectiveStatus: StatusFilter['status'] = query.trim() ? 'all' : presenceStatus;
-  const presenceRows = useMemo(
-    () => (rows ? filterStatusRows(rows, { query, groupId, status: effectiveStatus, includeFree: false }) : []),
-    [rows, query, groupId, effectiveStatus],
+  // Erst ohne Gruppe filtern (für die Anzahl je Gruppe auf den Knöpfen), dann nach Gruppe
+  const ungroupedRows = useMemo(
+    () => (rows ? filterStatusRows(rows, { query, groupId: '', status: effectiveStatus, includeFree: false }) : []),
+    [rows, query, effectiveStatus],
   );
+  const presenceRows = useMemo(() => (groupId ? ungroupedRows.filter((r) => r.card.groupId === groupId) : ungroupedRows), [ungroupedRows, groupId]);
   const presentCount = presenceRows.filter((r) => r.present).length;
 
   const raw = useRangeEvents({ range: events.range });
-  const baseEvents = useMemo(
-    () => (raw ? filterEvents(raw, { query, groupId, range: events.range, direction: events.direction, outcome: 'all' }, new Date()) : []),
-    [raw, query, groupId, events.range, events.direction],
+  const ungroupedEvents = useMemo(
+    () => (raw ? filterEvents(raw, { query, groupId: '', range: events.range, direction: events.direction, outcome: 'all' }, new Date()) : []),
+    [raw, query, events.range, events.direction],
   );
+  const baseEvents = groupId ? ungroupedEvents.filter((e) => e.groupId === groupId) : ungroupedEvents;
   const allEvents = events.outcome === 'all' ? baseEvents : baseEvents.filter((e) => e.outcome === events.outcome);
   const deniedEvents = baseEvents.filter((e) => e.outcome === 'denied');
+
+  // Anzahl je Gruppe für den aktuellen Reiter
+  const chipBase: { groupId?: string }[] =
+    tab === 'presence'
+      ? ungroupedRows.map((r) => ({ groupId: r.card.groupId }))
+      : ungroupedEvents.filter((e) => (tab === 'denied' ? e.outcome === 'denied' : events.outcome === 'all' || e.outcome === events.outcome));
+  const chipCounts = countByGroupId(chipBase.map((x) => x.groupId));
   const undoable = useMemo(() => undoableSeqs(raw ?? []), [raw]);
 
   const presenceSort = useSort<StatusSortKey>('time', 'desc', { time: 'desc' });
@@ -294,39 +306,24 @@ function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: Da
       </div>
 
       <div className="dash-toolbar">
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Suchen: Name, Firma, Karte …"
-          aria-label="Suchen"
-        />
-        <div className="group-chips" role="radiogroup" aria-label="Gruppe">
-          <button type="button" role="radio" aria-checked={groupId === ''} className={groupId === '' ? 'chip active' : 'chip'} onClick={() => setGroupId('')}>
-            Alle
+        <div className="dash-toolbar-row">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Suchen: Name, Firma, Karte …"
+            aria-label="Suchen"
+          />
+          <GroupChips groups={groups} counts={chipCounts} total={chipBase.length} value={groupId} onChange={setGroupId} />
+          <button
+            type="button"
+            className={extraActive ? 'btn btn-small filter-toggle active' : 'btn btn-small filter-toggle'}
+            aria-expanded={showMore}
+            onClick={() => setShowMore((v) => !v)}
+          >
+            Weitere Filter {extraActive ? '●' : ''} {showMore ? '▴' : '▾'}
           </button>
-          {groups.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              role="radio"
-              aria-checked={groupId === g.id}
-              className={groupId === g.id ? 'chip active' : 'chip'}
-              onClick={() => setGroupId(groupId === g.id ? '' : g.id)}
-            >
-              <span className="color-dot" style={{ background: g.color }} />
-              {g.name}
-            </button>
-          ))}
         </div>
-        <button
-          type="button"
-          className={extraActive ? 'btn btn-small filter-toggle active' : 'btn btn-small filter-toggle'}
-          aria-expanded={showMore}
-          onClick={() => setShowMore((v) => !v)}
-        >
-          Weitere Filter {extraActive ? '●' : ''} {showMore ? '▴' : '▾'}
-        </button>
       </div>
 
       {showMore && (

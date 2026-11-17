@@ -3,12 +3,14 @@ import {
   DEFAULT_EVENT_FILTER,
   DEFAULT_STATUS_FILTER,
   buildStatusRows,
+  countByGroupId,
   countPerGroup,
   filterEvents,
   filterStatusRows,
   rangeBounds,
   sortEvents,
   sortStatusRows,
+  splitTopGroups,
   summarizeEvents,
 } from './overview';
 import type { AccessEvent, Card, Group } from './types';
@@ -135,6 +137,27 @@ describe('Kennzahlen', () => {
     expect(countPerGroup(['g2', 'g1', 'g2'], [staff, visitors, third])).toEqual([
       { group: staff, count: 1 },
       { group: visitors, count: 2 },
+    ]);
+  });
+
+  it('Statusleiste: die größten Gruppen zuerst, der Rest gesammelt', () => {
+    const list = [
+      { id: 'a', count: 2 },
+      { id: 'b', count: 9 },
+      { id: 'c', count: 2 },
+      { id: 'd', count: 5 },
+      { id: 'e', count: 1 },
+    ];
+    const { shown, rest } = splitTopGroups(list, 3);
+    expect(shown.map((g) => g.id)).toEqual(['b', 'd', 'a']); // Gleichstand a/c: Gruppenreihenfolge
+    expect(rest.map((g) => g.id)).toEqual(['c', 'e']);
+    expect(splitTopGroups(list.slice(0, 2), 3)).toEqual({ shown: [list[1], list[0]], rest: [] });
+  });
+
+  it('zählt je Gruppen-ID und überspringt fehlende', () => {
+    expect([...countByGroupId(['g1', undefined, 'g2', 'g1'])]).toEqual([
+      ['g1', 2],
+      ['g2', 1],
     ]);
   });
 });

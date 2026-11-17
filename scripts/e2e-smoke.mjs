@@ -261,6 +261,13 @@ try {
   check((await listRows.count()) === 1, 'Dashboard: eine Person anwesend (Max Mustermann)');
   check((await page.locator('.dash-list').textContent()).includes('Mustermann'), 'Dashboard: Name in der Anwesenheitsliste');
   check((await page.getByTestId('kpi-present').textContent()).trim() === '1', 'Statusleiste: 1 anwesend');
+  const boxOf = (sel) => page.locator(sel).evaluate((el) => { const r = el.getBoundingClientRect(); return `${Math.round(r.width)}x${Math.round(r.height)}`; });
+  const chipLabels = async () => (await page.locator('.dash-list .group-chips .chip').allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
+  const statusBox = await boxOf('.dash-status');
+  const presentBox = await boxOf('.ds-present');
+  const toolbarBox = await boxOf('.dash-toolbar');
+  check((await chipLabels()).join(' | ') === 'Alle 1 | Bestandspersonal 1', `Gruppenknöpfe mit Anzahl, nur Gruppen mit Anwesenden (${(await chipLabels()).join(' | ')})`);
+  check((await page.locator('.ds-denied').textContent()).includes('abgewiesen'), 'Statusleiste: „abgewiesen“ immer an derselben Stelle');
   await page.locator('.dash-side .test-panel').evaluate((d) => (d.open = true));
   await page.locator('.dash-side .test-panel select').selectOption(cards.find((c) => c.number === 'M-002').id);
   await page.locator('.dash-side').getByRole('button', { name: 'Karte scannen' }).click();
@@ -271,6 +278,11 @@ try {
   check((await listRows.count()) === 2, 'Dashboard: Anwesenheitsliste aktualisiert sich live');
   await page.waitForFunction(() => document.querySelector('[data-testid="kpi-present"]')?.textContent?.trim() === '2');
   check(true, 'Statusleiste zählt live mit (2 anwesend)');
+  check((await chipLabels()).join(' | ') === 'Alle 2 | Bestandspersonal 2', 'Gruppenknöpfe zählen live mit');
+  check(
+    (await boxOf('.dash-status')) === statusBox && (await boxOf('.ds-present')) === presentBox && (await boxOf('.dash-toolbar')) === toolbarBox,
+    `Statusleiste und Werkzeugzeile bleiben gleich groß (${statusBox}, Anwesend ${presentBox})`,
+  );
   check((await page.locator('.dash-recent').count()) === 0, 'Kein doppelter Kasten „Letzte Scans“ mehr');
   const rowHeight = await listRows.first().evaluate((r) => r.getBoundingClientRect().height);
   check(rowHeight < 52, `Eine Zeile pro Person (${Math.round(rowHeight)} px hoch)`);

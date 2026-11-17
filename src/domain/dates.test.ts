@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, formatIsoDate, isValidIsoDate, toLocalDateString } from './dates';
+import { addDays, daysAgoLabel, formatIsoDate, isValidIsoDate, toLocalDateString } from './dates';
 
 describe('dates', () => {
   it('formatiert lokale Daten', () => {
@@ -12,5 +12,12 @@ describe('dates', () => {
     expect(isValidIsoDate('2026-02-28')).toBe(true);
     expect(isValidIsoDate('2026-02-30')).toBe(false);
     expect(isValidIsoDate('28.02.2026')).toBe(false);
+  });
+
+  it('beschreibt, wie viele Tage etwas her ist', () => {
+    const now = new Date(2026, 2, 10, 8, 0);
+    expect(daysAgoLabel(new Date(2026, 2, 10, 0, 5).getTime(), now)).toBe('heute');
+    expect(daysAgoLabel(new Date(2026, 2, 9, 23, 59).getTime(), now)).toBe('gestern');
+    expect(daysAgoLabel(new Date(2026, 2, 1, 12, 0).getTime(), now)).toBe('vor 9 Tagen');
   });
 });
