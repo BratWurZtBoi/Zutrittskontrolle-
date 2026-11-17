@@ -1,11 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { db } from '../db/db';
-import { listRecentEvents } from '../db/scans';
 import { rangeBounds, summarizeEvents, type DayStats } from '../domain/overview';
-import type { AccessEvent } from '../domain/types';
 import { watchPresentation } from '../lib/presentation';
-import { useSecureLiveQuery } from './useSecureLiveQuery';
 import { useToday } from './useToday';
 
 export interface DashboardStats extends DayStats {
@@ -26,15 +23,6 @@ export function useDashboardStats(): DashboardStats | undefined {
       presentGroupIds: cards.flatMap((c) => (c ? [c.groupId] : [])),
     };
   }, [today]);
-}
-
-/** Die letzten Scans (ohne automatische Buchungen) für die Seitenleiste. */
-export function useRecentScans(count = 5): AccessEvent[] {
-  return useSecureLiveQuery(
-    async () => (await listRecentEvents(count * 3)).filter((e) => e.source !== 'system').slice(0, count),
-    [count],
-    [],
-  );
 }
 
 /** Ist gerade ein Präsentationsfenster geöffnet? */

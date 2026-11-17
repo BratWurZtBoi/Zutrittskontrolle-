@@ -1,20 +1,23 @@
 import { NavLink, Outlet, useNavigate } from 'react-router';
+import { useSettings } from '../hooks/useSettings';
 import { requestExit } from '../security/exit';
 import { useSecurity } from '../security/useSecurity';
 import { CardIcon, DashboardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon } from './Icons';
 
 const ADMIN_NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
+  { to: '/auswertung', label: 'Auswertung', icon: ListIcon },
   { to: '/karten', label: 'Karten', icon: CardIcon },
-  { to: '/uebersicht', label: 'Übersicht', icon: ListIcon },
   { to: '/einstellungen', label: 'Einstellungen', icon: SettingsIcon },
 ];
 /** Bediener (PIN): nur Empfangsaufgaben. */
-const OPERATOR_NAV = ADMIN_NAV.filter((n) => n.to === '/dashboard' || n.to === '/uebersicht');
+const OPERATOR_NAV = ADMIN_NAV.filter((n) => n.to === '/dashboard' || n.to === '/auswertung');
 
 export function Layout() {
   const security = useSecurity();
   const navigate = useNavigate();
+  // Vollbild-Scanner nur im Kiosk-Modus (Gerät am Eingang ohne Bediener)
+  const { kioskMode } = useSettings();
 
   return (
     <div className="app">
@@ -23,10 +26,12 @@ export function Layout() {
           Zutrittskontrolle
           {security.operator && <span className="role-badge">Bediener</span>}
         </span>
-        <NavLink to="/" end className="nav-link">
-          <ScanIcon />
-          <span>Scanner</span>
-        </NavLink>
+        {kioskMode && (
+          <NavLink to="/" end className="nav-link">
+            <ScanIcon />
+            <span>Kiosk</span>
+          </NavLink>
+        )}
         {security.admin || security.operator ? (
           <>
             {(security.admin ? ADMIN_NAV : OPERATOR_NAV).map(({ to, label, icon: Icon }) => (
@@ -52,7 +57,7 @@ export function Layout() {
         ) : (
           <NavLink to="/anmelden" className="nav-link">
             <LockIcon />
-            <span>Verwaltung</span>
+            <span>Anmelden</span>
           </NavLink>
         )}
       </nav>

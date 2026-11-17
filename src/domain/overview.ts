@@ -1,5 +1,5 @@
 /**
- * Reine Funktionen für Übersicht und Dashboard: Statuszeilen, Filtern, Sortieren.
+ * Reine Funktionen für Auswertung und Dashboard: Statuszeilen, Filtern, Sortieren.
  * Ohne Datenbank – gut testbar.
  */
 import { addDays, toLocalDateString } from './dates';

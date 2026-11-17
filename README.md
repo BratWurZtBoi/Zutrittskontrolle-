@@ -26,10 +26,12 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - **Nach jedem App-Start** einmal mit dem Passwort entsperren. Gesperrt prüft der Scanner den
   Zutritt weiter, zeigt aber nur Kartennummer und Gruppe – die Buchungen werden trotzdem mit
   (verschlüsseltem) Namen protokolliert.
-- **Abmelden** beendet die Verwaltung, der Scanner zeigt weiter Namen. **Jetzt sperren** blendet
-  auch im Scanner Namen und Fotos aus. Automatische Abmeldung nach Inaktivität (Standard 15 Min.).
+- **Abmelden** führt zur Anmeldung (im Kiosk-Modus zurück zum Kiosk-Scanner, der weiter Namen
+  zeigt). **Jetzt sperren** blendet auch dort Namen und Fotos aus. Automatische Abmeldung nach
+  Inaktivität (Standard 15 Min.) – für den Dauerbetrieb am Empfang daher die **Bediener-PIN**
+  nutzen (Bediener werden standardmäßig nicht automatisch abgemeldet).
 - **Bediener-PIN** (*Einstellungen → Bediener & Bestätigung*): eingeschränkter Zugang für den
-  Empfang – nur Dashboard und Übersicht, Eintritte bestätigen, „Alle ausbuchen“. Karten, Gruppen,
+  Empfang – nur Dashboard und Auswertung, Eintritte bestätigen, „Alle ausbuchen“. Karten, Gruppen,
   CSV-Export, Testmodus und Einstellungen bleiben dem Admin vorbehalten. Die PIN entschlüsselt
   nichts: Nach einem Neustart entsperrt der Admin die Daten einmal mit dem Passwort, danach kann
   sich der Bediener mit der PIN anmelden. Eigene automatische Abmeldung (Standard: nie).
@@ -39,25 +41,29 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Server sendet.
 - ⚠️ **Passwort vergessen = verschlüsselte Daten verloren.** Bitte sicher notieren.
 
-### Dashboard und Übersicht
+### Dashboard und Auswertung
 
 - **Dashboard** (für den Windows-Rechner am Empfang, auch Tablet quer):
   - **Statusleiste** oben: Scan-Modus, Anwesende je Gruppe, Buchungen und Abweisungen von heute
     (antippen öffnet die passende Liste), Präsentation öffnen bzw. „Präsentation läuft“,
     Backup-Erinnerung.
-  - **Links** eine kleine Kameravorschau (**Klein / Groß / Aus** – bei „Aus“ wird weiter
-    gescannt), darunter das letzte Ergebnis mit Foto und die letzten Scans. Die Spalte bleibt
-    beim Scrollen stehen.
+  - **Links** eine kleine Kameravorschau (**Klein / Groß / Vorschau aus** – bei „Vorschau aus“
+    wird weiter gescannt), Scan-Modus und Kamera-Auswahl, darunter wartende Bestätigungen und das
+    letzte Ergebnis mit Foto. Die Spalte bleibt beim Scrollen stehen.
   - **Rechts eine Liste mit Reitern:** *Anwesend*, *Aktionen heute*, *Abgewiesen* – eine Zeile pro
     Eintrag, Gruppenfarbe als Balken, Suche und Gruppen-Schaltflächen für alle Reiter,
-    **Weitere Filter** (Zeitraum, Richtung, Ergebnis, auch Abwesende) bei Bedarf.
+    **Weitere Filter** (Heute/Gestern, Richtung, Ergebnis, auch Abwesende) und der Link
+    **„Ältere Einträge und CSV-Export in der Auswertung“**.
   - Nur die Seite scrollt, keine Scrollbereiche innerhalb der Kacheln. Auf dem Handy untereinander.
-- **Übersicht → Anwesenheit:** alle Personen mit Status anwesend/abwesend und „seit wann“,
+- **Auswertung** (im Menü rechts neben dem Dashboard) **→ Anwesenheit:** alle Personen mit Status
+  anwesend/abwesend und „seit wann“,
   Suche (Name, Firma, Karte), Filter nach Status und Gruppe, Sortierung per Spaltenkopf,
   **„Alle ausbuchen“** (z. B. am Tagesende).
-- **Übersicht → Aktionen:** Zutrittsprotokoll mit Zeitraum (heute, gestern, 7/30 Tage, frei
-  wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche und Sortierung.
-- Der **Vollbild-Scanner** bleibt als Kiosk-Modus für Geräte am Eingang (ohne Anmeldung nutzbar).
+- **Auswertung → Protokoll:** Zutrittsprotokoll mit Zeitraum (heute, gestern, 7/30 Tage, frei
+  wählbar), Filter nach Ergebnis, Richtung und Gruppe, Suche, Sortierung und CSV-Export.
+- **Startseite:** angemeldet das Dashboard, sonst die Anmeldung.
+- **Kiosk-Modus** (*Einstellungen → Scanner*, Standard aus): für ein Gerät am Eingang ohne Bediener
+  (z. B. Tablet) – Vollbild-Scanner als Startseite, scannt auch ohne Anmeldung, Menüpunkt „Kiosk“.
 
 ### Am Empfang: manuell buchen, korrigieren, Besucher anmelden
 
@@ -151,10 +157,9 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 ### Einstellungen
 
-- *Einstellungen* zeigt eine Übersicht mit allen Bereichen (Allgemein, Scanner, Gruppen,
-  Präsentation, Sicherheit, Bediener & Bestätigung, Datensicherung, Daten, Gerät & App) und dem
-  aktuellen Stand. Am Computer wechselt man über die Seitenleiste, am Handy über „← Einstellungen“.
-- Die Übersicht ist in Gruppen gegliedert: **Betrieb** (Scanner, Gruppen, Bediener), **Gestaltung**
+- *Einstellungen* zeigt alle Bereiche (Scanner, Gruppen, Bediener & Bestätigung, Kartenlayout,
+  Präsentation, Sicherheit, Datensicherung, Daten, Allgemein & Gerät) mit dem aktuellen Stand. Am Computer wechselt man über die Seitenleiste, am Handy über „← Einstellungen“.
+- Die Einstellungen sind in Gruppen gegliedert: **Betrieb** (Scanner, Gruppen, Bediener), **Gestaltung**
   (Kartenlayout, Präsentation), **Daten & Sicherheit** und **Allgemein & Gerät** – ebenso die Seitenleiste.
 
 ### Hell und dunkel
@@ -178,7 +183,7 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   7/14/30 Sicherungen bleiben. Läuft, solange die App geöffnet und entsperrt ist. Fragt der
   Browser nach einem Neustart erneut nach dem Ordnerzugriff, zeigt das Dashboard
   „Auto-Backup: Problem“ – „Jetzt sichern“ erlaubt ihn wieder.
-- **CSV-Export für Excel** (*Übersicht*): die gerade gefilterte und sortierte Liste der Anwesenheit
+- **CSV-Export für Excel** (*Auswertung*): die gerade gefilterte und sortierte Liste der Anwesenheit
   bzw. der Aktionen. ⚠️ CSV-Dateien sind **nicht** verschlüsselt.
 - Das Dashboard erinnert, wenn das letzte Backup länger als 7 Tage zurückliegt.
 
@@ -279,8 +284,8 @@ etwas anzuklicken.
 
 **Windows-Rechner mit Webcam (Edge oder Chrome):** App-Adresse öffnen → in der Adressleiste auf
 das Installieren-Symbol klicken (oder Menü → *Apps* → *Diese Seite als App installieren*).
-Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Scanner oder unter
-*Einstellungen → Kamera* auswählen.
+Bei mehreren Kameras (z. B. eingebaut + USB-Webcam) die gewünschte im Dashboard unter der
+Kameravorschau auswählen.
 
 **Updates:** App schließen und neu öffnen – neue Versionen werden automatisch geladen.
 
@@ -305,7 +310,7 @@ Merge nach `main` automatisch gebaut.
   Vorher zur Sicherheit ein Backup erstellen.
 - **Unterschiede zur Web-App:** die Präsentation öffnet sich ohne Rückfrage im Vollbild auf dem
   zweiten Bildschirm; Kamera ohne Rückfrage; automatische Sicherung in einen Ordner ohne erneute
-  Freigabe nach dem Neustart; *Einstellungen → Gerät & App*: „Beim Anmelden an Windows automatisch
+  Freigabe nach dem Neustart; *Einstellungen → Allgemein & Gerät*: „Beim Anmelden an Windows automatisch
   starten“; **F11** = Vollbild. Das Programm baut keine Verbindungen ins Internet auf.
 
 #### Linux (PC, Laptop, Raspberry Pi)
@@ -325,20 +330,20 @@ Merge nach `main` automatisch gebaut.
   unterstützt) – oder einen USB-Scanner.
 - **Ausprobieren ohne Installation:** Linux Mint als „Live-System“ vom USB-Stick starten (verändert
   den Rechner nicht) und das Paket dort installieren.
-- *Einstellungen → Gerät & App:* „Beim Anmelden automatisch starten“.
+- *Einstellungen → Allgemein & Gerät:* „Beim Anmelden automatisch starten“.
 
 ## Erste Schritte zum Testen
 
-1. *Verwaltung* → Admin-Passwort einrichten.
+1. App öffnen → Admin-Passwort einrichten.
 2. *Karten* → **Testkarten anlegen** (9 Personalkarten, 5 Besucherkarten – davon 3 frei;
    darunter eine gesperrte, eine abgelaufene und eine noch nicht gültige Karte).
-3. *Einstellungen* → **Testmodus** einschalten → *Scanner* → Testmodus aufklappen → Karte wählen →
-   **Karte scannen** simuliert einen Scan.
+3. *Einstellungen → Scanner* → **Testmodus** einschalten → *Dashboard* → Testmodus aufklappen →
+   Karte wählen → **Karte scannen** simuliert einen Scan.
 4. Freie Besucherkarte öffnen → **Person zuweisen** → **Nur heute** → Speichern → scannen →
    danach **Karte zurückgeben**.
-5. Echter Kameratest: *Karten* → **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
+5. Echter Kameratest: *Karten* → Reiter **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
    und mit dem Gerät scannen, auf dem die Karten erstellt wurden.
-6. *Dashboard* und *Übersicht* zeigen, wer eingebucht ist und welche Aktionen es gab.
+6. *Dashboard* und *Auswertung* zeigen, wer eingebucht ist und welche Buchungen es gab.
 
 ## Wichtige Hinweise zum Speicher
 
@@ -360,7 +365,7 @@ Merge nach `main` automatisch gebaut.
 | Offline-Betrieb (PWA) auf Android und Windows | ✅ |
 | Admin-Passwort, verschlüsselte Personendaten (AES-256), Entsperren beim Start | ✅ |
 | Automatische Abmeldung, Löschfrist fürs Protokoll, Content Security Policy | ✅ |
-| Übersicht mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ✅ |
+| Auswertung mit Suche/Filter/Sortierung, Dashboard (Kamera + Anwesende + Aktionen) | ✅ |
 | „Alle ausbuchen“ | ✅ |
 | Verschlüsseltes Backup (Export/Import), CSV-Export für Excel | ✅ |
 | CSV-Import von Personenlisten mit Vorlage und Vorschau | ✅ |
@@ -379,13 +384,13 @@ React 19 · TypeScript · Vite · vite-plugin-pwa (Workbox) · Dexie (IndexedDB)
 ```
 src/
   domain/     Reine Logik: Zutrittsentscheidung, QR-Format, Doppelscan-Schutz, Farben,
-              Filter/Sortierung für Übersicht und Dashboard (mit Tests)
+              Filter/Sortierung für Auswertung und Dashboard (mit Tests)
   db/         Lokale Datenbank: Gruppen, Karten, Scans/Protokoll, Einstellungen, Testdaten (mit Tests)
   security/   Verschlüsselung (Web Crypto), Passwort-Tresor, Admin-Sitzung (mit Tests)
   scanner/    Kamera-Scanner und QR-Decoder (Web Worker)
   lib/        Kamera (inkl. Geräteauswahl), Fotos, QR-Erzeugung, Ton, Bildschirm-an
   components/ Wiederverwendbare Oberflächenbausteine
-  pages/      Scanner, Dashboard, Übersicht, Präsentation, Anmeldung, Karten, Import, Druck,
+  pages/      Dashboard, Auswertung, Kiosk-Scanner, Präsentation, Anmeldung, Karten, Import, Druck,
               Gruppen, Einstellungen
 vorlagen/     CSV-Vorlage für den Personenimport
 ```

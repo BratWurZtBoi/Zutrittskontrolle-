@@ -24,11 +24,26 @@ import { useFilteredEvents, useStatusRows } from '../hooks/useOverviewData';
 import { useSort } from '../hooks/useSort';
 import { useSecurity } from '../security/useSecurity';
 
-type Tab = 'anwesenheit' | 'aktionen';
+type Tab = 'anwesenheit' | 'protokoll';
 
+/** Zeiträume, die per Adresse übergeben werden dürfen (z. B. vom Dashboard). */
+const RANGE_PARAMS = ['today', 'yesterday', '7d', '30d', 'all'] as const;
+
+/**
+ * Auswertung: Anwesenheit und Protokoll mit Suche, Filtern, Sortierung und CSV-Export.
+ * Adresse: #/auswertung?ansicht=protokoll&suche=…&gruppe=…&zeitraum=7d
+ */
 export function OverviewPage() {
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('ansicht') === 'aktionen' ? 'aktionen' : 'anwesenheit';
+  const view = params.get('ansicht');
+  const tab: Tab = view === 'protokoll' || view === 'aktionen' ? 'protokoll' : 'anwesenheit';
+  const range = params.get('zeitraum');
+  const initialEvents: EventFilter = {
+    ...DEFAULT_EVENT_FILTER,
+    query: params.get('suche') ?? '',
+    groupId: params.get('gruppe') ?? '',
+    range: RANGE_PARAMS.find((r) => r === range) ?? DEFAULT_EVENT_FILTER.range,
+  };
   const groups = useLiveQuery(listGroups, [], []);
   // Bediener: ansehen und „Alle ausbuchen“ ja – Export und Kartendetails nur für den Admin
   const { admin } = useSecurity();
@@ -36,7 +51,7 @@ export function OverviewPage() {
   return (
     <div className="page page-wide">
       <header className="page-header">
-        <h1>Übersicht</h1>
+        <h1>Auswertung</h1>
       </header>
       <div className="tabs" role="tablist">
         <button
@@ -51,14 +66,14 @@ export function OverviewPage() {
         <button
           type="button"
           role="tab"
-          aria-selected={tab === 'aktionen'}
-          className={tab === 'aktionen' ? 'tab active' : 'tab'}
-          onClick={() => setParams({ ansicht: 'aktionen' }, { replace: true })}
+          aria-selected={tab === 'protokoll'}
+          className={tab === 'protokoll' ? 'tab active' : 'tab'}
+          onClick={() => setParams({ ansicht: 'protokoll' }, { replace: true })}
         >
-          Aktionen
+          Protokoll
         </button>
       </div>
-      {tab === 'anwesenheit' ? <PresenceTab groups={groups} admin={admin} /> : <EventsTab groups={groups} admin={admin} />}
+      {tab === 'anwesenheit' ? <PresenceTab groups={groups} admin={admin} /> : <EventsTab groups={groups} admin={admin} initial={initialEvents} />}
     </div>
   );
 }
@@ -113,8 +128,8 @@ function PresenceTab({ groups, admin }: { groups: Awaited<ReturnType<typeof list
   );
 }
 
-function EventsTab({ groups, admin }: { groups: Awaited<ReturnType<typeof listGroups>>; admin: boolean }) {
-  const [filter, setFilter] = useState<EventFilter>(DEFAULT_EVENT_FILTER);
+function EventsTab({ groups, admin, initial }: { groups: Awaited<ReturnType<typeof listGroups>>; admin: boolean; initial: EventFilter }) {
+  const [filter, setFilter] = useState<EventFilter>(initial);
   const sort = useSort<EventSortKey>('time', 'desc', { time: 'desc' });
   const [limit, setLimit] = useState(100);
   const { events, loading } = useFilteredEvents(filter);
@@ -132,12 +147,12 @@ function EventsTab({ groups, admin }: { groups: Awaited<ReturnType<typeof listGr
       />
       <div className="list-toolbar">
         <p className="muted small">
-          {loading ? 'Lädt …' : `${events.length} Aktion(en) · ${rangeLabel(filter, new Date())}${denied ? ` · davon ${denied} abgewiesen` : ''}`}
+          {loading ? 'Lädt …' : `${events.length} Eintrag/Einträge · ${rangeLabel(filter, new Date())}${denied ? ` · davon ${denied} abgewiesen` : ''}`}
         </p>
         {admin && (
           <CsvButton
             disabled={events.length === 0}
-            onExport={() => downloadText(eventsToCsv(sortEvents(events, sort.key, sort.dir)), csvFilename('aktionen'))}
+            onExport={() => downloadText(eventsToCsv(sortEvents(events, sort.key, sort.dir)), csvFilename('protokoll'))}
           />
         )}
       </div>

@@ -4,7 +4,7 @@ import { useSecurity } from '../security/useSecurity';
 /**
  * Schützt Verwaltungsseiten: ohne passende Anmeldung geht es zur Anmeldung bzw. Ersteinrichtung.
  * - 'admin': nur mit Admin-Passwort
- * - 'staff': Admin oder Bediener (PIN) – Dashboard und Übersicht
+ * - 'staff': Admin oder Bediener (PIN) – Dashboard und Auswertung
  */
 export function RequireRole({ allow }: { allow: 'admin' | 'staff' }) {
   const security = useSecurity();

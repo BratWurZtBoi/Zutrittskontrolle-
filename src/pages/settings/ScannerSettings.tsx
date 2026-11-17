@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { CameraSelect } from '../../components/CameraSelect';
 import { NumberField } from '../../components/NumberField';
 import { db } from '../../db/db';
 import { saveSettings, type AppSettings, type ScanInput } from '../../db/settings';
 import { parseCardPayload } from '../../domain/cardCode';
 import { SCANNER_MAX_GAP_MS, type ScannerSpeed } from '../../domain/keyboardScan';
-import type { ScanMode } from '../../domain/types';
 import { useKeyboardScanner, type KeyboardScan } from '../../hooks/useKeyboardScanner';
 import { useSettings } from '../../hooks/useSettings';
 import { SettingsShell } from './SettingsShell';
@@ -17,14 +15,6 @@ export function ScannerSettings() {
   return (
     <SettingsShell title="Scanner">
       <section className="card form">
-        <label>
-          Modus
-          <select value={settings.scanMode} onChange={(e) => save({ scanMode: e.target.value as ScanMode })}>
-            <option value="auto">Automatisch (abwechselnd ein/aus)</option>
-            <option value="in">Nur Eingang</option>
-            <option value="out">Nur Ausgang</option>
-          </select>
-        </label>
         <div className="form-grid">
           <label>
             Doppelscan-Schutz (Sekunden)
@@ -39,10 +29,6 @@ export function ScannerSettings() {
               onChange={(resultDisplaySec) => save({ resultDisplaySec })}
             />
           </label>
-          <label>
-            Kamera
-            <CameraSelect value={settings.camera} onChange={(camera) => save({ camera })} />
-          </label>
         </div>
         <label className="checkbox">
           <input type="checkbox" checked={settings.mirrorPreview} onChange={(e) => save({ mirrorPreview: e.target.checked })} />
@@ -56,6 +42,19 @@ export function ScannerSettings() {
           <input type="checkbox" checked={settings.testMode} onChange={(e) => save({ testMode: e.target.checked })} />
           Testmodus (Scans im Scanner simulieren – nur sichtbar, solange ein Admin angemeldet ist)
         </label>
+      </section>
+
+      <section className="card form" aria-labelledby="kiosk-title">
+        <h2 id="kiosk-title">Kiosk-Modus</h2>
+        <label className="checkbox">
+          <input type="checkbox" checked={settings.kioskMode} onChange={(e) => save({ kioskMode: e.target.checked })} />
+          Kiosk-Modus für dieses Gerät: Vollbild-Scanner als Startseite – scannt auch ohne Anmeldung
+        </label>
+        <p className="muted small">
+          Für ein Gerät am Eingang ohne Bediener (z. B. ein Tablet). Am Empfang arbeitet man im Dashboard; Scan-Modus und Kamera
+          stellt man dort direkt ein. Ohne Kiosk-Modus öffnet die App das Dashboard bzw. die Anmeldung – für den Dauerbetrieb am
+          Empfang am besten mit der Bediener-PIN anmelden.
+        </p>
       </section>
 
       <section className="card form" aria-labelledby="usb-scanner-title">

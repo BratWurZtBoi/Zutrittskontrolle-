@@ -21,7 +21,7 @@ export const SETTINGS_GROUPS: { id: SettingsGroupId; title: string }[] = [
 
 /** Bereiche der Einstellungen – Reihenfolge innerhalb der Gruppe = Reihenfolge in Übersicht und Seitenleiste. */
 export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
-  { path: '/einstellungen/scanner', title: 'Scanner', description: 'Modus, Doppelscan-Schutz, Kamera, USB-Scanner, Ton, Testmodus', group: 'betrieb' },
+  { path: '/einstellungen/scanner', title: 'Scanner', description: 'Doppelscan-Schutz, Anzeigedauer, Ton, USB-Scanner, Kiosk-Modus, Testmodus', group: 'betrieb' },
   { path: '/einstellungen/gruppen', title: 'Gruppen', description: 'Farbe, Kürzel, Regeln, Bestätigung, Layout', group: 'betrieb' },
   { path: '/einstellungen/bediener', title: 'Bediener & Bestätigung', description: 'Bediener-PIN, Zeitlimit für Bestätigungen', group: 'betrieb' },
   { path: '/einstellungen/karten', title: 'Kartenlayout', description: 'Gedruckte Karten: Bausteine, Formate, Rückseite', group: 'gestaltung' },
@@ -29,8 +29,7 @@ export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
   { path: '/einstellungen/sicherheit', title: 'Sicherheit', description: 'Admin-Passwort, automatische Abmeldung, Löschfrist', group: 'daten' },
   { path: '/einstellungen/datensicherung', title: 'Datensicherung', description: 'Backup erstellen, einspielen, automatisch sichern', group: 'daten' },
   { path: '/einstellungen/daten', title: 'Daten', description: 'Testkarten, Protokoll leeren, alles löschen', group: 'daten' },
-  { path: '/einstellungen/allgemein', title: 'Allgemein', description: 'Hell/dunkel, Name der Organisation', group: 'allgemein' },
-  { path: '/einstellungen/geraet', title: 'Gerät & App', description: 'Version, Installation, dauerhafter Speicher', group: 'allgemein' },
+  { path: '/einstellungen/allgemein', title: 'Allgemein & Gerät', description: 'Hell/dunkel, Organisation, Version, Installation, Speicher', group: 'allgemein' },
 ];
 
 /** Bereiche einer Gruppe. */
@@ -56,7 +55,7 @@ export function SettingsShell({ title, actions, wide = false, children }: Props)
     <div className={wide ? 'settings-shell settings-wide' : 'settings-shell'}>
       <nav className="settings-nav no-print" aria-label="Bereiche der Einstellungen">
         <NavLink end to="/einstellungen" className="settings-nav-link">
-          Übersicht
+          Alle Einstellungen
         </NavLink>
         {SETTINGS_GROUPS.map((g) => (
           <Fragment key={g.id}>

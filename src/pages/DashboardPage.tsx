@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Link } from 'react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CameraSelect } from '../components/CameraSelect';
 import { DashStatusBar } from '../components/DashStatusBar';
@@ -12,7 +13,6 @@ import { VisitorDialog } from '../components/VisitorDialog';
 import { returnCard } from '../db/cards';
 import { listGroups } from '../db/groups';
 import { saveSettings, type AppSettings, type DashCameraSize, type ScanInput } from '../db/settings';
-import { formatTime } from '../domain/dates';
 import {
   DEFAULT_EVENT_FILTER,
   filterEvents,
@@ -24,9 +24,8 @@ import {
   type StatusSortKey,
   undoableSeqs,
 } from '../domain/overview';
-import { reasonText } from '../domain/texts';
 import type { Direction, Group } from '../domain/types';
-import { useDashboardStats, useRecentScans } from '../hooks/useDashboardData';
+import { useDashboardStats } from '../hooks/useDashboardData';
 import { useRangeEvents, useStatusRows } from '../hooks/useOverviewData';
 import { useScannerInput, type KeyboardScan } from '../hooks/useKeyboardScanner';
 import { useKeepScreenOn, useScanProcessor } from '../hooks/useScanProcessor';
@@ -109,7 +108,6 @@ export function DashboardPage() {
           </p>
         )}
         <ResultPanel result={result} highlightSec={settings.resultDisplaySec} onUndo={(seq) => void onUndo(seq)} undoError={undoError} />
-        <RecentScans />
         {settings.testMode && admin && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
       </aside>
       <DashList
@@ -135,7 +133,7 @@ export function DashboardPage() {
 const CAMERA_SIZES: { value: DashCameraSize; label: string }[] = [
   { value: 'small', label: 'Klein' },
   { value: 'large', label: 'Groß' },
-  { value: 'hidden', label: 'Aus' },
+  { value: 'hidden', label: 'Vorschau aus' },
 ];
 
 interface DashCameraProps {
@@ -207,48 +205,13 @@ function DashScanner({ reachable }: { reachable: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Letzte Scans
-// ---------------------------------------------------------------------------
-
-function RecentScans() {
-  const events = useRecentScans(5);
-  if (events.length === 0) return null;
-  return (
-    <section className="dash-recent" aria-label="Letzte Scans">
-      <h2>Letzte Scans</h2>
-      <ul>
-        {events.map((e) => {
-          const denied = e.outcome === 'denied';
-          const correction = e.reason === 'CORRECTION';
-          const label = denied ? '✕' : correction ? '↺' : e.direction === 'out' ? '← Aus' : '→ Ein';
-          const who = e.holderName ?? (e.cardNumber ? `Karte ${e.cardNumber}` : 'Unbekannter Code');
-          return (
-            <li key={e.seq}>
-              <time>{formatTime(e.timestamp)}</time>
-              <span className={denied ? 'recent-deny' : e.direction === 'out' ? 'recent-out' : 'recent-in'}>{label}</span>
-              <span className="recent-text">
-                {who}
-                {denied && <span className="muted"> – {reasonText(e.reason)}</span>}
-                {correction && <span className="muted"> – Korrektur</span>}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Liste mit Reitern
 // ---------------------------------------------------------------------------
 
+/** Dashboard = laufender Betrieb; ältere Einträge stehen in der Auswertung. */
 const RANGES: { value: RangePreset; label: string }[] = [
   { value: 'today', label: 'Heute' },
   { value: 'yesterday', label: 'Gestern' },
-  { value: '7d', label: 'Letzte 7 Tage' },
-  { value: '30d', label: 'Letzte 30 Tage' },
-  { value: 'all', label: 'Gesamter Zeitraum' },
 ];
 
 interface DashListProps {
@@ -405,7 +368,17 @@ function DashList({ tab, onTab, groups, linkRows, onBook, onUndo, onReturn }: Da
               </select>
             </>
           )}
-          <span className="muted small">Ausführliche Auswertung und CSV-Export unter „Übersicht“.</span>
+          <Link
+            className="dash-more-link"
+            to={`/auswertung?${new URLSearchParams({
+              ansicht: tab === 'presence' ? 'anwesenheit' : 'protokoll',
+              ...(query.trim() ? { suche: query.trim() } : {}),
+              ...(groupId ? { gruppe: groupId } : {}),
+              ...(tab === 'presence' ? {} : { zeitraum: '7d' }),
+            }).toString()}`}
+          >
+            Ältere Einträge und CSV-Export in der Auswertung →
+          </Link>
         </div>
       )}
 

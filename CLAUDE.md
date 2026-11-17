@@ -56,8 +56,12 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
 - **Bediener-PIN** (`loginOperator`): nur Prüfwert (PBKDF2) unter `settings.operatorPin`, entschlüsselt
   nichts – nur möglich, solange der Datenschlüssel geladen ist. `DEVICE_SECRET_KEYS` (Tresor + PIN)
   bleiben bei „Alle Daten löschen“ und Backup-Wiederherstellung erhalten.
-- Routen: `RequireRole allow="staff"` (Admin oder Bediener) für `/dashboard`, `/uebersicht`
-  (Liste in `lib/roles.ts`), alles andere `allow="admin"`. Frei: `/`, `/anmelden`, `/einrichtung`, `/praesentation`.
+- Routen: `RequireRole allow="staff"` (Admin oder Bediener) für `/dashboard`, `/auswertung`
+  (früher `/uebersicht`, leitet weiter), `/notfallliste` (Liste in `lib/roles.ts`), alles andere
+  `allow="admin"`. Frei: `/`, `/anmelden`, `/einrichtung`, `/praesentation`. Startseite `/` =
+  `pages/StartPage.tsx`: im **Kiosk-Modus** (`settings.kioskMode`, je Gerät, Standard aus) der
+  Vollbild-Scanner (`ScannerPage`, scannt ohne Anmeldung, Menüpunkt „Kiosk“), sonst Dashboard bzw.
+  Anmeldung/Einrichtung. Menü: Dashboard | Auswertung | Karten | Einstellungen.
 - **Bestätigung je Gruppe** (`Group.requireConfirmation`): `decideAccess` liefert `pending`
   (Dashboard, `confirmation: 'operator'`) bzw. `denied/CONFIRMATION_REQUIRED` (Kiosk). Wartende Scans
   werden nicht gebucht; `resolvePendingScan` (accept prüft erneut / reject / timeout) schreibt das
@@ -85,7 +89,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   weiter und meldet seinen Fokus). Einstellungen `scanInput` (`both`/`camera`/`scanner`) und
   `scannerSpeed` je Gerät (nicht im Backup); Quelle `scanner`. Kamera startet erst nach Laden der
   Einstellungen (`useLoadedSettings`), der Scanner sofort. E2E simuliert per `keyboard.type(delay 4)`.
-- Übersicht/Dashboard: reine Filter-/Sortierfunktionen in `domain/overview.ts`, Daten über
+- Auswertung (`pages/OverviewPage.tsx`, Reiter Anwesenheit/Protokoll, Adressparameter `ansicht`,
+  `suche`, `gruppe`, `zeitraum`) und Dashboard (Zeitraum nur Heute/Gestern, Link „Ältere Einträge“
+  in die Auswertung): reine Filter-/Sortierfunktionen in `domain/overview.ts`, Daten über
   `hooks/useOverviewData.ts` (Zeitraum per Index, Rest im Speicher). Dashboard-Kennzahlen ohne
   Entschlüsseln in `hooks/useDashboardData.ts`. Dashboard-Layout: Statusleiste, linke Spalte
   sticky, rechts **eine** Liste mit Reitern – keine Scrollbereiche in Kacheln (E2E prüft das).
@@ -199,6 +205,10 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
     `resizeElement`/`snapElement`, Reiter „Texte“), Karten-Bereich mit Reitern (`components/CardsNav`),
     Druck-Probeseite (`PrintTestSheets`), „gedruckt“-Markierung (`CardRecord.printedAt`, Rückfrage nach
     dem Drucken, neuer QR-Code setzt zurück), Einstellungen in Gruppen (`SETTINGS_GROUPS`) (Version 0.14).
+15. ✅ Aufräumen: Kiosk-Scanner nur noch als abschaltbarer Kiosk-Modus (Startseite sonst Dashboard bzw.
+    Anmeldung), „Übersicht“ → „Auswertung“ (Reiter Protokoll) neben dem Dashboard, Dashboard nur
+    Heute/Gestern, „Letzte Scans“ und doppelter Druckknopf entfernt (Druck mit Gruppenfilter), Modus/Kamera
+    nur im Dashboard, „Vorschau aus“, „Allgemein & Gerät“ zusammengelegt, alter Code/CSS entfernt (Version 0.15).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

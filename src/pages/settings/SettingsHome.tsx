@@ -8,7 +8,6 @@ import { useSettings } from '../../hooks/useSettings';
 import { SETTINGS_GROUPS, sectionsOf } from './SettingsShell';
 
 const THEME_LABEL = { auto: 'automatisch', light: 'hell', dark: 'dunkel' } as const;
-const MODE_LABEL = { auto: 'automatisch', in: 'nur Eingang', out: 'nur Ausgang' } as const;
 
 /** Übersicht der Einstellungen: ein Feld je Bereich mit dem aktuellen Stand. */
 export function SettingsHome() {
@@ -27,14 +26,13 @@ export function SettingsHome() {
   );
 
   const status: Record<string, string> = {
-    '/einstellungen/allgemein': `Darstellung ${THEME_LABEL[settings.theme]} · ${settings.orgName}`,
-    '/einstellungen/scanner': `Modus ${MODE_LABEL[settings.scanMode]} · Doppelscan-Schutz ${settings.cooldownSec} s${settings.testMode ? ' · Testmodus an' : ''}`,
+    '/einstellungen/allgemein': `Darstellung ${THEME_LABEL[settings.theme]} · ${settings.orgName} · Version ${__APP_VERSION__}`,
+    '/einstellungen/scanner': `Doppelscan-Schutz ${settings.cooldownSec} s${settings.kioskMode ? ' · Kiosk-Modus an' : ''}${settings.testMode ? ' · Testmodus an' : ''}`,
     '/einstellungen/gruppen': info ? `${info.groups} Gruppe(n)` : '',
     '/einstellungen/sicherheit': `Admin-Abmeldung ${settings.autoLogoutMin ? `nach ${settings.autoLogoutMin} Min.` : 'nie'} · Löschfrist ${settings.retentionDays ? `${settings.retentionDays} Tage` : 'keine'}`,
     '/einstellungen/bediener': info ? (info.pin ? 'Bediener-PIN eingerichtet' : 'keine Bediener-PIN') : '',
     '/einstellungen/datensicherung': `Letztes Backup: ${settings.lastBackupAt ? formatDateTime(settings.lastBackupAt) : 'noch nie'}${info?.autoBackup ? ' · automatisch an' : ''}`,
     '/einstellungen/daten': info ? `${info.cards} Karten, ${info.events} Protokolleinträge` : '',
-    '/einstellungen/geraet': `Version ${__APP_VERSION__}`,
     '/einstellungen/karten': info ? `${info.cardLayouts} eigene(s) Layout(s)` : '',
     '/einstellungen/praesentation': info ? `${info.layouts} eigene(s) Layout(s)` : '',
   };

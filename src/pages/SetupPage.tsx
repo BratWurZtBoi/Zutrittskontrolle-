@@ -43,7 +43,7 @@ export function SetupPage() {
       <form className="card form auth-card" onSubmit={(e) => void onSubmit(e)}>
         <h1>Admin-Passwort einrichten</h1>
         <ul className="info-list">
-          <li>Das Passwort schützt die Verwaltung. Der Scanner bleibt ohne Passwort nutzbar.</li>
+          <li>Das Passwort schützt die Verwaltung und die Personendaten. Für den Empfang kann zusätzlich eine Bediener-PIN eingerichtet werden.</li>
           <li>Namen, Fotos und Notizen werden damit verschlüsselt auf diesem Gerät gespeichert.</li>
           <li>Nach jedem Start der App muss es einmal eingegeben werden, damit der Scanner Namen und Fotos zeigt.</li>
         </ul>

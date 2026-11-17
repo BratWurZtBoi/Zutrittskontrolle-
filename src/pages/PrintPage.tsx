@@ -6,6 +6,7 @@ import { CardsNav } from '../components/CardsNav';
 import { PrintTestSheets } from '../components/PrintTestSheets';
 import { listCardLayouts } from '../db/cardLayouts';
 import { listCards, markCardsPrinted } from '../db/cards';
+import { listGroups } from '../db/groups';
 import { saveSettings, type AppSettings } from '../db/settings';
 import { STANDARD_CARD_LAYOUT, cardSize, pickCardLayout, type CardData, type CardLayout } from '../domain/cardLayout';
 import { layoutCardPrinter, layoutSheets, type BackMode, type PlacedCard, type SheetPage } from '../domain/printLayout';
@@ -48,12 +49,16 @@ export function PrintPage() {
   const settings = useSettings();
   const cards = useSecureLiveQuery(listCards, []);
   const layouts = useLiveQuery(listCardLayouts, [], [STANDARD_CARD_LAYOUT]);
+  const groups = useLiveQuery(listGroups, [], []);
   const [onlyNew, setOnlyNew] = useState(params.get('nur') === 'neu');
+  const [groupFilter, setGroupFilter] = useState(params.get('gruppe') ?? '');
   const [probe, setProbe] = useState(false);
   const [askPrinted, setAskPrinted] = useState<string[] | null>(null);
   const [printedMsg, setPrintedMsg] = useState<string | null>(null);
 
-  const chosen = useMemo(() => (cards ? (ids ? cards.filter(({ card }) => ids.includes(card.id)) : cards) : []), [cards, ids]);
+  const base = useMemo(() => (cards ? (ids ? cards.filter(({ card }) => ids.includes(card.id)) : cards) : []), [cards, ids]);
+  const groupIds = new Set(base.map(({ card }) => card.groupId));
+  const chosen = useMemo(() => (groupFilter ? base.filter(({ card }) => card.groupId === groupFilter) : base), [base, groupFilter]);
   const notPrinted = chosen.filter(({ card }) => !card.printedAt && !card.blocked).length;
   const selected = useMemo(() => (onlyNew ? chosen.filter(({ card }) => !card.printedAt) : chosen), [chosen, onlyNew]);
   const entries = useMemo(
@@ -169,6 +174,21 @@ export function PrintPage() {
           <label className="checkbox-inline">
             <input type="checkbox" checked={settings.cardPrintCutMarks} onChange={(e) => save({ cardPrintCutMarks: e.target.checked })} />
             Schnittmarken
+          </label>
+        )}
+        {groupIds.size > 1 && (
+          <label className="inline-select">
+            Gruppe
+            <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+              <option value="">Alle Gruppen</option>
+              {groups
+                .filter((g) => groupIds.has(g.id))
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+            </select>
           </label>
         )}
         {(onlyNew || (notPrinted > 0 && notPrinted < chosen.length)) && (

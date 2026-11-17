@@ -55,6 +55,8 @@ export interface AppSettings {
   cardPrintFlip: FlipEdge;
   /** A4-Bogen: Schnittmarken drucken. */
   cardPrintCutMarks: boolean;
+  /** Kiosk-Modus: Vollbild-Scanner als Startseite für ein Gerät am Eingang ohne Bediener (je Gerät). */
+  kioskMode: boolean;
   /** Scannen mit Kamera, USB-Scanner oder beidem (je Gerät). */
   scanInput: ScanInput;
   /** Tempo des USB-Scanners: normal oder langsam (Bluetooth/gedrosselt). */
@@ -83,6 +85,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cardPrintBack: 'none',
   cardPrintFlip: 'long',
   cardPrintCutMarks: true,
+  kioskMode: false,
   scanInput: 'both',
   scannerSpeed: 'fast',
 };

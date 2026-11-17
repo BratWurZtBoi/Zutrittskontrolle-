@@ -266,13 +266,6 @@ export const CARD_PLACEHOLDERS: { key: string; label: string }[] = [
   { key: '{gueltig_bis}', label: 'gültig bis' },
 ];
 
-export const CARD_ELEMENT_TYPES: { type: CardElementType; label: string }[] = [
-  { type: 'text', label: 'Textfeld' },
-  { type: 'qr', label: 'QR-Code' },
-  { type: 'photo', label: 'Foto' },
-  { type: 'logo', label: 'Logo' },
-  { type: 'band', label: 'Farbfläche' },
-];
 
 // ---------------------------------------------------------------------------
 // Bearbeiten

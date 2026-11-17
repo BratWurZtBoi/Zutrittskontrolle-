@@ -96,7 +96,6 @@ export function CardListPage() {
     }
   };
 
-  const printIds = filtered.map(({ card }) => card.id).join(',');
 
   return (
     <div className="page">
@@ -108,11 +107,6 @@ export function CardListPage() {
           <Link className="btn btn-primary" to={`/karten/neu${groupFilter ? `?gruppe=${groupFilter}` : ''}`}>
             + Karten erstellen
           </Link>
-          {view === 'cards' && filtered.length > 0 && !selecting && (
-            <Link className="btn" to={`/druck?ids=${printIds}`}>
-              Drucken ({filtered.length})
-            </Link>
-          )}
           {view === 'cards' && cards.length > 0 && (
             <button type="button" className={selecting ? 'btn btn-primary' : 'btn'} onClick={() => (selecting ? endSelection() : setSelecting(true))}>
               {selecting ? 'Auswahl beenden' : 'Auswählen'}
