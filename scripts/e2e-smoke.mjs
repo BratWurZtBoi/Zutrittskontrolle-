@@ -830,23 +830,35 @@ try {
         }
       };
     }, ms);
+  // Notfall-Knopf genau einmal je Seite (nur oben im Menü)
+  const emergencyLinks = () => page.locator('a[href*="notfallliste"]').count();
+  for (const path of ['dashboard', 'auswertung', 'karten', 'einstellungen/allgemein']) {
+    await page.goto(`${URL}#/${path}`);
+    await page.locator('.app-nav .nav-emergency').waitFor();
+    check((await emergencyLinks()) === 1, `Notfall-Knopf genau einmal auf #/${path}`);
+  }
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-status').waitFor();
   await stubPrint(0);
-  const emergencyButton = page.locator('.dash-status .btn-emergency');
-  check((await emergencyButton.evaluate((el) => getComputedStyle(el).backgroundColor)) === 'rgb(220, 38, 38)', 'Knopf „Notfallliste“ ist rot');
+  const emergencyButton = page.locator('.app-nav .nav-emergency');
+  check((await emergencyButton.evaluate((el) => getComputedStyle(el).backgroundColor)) === 'rgb(220, 38, 38)', 'Notfall-Knopf ist rot');
   await emergencyButton.click();
   await page.getByRole('heading', { name: /Notfall- \/ Evakuierungsliste/ }).waitFor();
   await page.waitForFunction(() => window.__printed === 1);
-  check(true, 'Roter Knopf öffnet sofort den Druckdialog');
+  check(true, 'Notfall-Knopf öffnet sofort den Druckdialog');
   check(page.url().endsWith('#/notfallliste'), 'Adresse ohne „drucken“ – Zurück/Neuladen druckt nicht noch einmal');
+  check((await emergencyLinks()) === 1, 'Auch auf der Notfallliste nur ein Notfall-Knopf (im Menü markiert)');
   const emergencyRows = await page.locator('.emergency-table tbody tr').count();
   check(emergencyRows === presentBefore, `Notfallliste: alle ${emergencyRows} Anwesenden`);
   await page.screenshot({ path: `${OUT}/26-notfallliste.png`, fullPage: true });
   await page.locator('.emergency-page').getByRole('button', { name: 'Zurück' }).click();
   await page.locator('.dashboard').waitFor();
+  await page.goto(`${URL}#/auswertung`);
+  await page.getByRole('heading', { name: 'Auswertung' }).waitFor();
   await stubPrint(600);
-  await page.locator('.app-nav .nav-emergency').click();
-  await page.waitForFunction(() => window.__printed === 1 && location.hash === '#/dashboard');
-  check(true, '„Notfall“ im Menü: drucken, nach dem Schließen des Dialogs zurück zum Dashboard');
+  await emergencyButton.click();
+  await page.waitForFunction(() => window.__printed === 1 && location.hash.startsWith('#/auswertung'));
+  check(true, 'Notfall aus der Auswertung: drucken, nach dem Schließen des Dialogs zurück zur Auswertung');
 
   await page.goto(`${URL}#/einstellungen/datensicherung`);
   await page.getByRole('heading', { name: 'Automatische Sicherung' }).waitFor();

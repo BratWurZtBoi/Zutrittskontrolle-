@@ -24,8 +24,7 @@ export function EmergencyPrintSettings({ settings }: { settings: AppSettings }) 
     <section className="card form">
       <h2>Notfallliste</h2>
       <p className="muted">
-        Der rote Knopf <strong>„⚠ Notfallliste“</strong> im Dashboard bzw. <strong>„⚠ Notfall“</strong> oben im Menü druckt sofort die
-        Liste aller Anwesenden.
+        Der rote Knopf <strong>„⚠ Notfall“</strong> im Menü (auf jeder Seite) druckt sofort die Liste aller Anwesenden.
         {!desktop && ' Im Browser öffnet sich dafür direkt der Druckdialog – nur noch „Drucken“ bestätigen.'}
       </p>
       <label className="checkbox">

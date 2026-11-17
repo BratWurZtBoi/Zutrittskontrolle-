@@ -7,9 +7,7 @@ import { daysAgoLabel, formatDateTime } from '../domain/dates';
 import { countPerGroup, splitTopGroups } from '../domain/overview';
 import type { Group, ScanMode } from '../domain/types';
 import { usePresentationConnected, type DashboardStats } from '../hooks/useDashboardData';
-import { EMERGENCY_PRINT_PATH, type EmergencyNavState } from '../lib/emergency';
 import { openPresentationWindow, type PresentationOpenResult } from '../lib/presentation';
-import { AlertIcon } from './Icons';
 
 const MODES: { value: ScanMode; label: string }[] = [
   { value: 'auto', label: 'Automatisch' },
@@ -38,7 +36,8 @@ interface Props {
 const MAX_GROUPS = 3;
 
 /**
- * Kompakte Statusleiste: Modus, Kennzahlen, Präsentation, Notfallliste, Backup.
+ * Kompakte Statusleiste: Modus, Kennzahlen, Präsentation, Backup. Die Notfallliste steht nur
+ * oben im Menü (roter Knopf „Notfall“ – auf jeder Seite genau einmal).
  * Starr: jedes Feld hat einen festen Platz und eine feste Größe (je Bildschirmbreite) –
  * nichts kommt hinzu, verschwindet oder bricht um, wenn sich Zahlen oder Zustände ändern.
  */
@@ -124,14 +123,6 @@ export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisit
           </button>
         )}
         <BackupState lastBackupAt={settings.lastBackupAt} error={autoBackupError} />
-        <Link
-          to={EMERGENCY_PRINT_PATH}
-          state={{ from: '/dashboard' } satisfies EmergencyNavState}
-          className="btn btn-small btn-emergency ds-emergency"
-          title="Alle Anwesenden sofort drucken (Evakuierung)"
-        >
-          <AlertIcon /> Notfallliste
-        </Link>
       </div>
 
       {hint && (

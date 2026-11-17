@@ -172,7 +172,7 @@ try {
   await page.getByRole('heading', { name: 'Notfallliste' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(root, '.e2e', 'desktop-notfall.png') });
   await page.evaluate(() => (location.hash = '#/dashboard'));
-  await page.locator('.dash-status .btn-emergency').click();
+  await page.locator('.app-nav .nav-emergency').click();
   await page.getByText('Notfallliste an den Standarddrucker gesendet (2 Ausdrucke).').waitFor({ timeout: 10000 });
   const job = await app.evaluate(() => globalThis.zkLastPrint);
   check(job?.silent === true && job.copies === 2 && !job.deviceName, `Ohne Dialog auf dem Standarddrucker gedruckt (${JSON.stringify(job)})`);

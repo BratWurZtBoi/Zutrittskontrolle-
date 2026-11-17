@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useSettings } from '../hooks/useSettings';
 import { requestExit } from '../security/exit';
 import { useSecurity } from '../security/useSecurity';
@@ -42,7 +42,8 @@ export function Layout() {
                 <span>{label}</span>
               </NavLink>
             ))}
-            <Link
+            {/* Einziger Notfall-Knopf (auf jeder Seite genau einmal): Notfallliste sofort drucken */}
+            <NavLink
               to={EMERGENCY_PRINT_PATH}
               state={{ from: `${location.pathname}${location.search}` } satisfies EmergencyNavState}
               className="nav-link nav-emergency"
@@ -50,7 +51,7 @@ export function Layout() {
             >
               <AlertIcon />
               <span>Notfall</span>
-            </Link>
+            </NavLink>
             <button
               type="button"
               aria-label="Abmelden"

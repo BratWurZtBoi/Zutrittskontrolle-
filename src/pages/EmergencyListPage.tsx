@@ -45,7 +45,7 @@ type PrintStatus = { kind: 'info' | 'ok' | 'error'; text: string };
  * Notfall- bzw. Evakuierungsliste: alle Anwesenden auf einen Blick, zum Ausdrucken
  * und Abhaken am Sammelplatz. Funktioniert offline.
  *
- * Mit `?drucken=1` (roter Knopf „Notfallliste“/„Notfall“) wird sofort gedruckt: im Browser
+ * Mit `?drucken=1` (roter Knopf „Notfall“ im Menü) wird sofort gedruckt: im Browser
  * über den Druckdialog, im Windows-/Linux-Programm auf Wunsch ohne Dialog. Danach geht es zurück.
  */
 export function EmergencyListPage() {

@@ -46,7 +46,7 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 - **Dashboard** (für den Windows-Rechner am Empfang, auch Tablet quer):
   - **Statusleiste** oben: Scan-Modus, Anwesende (die drei größten Gruppen, der Rest als
     „+n weitere“), Buchungen und Abweisungen von heute (antippen öffnet die passende Liste),
-    Präsentation öffnen bzw. „Präsentation läuft“, Notfallliste, Backup-Stand. Die Leiste ist
+    Präsentation öffnen bzw. „Präsentation läuft“, Backup-Stand. Die Leiste ist
     **starr**: Jedes Feld hat seinen festen Platz und ändert seine Größe nicht, egal wie viele
     Gruppen anwesend sind (schmales Feld: nur Farbpunkt + Anzahl).
   - Über der Liste **Gruppenknöpfe mit Anzahl** (nur Gruppen mit Treffern, immer eine Zeile –
@@ -81,9 +81,9 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   auf Wunsch gleich einbuchen. Vergebene Karten werden nie überschrieben.
 - **Zurückgeben** (bei Besucherkarten in der Anwesenheitsliste): ausbuchen und Personendaten
   entfernen – die Karte ist wieder frei.
-- **⚠ Notfallliste** (roter Knopf in der Statusleiste, außerdem **⚠ Notfall** oben im Menü auf
-  jeder Seite): alle Anwesenden nach Gruppen mit Kästchen zum Abhaken am Sammelplatz. Ein Druck auf
-  den Knopf **druckt sofort**:
+- **⚠ Notfall** (roter Knopf oben im Menü, auf jeder Seite genau einmal – auf dem Handy in der
+  unteren Leiste): Notfallliste mit allen Anwesenden nach Gruppen und Kästchen zum Abhaken am
+  Sammelplatz. Ein Druck auf den Knopf **druckt sofort**:
   - im Browser öffnet sich direkt der Druckdialog, danach geht es zurück;
   - im Programm für Windows/Linux auf Wunsch **ganz ohne Druckdialog** auf einen festen Drucker,
     auch mehrere Ausdrucke (*Einstellungen → Allgemein & Gerät → Notfallliste*, je Gerät).
