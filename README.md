@@ -81,8 +81,13 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   auf Wunsch gleich einbuchen. Vergebene Karten werden nie überschrieben.
 - **Zurückgeben** (bei Besucherkarten in der Anwesenheitsliste): ausbuchen und Personendaten
   entfernen – die Karte ist wieder frei.
-- **Notfallliste** (Statusleiste): alle Anwesenden nach Gruppen mit Kästchen zum Abhaken am
-  Sammelplatz, zum Ausdrucken (optional mit Fotos). Auch für Bediener.
+- **⚠ Notfallliste** (roter Knopf in der Statusleiste, außerdem **⚠ Notfall** oben im Menü auf
+  jeder Seite): alle Anwesenden nach Gruppen mit Kästchen zum Abhaken am Sammelplatz. Ein Druck auf
+  den Knopf **druckt sofort**:
+  - im Browser öffnet sich direkt der Druckdialog, danach geht es zurück;
+  - im Programm für Windows/Linux auf Wunsch **ganz ohne Druckdialog** auf einen festen Drucker,
+    auch mehrere Ausdrucke (*Einstellungen → Allgemein & Gerät → Notfallliste*, je Gerät).
+  Optional mit Fotos. Auch für Bediener.
 
 ### Eintritt bestätigen (je Gruppe)
 

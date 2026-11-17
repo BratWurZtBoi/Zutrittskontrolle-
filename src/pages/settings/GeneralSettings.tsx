@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { saveSettings, type AppSettings } from '../../db/settings';
 import { useSettings } from '../../hooks/useSettings';
 import { DeviceSections } from './DeviceSettings';
+import { EmergencyPrintSettings } from './EmergencyPrintSettings';
 import { SettingsShell } from './SettingsShell';
 
 export function GeneralSettings() {
@@ -30,6 +31,7 @@ export function GeneralSettings() {
           />
         </label>
       </section>
+      <EmergencyPrintSettings settings={settings} />
       <DeviceSections />
     </SettingsShell>
   );

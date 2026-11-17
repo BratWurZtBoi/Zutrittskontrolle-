@@ -271,6 +271,23 @@ function registerIpc() {
 
   handle('zk:get-autostart', () => getAutostart());
   handle('zk:set-autostart', (on) => setAutostart(Boolean(on)));
+
+  // Drucken ohne Dialog (Notfallliste): druckt die Seite, die gerade angezeigt wird
+  ipcMain.handle('zk:printers', async (event) => {
+    fromApp(event);
+    const printers = await event.sender.getPrintersAsync();
+    return printers.map((p) => ({ name: p.name, displayName: p.displayName || p.name }));
+  });
+  ipcMain.handle('zk:print-direct', (event, options) => {
+    fromApp(event);
+    const printer = typeof options?.printer === 'string' ? options.printer : '';
+    const copies = Math.min(5, Math.max(1, Math.round(Number(options?.copies) || 1)));
+    return new Promise((resolve) => {
+      event.sender.print({ silent: true, printBackground: true, copies, ...(printer ? { deviceName: printer } : {}) }, (success, reason) =>
+        resolve(success ? { ok: true } : { ok: false, error: reason || 'Unbekannter Fehler' }),
+      );
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------

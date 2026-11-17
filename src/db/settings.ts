@@ -61,6 +61,14 @@ export interface AppSettings {
   scanInput: ScanInput;
   /** Tempo des USB-Scanners: normal oder langsam (Bluetooth/gedrosselt). */
   scannerSpeed: ScannerSpeed;
+  /** Notfallliste mit Fotos drucken (je Gerät). */
+  emergencyPhotos: boolean;
+  /** Windows-/Linux-Programm: Notfallliste ohne Druckdialog sofort drucken (je Gerät). */
+  emergencyDirectPrint: boolean;
+  /** Drucker dafür ('' = Standarddrucker des Systems). */
+  emergencyPrinter: string;
+  /** Anzahl Ausdrucke (z. B. einer je Sammelplatz). */
+  emergencyCopies: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -88,6 +96,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   kioskMode: false,
   scanInput: 'both',
   scannerSpeed: 'fast',
+  emergencyPhotos: false,
+  emergencyDirectPrint: false,
+  emergencyPrinter: '',
+  emergencyCopies: 1,
 };
 
 const KEY = 'app';

@@ -1235,8 +1235,12 @@ table.data-table {
   container: present / inline-size;
 }
 /* Schmales Anwesend-Feld: nur Farbpunkt + Anzahl je Gruppe (Namen im Tooltip bzw. in der Liste) */
-@container present (max-width: 440px) {
-  .kpi-group-name,
+@container present (max-width: 340px) {
+  .kpi-group-name {
+    display: none;
+  }
+}
+@container present (max-width: 560px) {
   .kpi-more-word {
     display: none;
   }
@@ -1303,7 +1307,8 @@ table.data-table {
   .ds-actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: 12rem auto 12rem;
+    /* Präsentation und Backup mit fester Breite (wechselnder Text), Notfallliste fest beschriftet */
+    grid-template-columns: 12rem 12rem auto;
     justify-content: end;
     align-items: center;
     gap: 0.5rem;
@@ -1315,7 +1320,7 @@ table.data-table {
     grid-template-areas: 'mode present today denied visitor actions';
   }
   .ds-actions {
-    grid-template-columns: 10.5rem auto 10.5rem;
+    grid-template-columns: 10.5rem 10.5rem auto;
   }
 }
 .dash-status-hint {
@@ -1406,6 +1411,47 @@ table.data-table {
 }
 .kpi-denied .kpi-value,
 .kpi-denied .kpi-label {
+  color: var(--danger-text);
+}
+/* Notfall: roter Knopf (Statusleiste, Navigation) – druckt die Notfallliste sofort */
+.btn-emergency {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 700;
+}
+.btn-emergency:hover,
+.nav-emergency:hover {
+  filter: brightness(1.12);
+}
+.btn-emergency svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.nav-link.nav-emergency {
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+}
+.emergency-status {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.emergency-status-info {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.emergency-status-ok {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+.emergency-status-error {
+  background: var(--danger-bg);
   color: var(--danger-text);
 }
 .presentation-state {

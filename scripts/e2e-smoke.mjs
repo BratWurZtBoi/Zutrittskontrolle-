@@ -116,7 +116,7 @@ try {
   const raw = JSON.stringify(cards) + JSON.stringify(await readStore(page, 'events'));
   check(!/Mustermann|Musterfrau|Platzhalter/.test(raw), 'Datenbank enthält keine Namen im Klartext');
   const navLabels = (await page.locator('.app-nav .nav-link').allTextContents()).map((t) => t.trim());
-  check(navLabels.join(' | ') === 'Dashboard | Auswertung | Karten | Einstellungen | Abmelden', `Menü ohne Kiosk-Scanner, Auswertung neben dem Dashboard (${navLabels.join(' | ')})`);
+  check(navLabels.join(' | ') === 'Dashboard | Auswertung | Karten | Einstellungen | Notfall | Abmelden', `Menü ohne Kiosk-Scanner, Auswertung neben dem Dashboard, roter Notfall-Knopf (${navLabels.join(' | ')})`);
   await page.goto(`${URL}#/`);
   await page.locator('.dashboard').waitFor();
   check(true, 'Startseite ohne Kiosk-Modus: Dashboard');
@@ -817,11 +817,36 @@ try {
   await veraRow.waitFor({ state: 'detached' });
   check(true, 'Besucherkarte zurückgegeben (ausgebucht, Personendaten entfernt)');
 
-  await page.getByRole('link', { name: 'Notfallliste' }).click();
+  // Roter Knopf: Notfallliste sofort drucken. Druckdialog simuliert – ms = wie lange er offen ist
+  // (am Computer blockiert print(), bis der Dialog geschlossen wird; auf dem Handy nicht).
+  const stubPrint = (ms) =>
+    page.evaluate((ms) => {
+      window.__printed = 0;
+      window.print = () => {
+        window.__printed++;
+        const t = performance.now();
+        while (performance.now() - t < ms) {
+          /* Dialog offen */
+        }
+      };
+    }, ms);
+  await stubPrint(0);
+  const emergencyButton = page.locator('.dash-status .btn-emergency');
+  check((await emergencyButton.evaluate((el) => getComputedStyle(el).backgroundColor)) === 'rgb(220, 38, 38)', 'Knopf „Notfallliste“ ist rot');
+  await emergencyButton.click();
   await page.getByRole('heading', { name: /Notfall- \/ Evakuierungsliste/ }).waitFor();
+  await page.waitForFunction(() => window.__printed === 1);
+  check(true, 'Roter Knopf öffnet sofort den Druckdialog');
+  check(page.url().endsWith('#/notfallliste'), 'Adresse ohne „drucken“ – Zurück/Neuladen druckt nicht noch einmal');
   const emergencyRows = await page.locator('.emergency-table tbody tr').count();
   check(emergencyRows === presentBefore, `Notfallliste: alle ${emergencyRows} Anwesenden`);
   await page.screenshot({ path: `${OUT}/26-notfallliste.png`, fullPage: true });
+  await page.locator('.emergency-page').getByRole('button', { name: 'Zurück' }).click();
+  await page.locator('.dashboard').waitFor();
+  await stubPrint(600);
+  await page.locator('.app-nav .nav-emergency').click();
+  await page.waitForFunction(() => window.__printed === 1 && location.hash === '#/dashboard');
+  check(true, '„Notfall“ im Menü: drucken, nach dem Schließen des Dialogs zurück zum Dashboard');
 
   await page.goto(`${URL}#/einstellungen/datensicherung`);
   await page.getByRole('heading', { name: 'Automatische Sicherung' }).waitFor();

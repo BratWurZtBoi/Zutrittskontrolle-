@@ -7,7 +7,9 @@ import { daysAgoLabel, formatDateTime } from '../domain/dates';
 import { countPerGroup, splitTopGroups } from '../domain/overview';
 import type { Group, ScanMode } from '../domain/types';
 import { usePresentationConnected, type DashboardStats } from '../hooks/useDashboardData';
+import { EMERGENCY_PRINT_PATH, type EmergencyNavState } from '../lib/emergency';
 import { openPresentationWindow, type PresentationOpenResult } from '../lib/presentation';
+import { AlertIcon } from './Icons';
 
 const MODES: { value: ScanMode; label: string }[] = [
   { value: 'auto', label: 'Automatisch' },
@@ -121,10 +123,15 @@ export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisit
             Präsentation öffnen
           </button>
         )}
-        <Link to="/notfallliste" className="btn btn-small ds-emergency" title="Alle Anwesenden zum Ausdrucken (Evakuierung)">
-          Notfallliste
-        </Link>
         <BackupState lastBackupAt={settings.lastBackupAt} error={autoBackupError} />
+        <Link
+          to={EMERGENCY_PRINT_PATH}
+          state={{ from: '/dashboard' } satisfies EmergencyNavState}
+          className="btn btn-small btn-emergency ds-emergency"
+          title="Alle Anwesenden sofort drucken (Evakuierung)"
+        >
+          <AlertIcon /> Notfallliste
+        </Link>
       </div>
 
       {hint && (
