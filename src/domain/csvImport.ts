@@ -10,9 +10,12 @@ import type { CardHolder } from './types';
 export const TEMPLATE_HEADER = [
   'Kartennummer',
   'Gruppe',
+  'Dienstgrad',
   'Vorname',
   'Nachname',
-  'Firma/Abteilung',
+  'Einheit/Abteilung',
+  'Stellung/Posten',
+  'Raum',
   'Notiz',
   'Zutritt erlaubt',
   'Gültig ab',
@@ -23,8 +26,8 @@ export const TEMPLATE_HEADER = [
 export function importTemplateCsv(): string {
   return toCsv([
     TEMPLATE_HEADER,
-    ['', 'Bestandspersonal', 'Max', 'Mustermann', 'Verwaltung', '', 'ja', '', ''],
-    ['', 'Besucher', 'Erika', 'Musterfrau', 'Beispiel GmbH', 'Termin bei Max Mustermann', 'ja', '15.11.2026', '15.11.2026'],
+    ['', 'Bestandspersonal', 'Hptm', 'Max', 'Mustermann', '1./Musterbataillon 1', 'Kompaniechef', '2.14', '', 'ja', '', ''],
+    ['', 'Besucher', '', 'Erika', 'Musterfrau', 'Beispiel GmbH', '', '', 'Termin bei Hptm Mustermann', 'ja', '15.11.2026', '15.11.2026'],
   ]);
 }
 
@@ -89,14 +92,18 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.trim() !== ''));
 }
 
-type Column = 'number' | 'group' | 'firstName' | 'lastName' | 'company' | 'note' | 'access' | 'validFrom' | 'validUntil';
+type Column = 'number' | 'group' | 'rank' | 'firstName' | 'lastName' | 'company' | 'position' | 'room' | 'note' | 'access' | 'validFrom' | 'validUntil';
 
 const ALIASES: Record<Column, string[]> = {
   number: ['kartennummer', 'karte', 'kartennr', 'nummer', 'nr', 'karten-nr'],
   group: ['gruppe', 'kartengruppe'],
+  rank: ['dienstgrad', 'dgr', 'rang'],
   firstName: ['vorname'],
   lastName: ['nachname', 'name', 'familienname'],
-  company: ['firma/abteilung', 'firma', 'abteilung', 'unternehmen', 'funktion'],
+  // „Firma/Abteilung“ = alte Vorlage (bis Version 0.16)
+  company: ['einheit/abteilung', 'einheit', 'firma/abteilung', 'firma', 'abteilung', 'unternehmen', 'dienststelle', 'truppenteil'],
+  position: ['stellung/posten', 'stellung', 'posten', 'dienststellung', 'dienstposten', 'funktion'],
+  room: ['raum', 'zimmer', 'raumnummer', 'büro'],
   note: ['notiz', 'bemerkung', 'hinweis', 'kommentar'],
   access: ['zutritt erlaubt', 'zutritt', 'berechtigt'],
   validFrom: ['gültig ab', 'gueltig ab', 'gültig von', 'von', 'ab'],
@@ -191,9 +198,12 @@ export function parseImport(text: string): ParsedImport {
       cardNumber,
       groupRef,
       holder: {
+        rank: cell(r, 'rank') || undefined,
         firstName,
         lastName,
         company: cell(r, 'company') || undefined,
+        position: cell(r, 'position') || undefined,
+        room: cell(r, 'room') || undefined,
         note: cell(r, 'note') || undefined,
       },
       accessGranted: access ?? true,

@@ -61,6 +61,24 @@ export const STATUS_LABEL: Record<CardStatus, string> = {
   expired: 'Abgelaufen',
 };
 
+const joinWith = (sep: string, parts: (string | undefined)[]) => parts.map((p) => p?.trim()).filter(Boolean).join(sep);
+
+/** „Hptm Max Mustermann“ – mit Dienstgrad (Scan-Ergebnis, Protokoll). */
 export function holderName(holder: CardHolder | undefined): string | undefined {
-  return holder ? `${holder.firstName} ${holder.lastName}`.trim() : undefined;
+  return holder ? joinWith(' ', [holder.rank, holder.firstName, holder.lastName]) : undefined;
+}
+
+/** „Hptm Mustermann, Max“ – für Listen (sortiert wird nach dem Nachnamen). */
+export function holderListName(holder: CardHolder): string {
+  return joinWith(' ', [holder.rank, joinWith(', ', [holder.lastName, holder.firstName])]);
+}
+
+/** Wer ist es? Vor- und Nachname ohne Dienstgrad – eine Beförderung ist kein Personenwechsel. */
+export function personKey(holder: CardHolder | undefined): string | undefined {
+  return holder ? joinWith(' ', [holder.firstName, holder.lastName]).toLowerCase() : undefined;
+}
+
+/** „Einheit · Stellung/Posten“ (leer, wenn beides fehlt). */
+export function holderUnitLine(holder: CardHolder | undefined): string {
+  return holder ? joinWith(' · ', [holder.company, holder.position]) : '';
 }

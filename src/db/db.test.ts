@@ -177,6 +177,16 @@ describe('Scan-Verarbeitung', () => {
     expect((await listRecentEvents())[0]).toMatchObject({ direction: 'out', holderName: 'Felix Gast', source: 'system' });
   });
 
+  it('Beförderung ist kein Personenwechsel; Dienstgrad steht im Protokoll', async () => {
+    const [card] = await createCards({ groupId: staff.id, count: 1 });
+    await updateCard(card!.id, { accessGranted: true, holder: { ...max, rank: 'Hptm', room: ' 2.14 ' } });
+    await processScan(encodeCardPayload(card!.token), { ...opts, now: at(0) });
+    expect((await listRecentEvents())[0]).toMatchObject({ direction: 'in', holderName: 'Hptm Max Mustermann' });
+    const promoted = await updateCard(card!.id, { accessGranted: true, holder: { ...max, rank: 'Maj', room: '2.14' } });
+    expect(promoted.holder).toMatchObject({ rank: 'Maj', room: '2.14' });
+    expect((await listPresentCards()).map((p) => p.card.id)).toEqual([card!.id]); // bleibt anwesend
+  });
+
   it('behält das Protokoll beim Löschen einer Karte', async () => {
     const [card] = await createCards({ groupId: staff.id, count: 1 });
     await updateCard(card!.id, { accessGranted: true, holder: max });

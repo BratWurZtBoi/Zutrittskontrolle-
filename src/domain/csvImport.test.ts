@@ -33,6 +33,9 @@ describe('Spalten und Werte', () => {
     expect(mapColumns(['Karte', 'Gruppe', 'Vorname', 'Name', 'Firma', 'Bemerkung', 'Zutritt', 'von', 'bis'])).toEqual({
       number: 0, group: 1, firstName: 2, lastName: 3, company: 4, note: 5, access: 6, validFrom: 7, validUntil: 8,
     });
+    expect(mapColumns(['Dienstgrad', 'Vorname', 'Nachname', 'Einheit', 'Funktion', 'Zimmer'])).toEqual({
+      rank: 0, firstName: 1, lastName: 2, company: 3, position: 4, room: 5,
+    });
   });
 
   it('liest Datum und ja/nein', () => {
@@ -56,6 +59,12 @@ describe('parseImport', () => {
       [2, 'Bestandspersonal', 'Mustermann', undefined, []],
       [3, 'Besucher', 'Musterfrau', '2026-11-15', []],
     ]);
+    expect(rows[0]!.holder).toMatchObject({ rank: 'Hptm', company: '1./Musterbataillon 1', position: 'Kompaniechef', room: '2.14' });
+  });
+
+  it('liest alte Vorlagen mit „Firma/Abteilung“ weiter', () => {
+    const { rows } = parseImport('Vorname;Nachname;Firma/Abteilung\nMax;Mustermann;Verwaltung');
+    expect(rows[0]!.holder).toMatchObject({ firstName: 'Max', company: 'Verwaltung' });
   });
 
   it('meldet Fehler je Zeile', () => {

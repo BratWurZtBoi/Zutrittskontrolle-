@@ -10,7 +10,9 @@ import { MAX_CARDS, deleteCards, listCards, returnCards, setCardsBlocked } from 
 import { db } from '../db/db';
 import { listGroups } from '../db/groups';
 import { seedTestCards } from '../db/seed';
-import { holderName } from '../domain/texts';
+import { holderName, holderUnitLine } from '../domain/texts';
+import { holderSearchText, matchesHolderFields, type HolderFieldFilter } from '../domain/overview';
+import { HolderFieldSelects } from '../components/HolderFieldSelects';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 
 type Assignment = 'all' | 'assigned' | 'free' | 'lost' | 'unprinted';
@@ -30,6 +32,7 @@ export function CardListPage() {
   const view = params.get('ansicht') === 'nicht-zugeordnet' ? 'unassigned' : 'cards';
   const [assignment, setAssignment] = useState<Assignment>('all');
   const [query, setQuery] = useState('');
+  const [fields, setFields] = useState<HolderFieldFilter>({});
   const [busy, setBusy] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -43,11 +46,11 @@ export function CardListPage() {
       if (assignment === 'free' && (card.hasHolder || card.lostAt)) return false;
       if (assignment === 'lost' && !card.lostAt) return false;
       if (assignment === 'unprinted' && card.printedAt) return false;
+      if (!matchesHolderFields(card.holder, fields)) return false;
       if (!q) return true;
-      const h = card.holder;
-      return `${card.number} ${h?.firstName ?? ''} ${h?.lastName ?? ''} ${h?.company ?? ''}`.toLowerCase().includes(q);
+      return `${card.number} ${holderSearchText(card.holder)}`.toLowerCase().includes(q);
     });
-  }, [cards, groupFilter, assignment, query]);
+  }, [cards, groupFilter, assignment, query, fields]);
 
   if (!cards) return null;
 
@@ -141,7 +144,7 @@ export function CardListPage() {
           <div className="filter-bar">
             <input
               type="search"
-              placeholder="Suchen: Nummer, Name, Firma …"
+              placeholder="Suchen: Nummer, Name, Dienstgrad, Einheit, Raum …"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Karten suchen"
@@ -165,6 +168,7 @@ export function CardListPage() {
               <option value="lost">Nur verlorene Karten</option>
               <option value="unprinted">Noch nicht gedruckt</option>
             </select>
+            <HolderFieldSelects holders={cards.map(({ card }) => card.holder)} value={fields} onChange={setFields} />
           </div>
 
           {selecting && (
@@ -245,7 +249,11 @@ export function CardListPage() {
                     <div className="card-row-title">
                       <strong>{card.number}</strong> {card.holder ? holderName(card.holder) : <span className="muted">frei</span>}
                     </div>
-                    {card.holder?.company && <div className="muted">{card.holder.company}</div>}
+                    {card.holder && (holderUnitLine(card.holder) || card.holder.room) && (
+                      <div className="muted">
+                        {[holderUnitLine(card.holder), card.holder.room && `Raum ${card.holder.room}`].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </div>
                   <div className="card-row-badges">
                     <GroupBadge group={group} />

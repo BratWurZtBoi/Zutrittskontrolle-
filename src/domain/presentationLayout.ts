@@ -20,7 +20,8 @@ export type TextAlign = 'left' | 'center' | 'right';
 export type BackgroundKind = 'color' | 'gradient' | 'image';
 /** 'outcome' = Ergebnisfarbe (grün/blau/rot) als Hintergrund, 'custom' = eigener Hintergrund mit farbigem Streifen. */
 export type ResultBackground = 'outcome' | 'custom';
-export type NameFormat = 'full' | 'first' | 'none';
+/** 'rank-last' = Dienstgrad + Nachname („Willkommen, Hptm Mustermann“), ohne Dienstgrad Vor- und Nachname. */
+export type NameFormat = 'full' | 'rank-last' | 'first' | 'none';
 export type LayoutTone = 'ok' | 'out' | 'deny' | 'warn';
 
 /** Ein Element auf dem Bildschirm. Positionen in Prozent – unabhängig von der Bildschirmgröße. */
@@ -223,10 +224,13 @@ export const PLACEHOLDERS: Record<ScreenKind, { key: string; label: string }[]> 
   result: [
     { key: '{titel}', label: 'Titel je Ergebnis (z. B. „Willkommen“)' },
     { key: '{meldung}', label: 'Meldung je Ergebnis' },
+    { key: '{dienstgrad}', label: 'Dienstgrad' },
     { key: '{vorname}', label: 'Vorname' },
     { key: '{nachname}', label: 'Nachname' },
-    { key: '{name}', label: 'Vor- und Nachname' },
-    { key: '{firma}', label: 'Firma / Abteilung' },
+    { key: '{name}', label: 'Name (wie unter „Datenschutz“ eingestellt)' },
+    { key: '{einheit}', label: 'Einheit/Abteilung' },
+    { key: '{posten}', label: 'Stellung/Posten' },
+    { key: '{raum}', label: 'Raum' },
     { key: '{gruppe}', label: 'Gruppe' },
     { key: '{uhrzeit}', label: 'Uhrzeit' },
     { key: '{datum}', label: 'Datum' },
@@ -285,7 +289,8 @@ export const SCREEN_PRESETS: Record<ScreenKind, { id: string; label: string; hin
     { id: 'name', label: 'Name', hint: 'Vor- und Nachname (Datenschutz unter „Texte“)', make: (id) => el({ id, type: 'text', text: '{name}', x: 5, y: 55, w: 90, size: 8, bold: true }) },
     { id: 'greeting', label: 'Gruß mit Vorname', hint: '„Hallo Erika!“', make: (id) => el({ id, type: 'text', text: 'Hallo {vorname}!', x: 5, y: 45, w: 90, size: 7, bold: true }) },
     { id: 'message', label: 'Meldung', hint: 'z. B. „Eingang gebucht · 08:15 Uhr“', make: (id) => el({ id, type: 'text', text: '{meldung}', x: 10, y: 82, w: 80, size: 4.4, bold: true }) },
-    { id: 'company', label: 'Firma / Abteilung', hint: 'aus den Personendaten', make: (id) => el({ id, type: 'text', text: '{firma}', x: 5, y: 66, w: 90, size: 4 }) },
+    { id: 'company', label: 'Einheit/Abteilung', hint: 'aus den Personendaten', make: (id) => el({ id, type: 'text', text: '{einheit}', x: 5, y: 66, w: 90, size: 4 }) },
+    { id: 'position', label: 'Stellung/Posten', hint: 'z. B. Kompaniechef, S4', make: (id) => el({ id, type: 'text', text: '{posten}', x: 5, y: 72, w: 90, size: 4 }) },
     { id: 'photo', label: 'Foto', hint: 'Foto bzw. Initialen', make: (id) => newElement('photo', id) },
     { id: 'group', label: 'Gruppe', hint: 'farbiges Schild', make: (id) => newElement('group', id) },
     { id: 'text', label: 'Freier Text', hint: 'eigener Text', make: (id) => newElement('text', id) },
@@ -356,6 +361,7 @@ export function friendlyScreenText(text: string): string {
     const k = `{${key.toLowerCase()}}`;
     if (k === '{titel}') return 'Titel';
     if (k === '{meldung}') return 'Meldung';
+    if (k === '{firma}') return 'Einheit/Abteilung'; // alter Platzhalter
     return PLACEHOLDERS.result.find((p) => p.key === k)?.label ?? PLACEHOLDERS.idle.find((p) => p.key === k)?.label ?? m;
   });
 }
@@ -386,7 +392,24 @@ export function pickLayout(
 }
 
 export type PlaceholderValues = Partial<
-  Record<'titel' | 'meldung' | 'vorname' | 'nachname' | 'name' | 'firma' | 'gruppe' | 'uhrzeit' | 'datum' | 'organisation' | 'grund', string>
+  Record<
+    | 'titel'
+    | 'meldung'
+    | 'dienstgrad'
+    | 'vorname'
+    | 'nachname'
+    | 'name'
+    | 'einheit'
+    | 'firma'
+    | 'posten'
+    | 'raum'
+    | 'gruppe'
+    | 'uhrzeit'
+    | 'datum'
+    | 'organisation'
+    | 'grund',
+    string
+  >
 >;
 
 /**
@@ -424,9 +447,12 @@ export function idleText(template: string, orgName: string, now: Date): string {
 }
 
 export interface PersonForLayout {
+  rank?: string;
   firstName?: string;
   lastName?: string;
   company?: string;
+  position?: string;
+  room?: string;
   photo?: string;
   groupName?: string;
   groupColor?: string;
@@ -436,6 +462,7 @@ export interface PersonForLayout {
 export function formatName(person: PersonForLayout, format: NameFormat): string {
   if (format === 'none') return '';
   if (format === 'first') return person.firstName?.trim() ?? '';
+  if (format === 'rank-last' && person.rank?.trim()) return [person.rank, person.lastName].filter(Boolean).join(' ').trim();
   return [person.firstName, person.lastName].filter(Boolean).join(' ').trim();
 }
 
@@ -475,6 +502,7 @@ export function buildLayoutResult(layout: PresentationLayout, input: ResultInput
   const d = new Date(input.at);
   const person = input.person;
   const fullName = person ? formatName(person, layout.nameFormat) : '';
+  const showLastName = layout.nameFormat === 'full' || layout.nameFormat === 'rank-last';
   const name = fullName || (layout.nameFormat === 'none' ? '' : (input.cardLabel ?? ''));
   const t = layout.texts;
   const titles: Record<ResultInput['kind'], [string, string]> = {
@@ -485,10 +513,14 @@ export function buildLayoutResult(layout: PresentationLayout, input: ResultInput
     duplicate: [input.fallbackTitle, input.fallbackText],
   };
   const base: PlaceholderValues = {
+    dienstgrad: layout.nameFormat === 'none' ? '' : (person?.rank ?? ''),
     vorname: layout.nameFormat === 'none' ? '' : (person?.firstName ?? ''),
-    nachname: layout.nameFormat === 'full' ? (person?.lastName ?? '') : '',
+    nachname: showLastName ? (person?.lastName ?? '') : '',
     name,
-    firma: person?.company ?? '',
+    einheit: person?.company ?? '',
+    firma: person?.company ?? '', // alter Platzhalter (bis Version 0.16)
+    posten: person?.position ?? '',
+    raum: person?.room ?? '',
     gruppe: person?.groupName ?? '',
     uhrzeit: timeOf(d),
     datum: dateOf(d),
@@ -509,7 +541,7 @@ export function buildLayoutResult(layout: PresentationLayout, input: ResultInput
   const result: LayoutResult = { layoutId: layout.id, tone: input.tone, kind, texts };
   if (person && visible.some((e) => e.type === 'photo')) {
     if (person.photo) result.photo = person.photo;
-    else if (fullName) result.initials = `${person.firstName?.[0] ?? ''}${layout.nameFormat === 'full' ? (person.lastName?.[0] ?? '') : ''}`.toUpperCase();
+    else if (fullName) result.initials = `${person.firstName?.[0] ?? ''}${showLastName ? (person.lastName?.[0] ?? '') : ''}`.toUpperCase();
   }
   if (person?.groupName && visible.some((e) => e.type === 'group')) {
     result.groupName = person.groupName;
@@ -583,7 +615,7 @@ export function normalizeLayout(raw: Partial<PresentationLayout> & { id: string 
     textColor: raw.textColor === 'dark' ? 'dark' : 'light',
     resultBackground: raw.resultBackground === 'custom' ? 'custom' : 'outcome',
     logo: raw.logo,
-    nameFormat: raw.nameFormat === 'first' || raw.nameFormat === 'none' ? raw.nameFormat : 'full',
+    nameFormat: raw.nameFormat === 'first' || raw.nameFormat === 'none' || raw.nameFormat === 'rank-last' ? raw.nameFormat : 'full',
     texts: {
       inTitle: texts.inTitle ?? DEFAULT_RESULT_TEXTS.inTitle,
       inText: texts.inText ?? DEFAULT_RESULT_TEXTS.inText,

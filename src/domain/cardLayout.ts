@@ -7,6 +7,7 @@
  */
 
 import type { ResizeHandle, SnapGuides } from './editorGeometry';
+import type { CardHolder } from './types';
 
 export type { ResizeHandle, SnapGuides } from './editorGeometry';
 export type CardOrientation = 'landscape' | 'portrait';
@@ -149,9 +150,9 @@ export const CARD_TEMPLATES: { id: string; label: string; orientation: CardOrien
       el({ id: 'group', type: 'text', text: '{gruppe}', x: 3.5, y: 3.6, w: 45, size: 5.9, bold: true, color: 'on-group' }),
       el({ id: 'org', type: 'text', text: '{organisation}', x: 45, y: 4.4, w: 51.5, size: 4.3, bold: true, align: 'right', color: 'on-group' }),
       el({ id: 'photo', type: 'photo', x: 3.5, y: 21, w: 24.5, size: 0, showWhen: 'holder' }),
-      el({ id: 'first', type: 'text', text: '{vorname}', x: 31, y: 23, w: 34, size: 5.9, showWhen: 'holder' }),
+      el({ id: 'first', type: 'text', text: '{dienstgrad} {vorname}', x: 31, y: 23, w: 34, size: 5.9, showWhen: 'holder' }),
       el({ id: 'last', type: 'text', text: '{nachname}', x: 31, y: 31, w: 34, size: 7, bold: true, showWhen: 'holder' }),
-      el({ id: 'company', type: 'text', text: '{firma}', x: 31, y: 46, w: 34, size: 4.8, showWhen: 'holder', hideIfEmpty: true }),
+      el({ id: 'company', type: 'text', text: '{einheit}', x: 31, y: 46, w: 34, size: 4.8, showWhen: 'holder', hideIfEmpty: true }),
       el({ id: 'number', type: 'text', text: 'Nr. {karte}', x: 31, y: 56, w: 34, size: 4.8, showWhen: 'holder' }),
       el({ id: 'valid', type: 'text', text: 'gültig bis {gueltig_bis}', x: 31, y: 65, w: 34, size: 4.8, showWhen: 'holder', hideIfEmpty: true }),
       el({ id: 'anon-number', type: 'text', text: '{karte}', x: 3.5, y: 34, w: 58, size: 16.7, bold: true, color: 'group', showWhen: 'anonymous' }),
@@ -168,8 +169,8 @@ export const CARD_TEMPLATES: { id: string; label: string; orientation: CardOrien
       el({ id: 'head', type: 'band', x: 0, y: 0, w: 100, h: 11, size: 0, color: 'group' }),
       el({ id: 'org', type: 'text', text: '{organisation}', x: 5, y: 3.4, w: 90, size: 3.4, bold: true, align: 'center', color: 'on-group' }),
       el({ id: 'photo', type: 'photo', x: 30, y: 14, w: 40, size: 0, showWhen: 'holder' }),
-      el({ id: 'name', type: 'text', text: '{vorname} {nachname}', x: 5, y: 47, w: 90, size: 4.6, bold: true, align: 'center', showWhen: 'holder' }),
-      el({ id: 'company', type: 'text', text: '{firma}', x: 5, y: 53.5, w: 90, size: 3.2, align: 'center', showWhen: 'holder', hideIfEmpty: true }),
+      el({ id: 'name', type: 'text', text: '{dienstgrad} {vorname} {nachname}', x: 5, y: 47, w: 90, size: 4.6, bold: true, align: 'center', showWhen: 'holder' }),
+      el({ id: 'company', type: 'text', text: '{einheit}', x: 5, y: 53.5, w: 90, size: 3.2, align: 'center', showWhen: 'holder', hideIfEmpty: true }),
       el({ id: 'anon-number', type: 'text', text: '{karte}', x: 5, y: 24, w: 90, size: 11, bold: true, align: 'center', color: 'group', showWhen: 'anonymous' }),
       el({ id: 'anon-group', type: 'text', text: '{gruppe}', x: 5, y: 40, w: 90, size: 3.6, align: 'center', showWhen: 'anonymous' }),
       el({ id: 'qr', type: 'qr', x: 24, y: 59, w: 52, size: 0 }),
@@ -217,14 +218,33 @@ export const CARD_PRESETS: { id: string; label: string; hint: string; make: (id:
   {
     id: 'name',
     label: 'Name',
-    hint: 'Vor- und Nachname',
-    make: (id) => el({ id, type: 'text', text: '{vorname} {nachname}', x: 5, y: 45, w: 90, size: 6, bold: true, align: 'center', showWhen: 'holder' }),
+    hint: 'Dienstgrad, Vor- und Nachname',
+    make: (id) =>
+      el({ id, type: 'text', text: '{dienstgrad} {vorname} {nachname}', x: 5, y: 45, w: 90, size: 6, bold: true, align: 'center', showWhen: 'holder' }),
+  },
+  {
+    id: 'rank',
+    label: 'Dienstgrad',
+    hint: 'verschwindet ohne Dienstgrad',
+    make: (id) => el({ id, type: 'text', text: '{dienstgrad}', x: 5, y: 38, w: 90, size: 4.2, align: 'center', showWhen: 'holder', hideIfEmpty: true }),
   },
   {
     id: 'company',
-    label: 'Firma / Abteilung',
+    label: 'Einheit/Abteilung',
     hint: 'aus den Personendaten',
-    make: (id) => el({ id, type: 'text', text: '{firma}', x: 5, y: 55, w: 90, size: 4.2, align: 'center', showWhen: 'holder', hideIfEmpty: true }),
+    make: (id) => el({ id, type: 'text', text: '{einheit}', x: 5, y: 55, w: 90, size: 4.2, align: 'center', showWhen: 'holder', hideIfEmpty: true }),
+  },
+  {
+    id: 'position',
+    label: 'Stellung/Posten',
+    hint: 'z. B. Kompaniechef, S4',
+    make: (id) => el({ id, type: 'text', text: '{posten}', x: 5, y: 61, w: 90, size: 4, align: 'center', showWhen: 'holder', hideIfEmpty: true }),
+  },
+  {
+    id: 'room',
+    label: 'Raum',
+    hint: 'verschwindet ohne Raum',
+    make: (id) => el({ id, type: 'text', text: 'Raum {raum}', x: 5, y: 67, w: 90, size: 4, align: 'center', showWhen: 'holder', hideIfEmpty: true }),
   },
   { id: 'number', label: 'Kartennummer', hint: 'z. B. B-004', make: (id) => el({ id, type: 'text', text: '{karte}', x: 5, y: 85, w: 40, size: 4.5, bold: true }) },
   { id: 'group', label: 'Gruppe', hint: 'z. B. Besucher', make: (id) => el({ id, type: 'text', text: '{gruppe}', x: 5, y: 5, w: 60, size: 5, bold: true, color: 'group' }) },
@@ -255,10 +275,13 @@ export const STANDARD_CARD_LAYOUT: CardLayout = {
 };
 
 export const CARD_PLACEHOLDERS: { key: string; label: string }[] = [
+  { key: '{dienstgrad}', label: 'Dienstgrad' },
   { key: '{vorname}', label: 'Vorname' },
   { key: '{nachname}', label: 'Nachname' },
   { key: '{name}', label: 'Vor- und Nachname' },
-  { key: '{firma}', label: 'Firma / Abteilung' },
+  { key: '{einheit}', label: 'Einheit/Abteilung' },
+  { key: '{posten}', label: 'Stellung/Posten' },
+  { key: '{raum}', label: 'Raum' },
   { key: '{karte}', label: 'Kartennummer' },
   { key: '{gruppe}', label: 'Gruppe' },
   { key: '{organisation}', label: 'Organisation' },
@@ -395,7 +418,10 @@ export function newCardElement(type: CardElementType, id: string, size: CardSize
 
 /** Platzhalter durch lesbare Namen ersetzen: „{vorname} {nachname}“ → „Vorname Nachname“. */
 export function friendlyText(text: string): string {
-  return text.replace(/\{(\w+)\}/g, (m, key: string) => CARD_PLACEHOLDERS.find((p) => p.key === `{${key.toLowerCase()}}`)?.label ?? m);
+  return text.replace(/\{(\w+)\}/g, (m, key: string) => {
+    const k = key.toLowerCase() === 'firma' ? 'einheit' : key.toLowerCase(); // {firma} = alter Name
+    return CARD_PLACEHOLDERS.find((p) => p.key === `{${k}}`)?.label ?? m;
+  });
 }
 
 /** Alle Elemente einer Seite an eine neue Kartengröße anpassen (QR-Mindestgröße, Ränder). */
@@ -415,7 +441,7 @@ export interface CardData {
   validFrom?: string;
   validUntil?: string;
   /** Nur, wenn Name/Foto gedruckt werden dürfen (Gruppenregel) und eine Person zugeordnet ist. */
-  holder?: { firstName: string; lastName: string; company?: string; photo?: string };
+  holder?: Pick<CardHolder, 'rank' | 'firstName' | 'lastName' | 'company' | 'position' | 'room' | 'photo'>;
 }
 
 const isoToDe = (iso?: string) => (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : '');
@@ -423,10 +449,14 @@ const isoToDe = (iso?: string) => (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${i
 export function cardValues(data: CardData): Record<string, string> {
   const h = data.holder;
   return {
+    dienstgrad: h?.rank ?? '',
     vorname: h?.firstName ?? '',
     nachname: h?.lastName ?? '',
     name: h ? `${h.firstName} ${h.lastName}`.trim() : '',
-    firma: h?.company ?? '',
+    einheit: h?.company ?? '',
+    firma: h?.company ?? '', // alter Platzhalter (bis Version 0.16)
+    posten: h?.position ?? '',
+    raum: h?.room ?? '',
     karte: data.number,
     gruppe: data.groupName,
     organisation: data.orgName,

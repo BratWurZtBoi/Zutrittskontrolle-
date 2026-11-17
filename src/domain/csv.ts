@@ -50,13 +50,32 @@ export function eventsToCsv(events: AccessEvent[]): string {
 
 export function statusToCsv(rows: StatusRow[]): string {
   return toCsv([
-    ['Karte', 'Gruppe', 'Nachname', 'Vorname', 'Firma/Abteilung', 'Status', 'Seit/zuletzt', 'Zutritt erlaubt', 'Gesperrt', 'Gültig ab', 'Gültig bis', 'Verloren gemeldet'],
+    [
+      'Karte',
+      'Gruppe',
+      'Dienstgrad',
+      'Nachname',
+      'Vorname',
+      'Einheit/Abteilung',
+      'Stellung/Posten',
+      'Raum',
+      'Status',
+      'Seit/zuletzt',
+      'Zutritt erlaubt',
+      'Gesperrt',
+      'Gültig ab',
+      'Gültig bis',
+      'Verloren gemeldet',
+    ],
     ...rows.map(({ card, group, present, lastBookingAt }) => [
       card.number,
       group?.name ?? '',
+      card.holder?.rank ?? '',
       card.holder?.lastName ?? '',
       card.holder?.firstName ?? '',
       card.holder?.company ?? '',
+      card.holder?.position ?? '',
+      card.holder?.room ?? '',
       present ? 'anwesend' : 'abwesend',
       lastBookingAt ? `${date(lastBookingAt)} ${time(lastBookingAt)}` : '',
       card.accessGranted ? 'ja' : 'nein',

@@ -4,7 +4,7 @@
  * ablegen), prüft Konflikte und führt den Import anschließend aus.
  */
 import type { ImportRow } from '../domain/csvImport';
-import { holderName } from '../domain/texts';
+import { holderName, personKey } from '../domain/texts';
 import type { Card, CardHolder, Group } from '../domain/types';
 import { MAX_CARDS, createCards, listCards, updateCard } from './cards';
 import { listGroups } from './groups';
@@ -22,8 +22,8 @@ export interface PlannedRow extends ImportRow {
   group?: Group;
 }
 
-/** Gleiche Person (Vorname, Nachname, Firma – ohne Groß-/Kleinschreibung). */
-function personKey(h: CardHolder): string {
+/** Doppelte Zeile? Vorname, Nachname, Einheit – ohne Groß-/Kleinschreibung. */
+function duplicateKey(h: CardHolder): string {
   return [h.firstName, h.lastName, h.company ?? ''].map((s) => s.trim().toLowerCase()).join('|');
 }
 
@@ -37,7 +37,7 @@ function findGroup(groups: Group[], ref: string | undefined): Group | undefined 
 export async function planImport(rows: ImportRow[], overwrite: boolean): Promise<PlannedRow[]> {
   const [groups, cardList, waiting] = await Promise.all([listGroups(), listCards(), listUnassigned()]);
   // Wer schon unter „Nicht zugeordnet“ steht, wird nicht doppelt abgelegt (z. B. Datei zweimal eingelesen)
-  const waitingKeys = new Set(waiting.flatMap((p) => (p.holder ? [personKey(p.holder)] : [])));
+  const waitingKeys = new Set(waiting.flatMap((p) => (p.holder ? [duplicateKey(p.holder)] : [])));
   let waitingTotal = waiting.length;
   const byNumber = new Map<string, Card>(cardList.map(({ card }) => [card.number.toLowerCase(), card]));
   const used = new Set(cardList.map(({ card }) => card.number.toLowerCase()));
@@ -68,7 +68,7 @@ export async function planImport(rows: ImportRow[], overwrite: boolean): Promise
     const error = (msg?: string): PlannedRow => ({ ...row, errors: msg ? [...errors, msg] : errors, action: { kind: 'error' } });
     if (errors.length) return error();
     const toUnassigned = (groupHint?: string): PlannedRow => {
-      const key = personKey(row.holder);
+      const key = duplicateKey(row.holder);
       if (waitingKeys.has(key)) return error('Steht bereits unter „Nicht zugeordnet“.');
       if (waitingTotal >= MAX_UNASSIGNED) return error(`Höchstens ${MAX_UNASSIGNED} nicht zugeordnete Personen möglich.`);
       waitingKeys.add(key);
@@ -131,7 +131,7 @@ export async function executeImport(plan: PlannedRow[]): Promise<ImportResult> {
     } else if (row.action.kind === 'assign') {
       const before = existing.get(row.action.cardId)?.holder;
       // gleiche Person: Foto behalten, sonst komplett ersetzen
-      const samePerson = before && holderName(before) === holderName(row.holder);
+      const samePerson = before && personKey(before) === personKey(row.holder);
       const holder: CardHolder = samePerson ? { ...row.holder, photo: before.photo } : row.holder;
       await updateCard(row.action.cardId, { ...update, holder });
       result.assigned++;

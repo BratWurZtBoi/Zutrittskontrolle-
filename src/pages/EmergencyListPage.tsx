@@ -7,6 +7,7 @@ import { listPresentCards, type PresentCard } from '../db/scans';
 import { DEFAULT_SETTINGS } from '../db/settings';
 import { formatDateTime, formatShortDateTime } from '../domain/dates';
 import { directPrintDone, emergencyPrintPlan, printErrorText } from '../domain/emergencyPrint';
+import { holderListName, holderUnitLine } from '../domain/texts';
 import type { Group } from '../domain/types';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useLoadedSettings } from '../hooks/useSettings';
@@ -149,7 +150,8 @@ export function EmergencyListPage() {
                   <th className="th-plain">Nr.</th>
                   {withPhotos && <th className="th-plain">Foto</th>}
                   <th className="th-plain">Name</th>
-                  <th className="th-plain">Firma / Abteilung</th>
+                  <th className="th-plain">Einheit/Abteilung · Stellung</th>
+                  <th className="th-plain">Raum</th>
                   <th className="th-plain">Karte</th>
                   <th className="th-plain">anwesend seit</th>
                   <th className="th-plain">am Sammelplatz</th>
@@ -165,9 +167,10 @@ export function EmergencyListPage() {
                       </td>
                     )}
                     <td className="cell-strong">
-                      {card.holder ? `${card.holder.lastName}, ${card.holder.firstName}` : card.hasHolder ? '🔒 Name gesperrt' : 'Karte ohne Person'}
+                      {card.holder ? holderListName(card.holder) : card.hasHolder ? '🔒 Name gesperrt' : 'Karte ohne Person'}
                     </td>
-                    <td>{card.holder?.company ?? ''}</td>
+                    <td>{holderUnitLine(card.holder)}</td>
+                    <td>{card.holder?.room ?? ''}</td>
                     <td>{card.number}</td>
                     <td>{formatShortDateTime(since, new Date(createdAt))}</td>
                     <td>

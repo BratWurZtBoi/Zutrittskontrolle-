@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { listCards } from '../db/cards';
 import { listPresence, queryEvents } from '../db/scans';
 import { buildStatusRows, filterEvents, rangeBounds, type EventFilter, type StatusRow } from '../domain/overview';
-import type { AccessEvent } from '../domain/types';
+import type { AccessEvent, CardHolder } from '../domain/types';
 import { useSecureLiveQuery } from './useSecureLiveQuery';
 import { useToday } from './useToday';
 
@@ -28,9 +28,12 @@ export function useRangeEvents(range: Pick<EventFilter, 'range' | 'from' | 'to'>
   );
 }
 
-/** Protokolleinträge passend zum Filter (Zeitraum per Index, Rest im Speicher). */
-export function useFilteredEvents(filter: EventFilter): { events: AccessEvent[]; loading: boolean } {
+/**
+ * Protokolleinträge passend zum Filter (Zeitraum per Index, Rest im Speicher).
+ * @param holders aktuelle Personen je Karte – für Suche/Filter nach Einheit, Stellung/Posten, Raum.
+ */
+export function useFilteredEvents(filter: EventFilter, holders?: Map<string, CardHolder>): { events: AccessEvent[]; loading: boolean } {
   const raw = useRangeEvents(filter);
-  const events = useMemo(() => (raw ? filterEvents(raw, filter, new Date()) : []), [raw, filter]);
+  const events = useMemo(() => (raw ? filterEvents(raw, filter, new Date(), holders) : []), [raw, filter, holders]);
   return { events, loading: raw === undefined };
 }

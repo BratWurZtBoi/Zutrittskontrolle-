@@ -1,18 +1,27 @@
 import type { EventFilter, RangePreset, StatusFilter } from '../domain/overview';
-import type { Group } from '../domain/types';
+import type { CardHolder, Group } from '../domain/types';
+import { HolderFieldSelects } from './HolderFieldSelects';
 
 interface StatusProps {
   value: StatusFilter;
   onChange: (value: StatusFilter) => void;
   groups: Group[];
+  /** Personen für die Auswahlfilter Einheit, Stellung/Posten, Raum. */
+  holders: (CardHolder | undefined)[];
   showIncludeFree?: boolean;
 }
 
-export function StatusFilters({ value, onChange, groups, showIncludeFree = true }: StatusProps) {
+export function StatusFilters({ value, onChange, groups, holders, showIncludeFree = true }: StatusProps) {
   const set = (patch: Partial<StatusFilter>) => onChange({ ...value, ...patch });
   return (
     <div className="filter-bar filter-bar-status">
-      <input type="search" placeholder="Suchen: Name, Firma, Karte …" value={value.query} onChange={(e) => set({ query: e.target.value })} aria-label="Personen suchen" />
+      <input
+        type="search"
+        placeholder="Suchen: Name, Dienstgrad, Einheit, Raum, Karte …"
+        value={value.query}
+        onChange={(e) => set({ query: e.target.value })}
+        aria-label="Personen suchen"
+      />
       <select value={value.status} onChange={(e) => set({ status: e.target.value as StatusFilter['status'] })} aria-label="Status">
         <option value="all">Anwesend und abwesend</option>
         <option value="present">Nur anwesend</option>
@@ -26,6 +35,7 @@ export function StatusFilters({ value, onChange, groups, showIncludeFree = true 
           </option>
         ))}
       </select>
+      <HolderFieldSelects holders={holders} value={value} onChange={(f) => set(f)} />
       {showIncludeFree && (
         <label className="checkbox-inline">
           <input type="checkbox" checked={value.includeFree} onChange={(e) => set({ includeFree: e.target.checked })} />
@@ -49,13 +59,21 @@ interface EventProps {
   value: EventFilter;
   onChange: (value: EventFilter) => void;
   groups: Group[];
+  /** Personen für die Auswahlfilter Einheit, Stellung/Posten, Raum. */
+  holders: (CardHolder | undefined)[];
 }
 
-export function EventFilters({ value, onChange, groups }: EventProps) {
+export function EventFilters({ value, onChange, groups, holders }: EventProps) {
   const set = (patch: Partial<EventFilter>) => onChange({ ...value, ...patch });
   return (
     <div className="filter-bar filter-bar-events">
-      <input type="search" placeholder="Suchen: Name, Karte, Gruppe …" value={value.query} onChange={(e) => set({ query: e.target.value })} aria-label="Aktionen suchen" />
+      <input
+        type="search"
+        placeholder="Suchen: Name, Dienstgrad, Einheit, Raum, Karte …"
+        value={value.query}
+        onChange={(e) => set({ query: e.target.value })}
+        aria-label="Aktionen suchen"
+      />
       <select value={value.range} onChange={(e) => set({ range: e.target.value as RangePreset })} aria-label="Zeitraum">
         {RANGES.map((r) => (
           <option key={r.value} value={r.value}>
@@ -88,6 +106,7 @@ export function EventFilters({ value, onChange, groups }: EventProps) {
           </option>
         ))}
       </select>
+      <HolderFieldSelects holders={holders} value={value} onChange={(f) => set(f)} />
     </div>
   );
 }

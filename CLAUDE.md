@@ -24,7 +24,17 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
 - **Gruppe** (`Group`): Name, Farbe, Kürzel (fest nach Anlage), Regeln `accessGranted`,
   `allowUnassigned`, `printHolder`. Standardgruppen: Bestandspersonal (M), Besucher (B).
 - **Karte** (`Card`): Nummer (`B-001`), Gruppe (fest), QR-Token, gesperrt, Berechtigung,
-  Gültigkeit, optional **Inhaber** (`CardHolder`: Name, Firma, Foto, Notiz) – frei änderbar.
+  Gültigkeit, optional **Inhaber** (`CardHolder`: `rank` Dienstgrad, Vor-/Nachname, `company` =
+  **Einheit/Abteilung** (bis 0.16 „Firma“, Feldname bleibt), `position` Stellung/Posten, `room` Raum,
+  Foto, Notiz) – frei änderbar, alles im verschlüsselten `holderEnc` (keine DB-Migration nötig).
+  Anzeige über `domain/texts.ts`: `holderName` („Hptm Max Mustermann“, auch Protokoll-Schnappschuss
+  `nameEnc`), `holderListName` („Hptm Mustermann, Max“), `holderUnitLine` („Einheit · Posten“);
+  Personenwechsel per `personKey` (ohne Dienstgrad → Beförderung bucht nicht aus). Formular
+  `components/HolderFields` (Vorschläge per datalist). Suche `holderSearchText`, Auswahlfilter
+  `HOLDER_FILTER_FIELDS`/`HolderFieldSelects`; im Protokoll über die aktuelle Karte (`holdersByCard`,
+  nur bei gleicher Person). Platzhalter `{dienstgrad}` `{einheit}` (alt `{firma}`) `{posten}` `{raum}`,
+  Gästebildschirm-Namensform `rank-last`. CSV-Spalten Dienstgrad, Einheit/Abteilung, Stellung/Posten,
+  Raum (Alias „Firma/Abteilung“).
   Personenwechsel/Rückgabe bucht die bisherige Person automatisch aus (Quelle `system`).
   Verlust: `lostAt` (+ `blocked`), Grund `CARD_LOST` geht vor `CARD_BLOCKED`; Ersatzkarte
   (`issueReplacementCard`) übernimmt verschlüsselte Personendaten + Anwesenheit, Verweis
@@ -227,6 +237,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
 16. ✅ Starre Statusleiste (feste Plätze, max. 3 Gruppen + „+n weitere“), Gruppenknöpfe mit Anzahl (0.15.1);
     roter Notfall-Knopf (nur Navigation, je Seite einmal) mit Sofortdruck, im Programm ohne Druckdialog
     (Drucker, Kopien) (Version 0.16).
+17. ✅ Personendaten: Dienstgrad (vor dem Namen), Einheit/Abteilung statt Firma, Stellung/Posten, Raum –
+    in Formularen (mit Vorschlägen), Listen, Notfallliste, Suche, Auswahlfiltern, CSV, Karten- und
+    Gästebildschirm-Platzhaltern, Namensform „Dienstgrad + Nachname“ (Version 0.17).
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

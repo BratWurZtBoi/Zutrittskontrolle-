@@ -1,3 +1,3 @@
-﻿Kartennummer;Gruppe;Vorname;Nachname;Firma/Abteilung;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis
-;Bestandspersonal;Max;Mustermann;Verwaltung;;ja;;
-;Besucher;Erika;Musterfrau;Beispiel GmbH;Termin bei Max Mustermann;ja;15.11.2026;15.11.2026
+﻿Kartennummer;Gruppe;Dienstgrad;Vorname;Nachname;Einheit/Abteilung;Stellung/Posten;Raum;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis
+;Bestandspersonal;Hptm;Max;Mustermann;1./Musterbataillon 1;Kompaniechef;2.14;;ja;;
+;Besucher;;Erika;Musterfrau;Beispiel GmbH;;;Termin bei Hptm Mustermann;ja;15.11.2026;15.11.2026

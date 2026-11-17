@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { PendingAction } from '../db/scans';
-import { holderName } from '../domain/texts';
+import { holderName, holderUnitLine } from '../domain/texts';
 import type { PendingEntry } from '../hooks/useScanProcessor';
 import { GroupBadge } from './GroupBadge';
 import { HolderPhoto } from './HolderPhoto';
@@ -45,7 +45,7 @@ export function PendingPanel({ pending, onResolve }: Props) {
           <div>
             <GroupBadge group={group} /> {card && <span>Karte {card.number}</span>}
           </div>
-          {holder?.company && <div className="muted">{holder.company}</div>}
+          {holderUnitLine(holder) && <div className="muted">{holderUnitLine(holder)}</div>}
           {holder?.note && <div className="pending-note">Notiz: {holder.note}</div>}
           <div className="muted">
             möchte <strong>eintreten</strong>

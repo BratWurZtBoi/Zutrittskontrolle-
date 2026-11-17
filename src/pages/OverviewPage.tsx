@@ -12,6 +12,7 @@ import {
   DEFAULT_EVENT_FILTER,
   DEFAULT_STATUS_FILTER,
   filterStatusRows,
+  holdersByCard,
   rangeLabel,
   sortEvents,
   sortStatusRows,
@@ -111,7 +112,7 @@ function PresenceTab({ groups, admin }: { groups: Awaited<ReturnType<typeof list
         )}
       </div>
       {message && <p className="form-success">{message}</p>}
-      <StatusFilters value={filter} onChange={setFilter} groups={groups} />
+      <StatusFilters value={filter} onChange={setFilter} groups={groups} holders={rows?.map((r) => r.card.holder) ?? []} />
       <div className="list-toolbar">
         <p className="muted small">
           {filtered.length} Person(en) · Spaltenköpfe antippen zum Sortieren{admin ? ' · Zeile antippen öffnet die Karte' : ''}
@@ -132,7 +133,9 @@ function EventsTab({ groups, admin, initial }: { groups: Awaited<ReturnType<type
   const [filter, setFilter] = useState<EventFilter>(initial);
   const sort = useSort<EventSortKey>('time', 'desc', { time: 'desc' });
   const [limit, setLimit] = useState(100);
-  const { events, loading } = useFilteredEvents(filter);
+  const rows = useStatusRows();
+  const holders = useMemo(() => (rows ? holdersByCard(rows) : undefined), [rows]);
+  const { events, loading } = useFilteredEvents(filter, holders);
   const denied = events.filter((e) => e.outcome === 'denied').length;
 
   return (
@@ -144,6 +147,7 @@ function EventsTab({ groups, admin, initial }: { groups: Awaited<ReturnType<type
           setLimit(100);
         }}
         groups={groups}
+        holders={[...(holders?.values() ?? [])]}
       />
       <div className="list-toolbar">
         <p className="muted small">

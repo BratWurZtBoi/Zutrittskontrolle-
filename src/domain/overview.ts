@@ -3,7 +3,8 @@
  * Ohne Datenbank – gut testbar.
  */
 import { addDays, toLocalDateString } from './dates';
-import type { AccessEvent, Card, Direction, Group, PresenceRecord } from './types';
+import { personKey } from './texts';
+import type { AccessEvent, Card, CardHolder, Direction, Group, PresenceRecord } from './types';
 
 export type SortDir = 'asc' | 'desc';
 
@@ -31,7 +32,23 @@ export function buildStatusRows(
   });
 }
 
-export interface StatusFilter {
+/** Auswahlfilter auf Personenangaben (genauer Wert, leer = alle). */
+export interface HolderFieldFilter {
+  /** Einheit/Abteilung */
+  unit?: string;
+  /** Stellung/Posten */
+  position?: string;
+  room?: string;
+}
+
+/** Felder, nach denen gefiltert werden kann, mit Bezeichnung. */
+export const HOLDER_FILTER_FIELDS = [
+  { key: 'unit', field: 'company', label: 'Einheit/Abteilung', all: 'Alle Einheiten' },
+  { key: 'position', field: 'position', label: 'Stellung/Posten', all: 'Alle Stellungen' },
+  { key: 'room', field: 'room', label: 'Raum', all: 'Alle Räume' },
+] as const satisfies readonly { key: keyof HolderFieldFilter; field: keyof CardHolder; label: string; all: string }[];
+
+export interface StatusFilter extends HolderFieldFilter {
   query: string;
   groupId: string;
   status: 'all' | 'present' | 'absent';
@@ -41,9 +58,32 @@ export interface StatusFilter {
 
 export const DEFAULT_STATUS_FILTER: StatusFilter = { query: '', groupId: '', status: 'all', includeFree: false };
 
+/** Durchsuchbarer Text einer Person: Dienstgrad, Name, Einheit, Stellung/Posten, Raum. */
+export function holderSearchText(h: CardHolder | undefined): string {
+  return h ? [h.rank, h.firstName, h.lastName, h.company, h.position, h.room].filter(Boolean).join(' ').toLowerCase() : '';
+}
+
 function holderText(card: Card): string {
-  const h = card.holder;
-  return `${card.number} ${h?.firstName ?? ''} ${h?.lastName ?? ''} ${h?.company ?? ''}`.toLowerCase();
+  return `${card.number} ${holderSearchText(card.holder)}`.toLowerCase();
+}
+
+/** Passt die Person zu den Auswahlfiltern (Einheit, Stellung/Posten, Raum)? */
+export function matchesHolderFields(h: CardHolder | undefined, f: HolderFieldFilter): boolean {
+  return HOLDER_FILTER_FIELDS.every(({ key, field }) => !f[key] || (h?.[field] ?? '') === f[key]);
+}
+
+export function hasHolderFieldFilter(f: HolderFieldFilter): boolean {
+  return HOLDER_FILTER_FIELDS.some(({ key }) => Boolean(f[key]));
+}
+
+/** Vorkommende Werte eines Feldes (für Auswahllisten und Vorschläge), sortiert, ohne Doppelte. */
+export function holderFieldValues(holders: (CardHolder | undefined)[], field: 'rank' | 'company' | 'position' | 'room'): string[] {
+  const values = new Set<string>();
+  for (const h of holders) {
+    const v = h?.[field]?.trim();
+    if (v) values.add(v);
+  }
+  return [...values].sort((a, b) => collator.compare(a, b));
 }
 
 export function filterStatusRows(rows: StatusRow[], f: StatusFilter): StatusRow[] {
@@ -53,11 +93,12 @@ export function filterStatusRows(rows: StatusRow[], f: StatusFilter): StatusRow[
     if (f.groupId && r.card.groupId !== f.groupId) return false;
     if (f.status === 'present' && !r.present) return false;
     if (f.status === 'absent' && r.present) return false;
+    if (!matchesHolderFields(r.card.holder, f)) return false;
     return !q || holderText(r.card).includes(q);
   });
 }
 
-export type StatusSortKey = 'status' | 'name' | 'card' | 'group' | 'time';
+export type StatusSortKey = 'status' | 'name' | 'card' | 'group' | 'room' | 'time';
 
 const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
 
@@ -79,6 +120,10 @@ export function sortStatusRows(rows: StatusRow[], key: StatusSortKey, dir: SortD
         return collator.compare(a.card.number, b.card.number);
       case 'group':
         return collator.compare(a.group?.name ?? '', b.group?.name ?? '');
+      case 'room':
+        // ohne Raum immer ans Ende
+        if (!a.card.holder?.room !== !b.card.holder?.room) return a.card.holder?.room ? -1 : 1;
+        return collator.compare(a.card.holder?.room ?? '', b.card.holder?.room ?? '');
       case 'time':
         return (a.lastBookingAt ?? 0) - (b.lastBookingAt ?? 0);
     }
@@ -93,7 +138,7 @@ export function sortStatusRows(rows: StatusRow[], key: StatusSortKey, dir: SortD
 
 export type RangePreset = 'today' | 'yesterday' | '7d' | '30d' | 'all' | 'custom';
 
-export interface EventFilter {
+export interface EventFilter extends HolderFieldFilter {
   query: string;
   groupId: string;
   direction: 'all' | Direction;
@@ -130,17 +175,43 @@ export function rangeBounds(f: Pick<EventFilter, 'range' | 'from' | 'to'>, now: 
   }
 }
 
-export function filterEvents(events: AccessEvent[], f: EventFilter, now: Date): AccessEvent[] {
+/**
+ * Aktuelle Person der Karte – aber nur, wenn das Ereignis noch dieselbe Person betrifft (der
+ * Name im Protokoll endet auf Vor- und Nachname). Im Protokoll stehen nur Name und Dienstgrad;
+ * Einheit, Stellung/Posten und Raum kommen so für Suche und Filter von der Karte.
+ */
+function holderOfEvent(e: AccessEvent, holders: Map<string, CardHolder> | undefined): CardHolder | undefined {
+  const h = e.cardId ? holders?.get(e.cardId) : undefined;
+  const key = personKey(h);
+  return h && key && e.holderName?.toLowerCase().endsWith(key) ? h : undefined;
+}
+
+/**
+ * @param holders aktuelle Personen je Karten-ID (optional) – für Suche/Filter nach Einheit,
+ *   Stellung/Posten und Raum.
+ */
+export function filterEvents(events: AccessEvent[], f: EventFilter, now: Date, holders?: Map<string, CardHolder>): AccessEvent[] {
   const { from, to } = rangeBounds(f, now);
   const q = f.query.trim().toLowerCase();
+  const byFields = hasHolderFieldFilter(f);
   return events.filter((e) => {
     if (e.timestamp < from || e.timestamp >= to) return false;
     if (f.groupId && e.groupId !== f.groupId) return false;
     if (f.direction !== 'all' && e.direction !== f.direction) return false;
     if (f.outcome !== 'all' && e.outcome !== f.outcome) return false;
+    if (!q && !byFields) return true;
+    const h = holderOfEvent(e, holders);
+    if (byFields && (!h || !matchesHolderFields(h, f))) return false;
     if (!q) return true;
-    return `${e.cardNumber ?? ''} ${e.holderName ?? ''} ${e.groupName ?? ''}`.toLowerCase().includes(q);
+    return `${e.cardNumber ?? ''} ${e.holderName ?? ''} ${e.groupName ?? ''} ${holderSearchText(h)}`.toLowerCase().includes(q);
   });
+}
+
+/** Aktuelle Personen je Karten-ID (für filterEvents). */
+export function holdersByCard(rows: { card: Card }[]): Map<string, CardHolder> {
+  const map = new Map<string, CardHolder>();
+  for (const { card } of rows) if (card.holder) map.set(card.id, card.holder);
+  return map;
 }
 
 export type EventSortKey = 'time' | 'name' | 'card' | 'group' | 'direction' | 'outcome';

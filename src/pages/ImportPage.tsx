@@ -5,7 +5,7 @@ import { GroupBadge } from '../components/GroupBadge';
 import { executeImport, planImport, type ImportResult, type PlannedRow } from '../db/importCards';
 import { decodeCsvBytes, importTemplateCsv, parseImport, TEMPLATE_HEADER, type ImportRow } from '../domain/csvImport';
 import { formatIsoDate } from '../domain/dates';
-import { holderName } from '../domain/texts';
+import { holderName, holderUnitLine } from '../domain/texts';
 import { downloadText } from '../lib/download';
 
 /** Personenlisten aus einer CSV-Datei (z. B. Excel) einlesen. */
@@ -85,7 +85,9 @@ export function ImportPage() {
               später einer Gruppe zuordnen. Bei vorhandener Kartennummer ergibt sich die Gruppe aus der Karte.
             </li>
             <li>
-              <strong>Vorname</strong>, <strong>Nachname</strong> (mindestens eins), <strong>Firma/Abteilung</strong>, <strong>Notiz</strong>
+              <strong>Dienstgrad</strong>, <strong>Vorname</strong>, <strong>Nachname</strong> (mindestens eins),{' '}
+              <strong>Einheit/Abteilung</strong>, <strong>Stellung/Posten</strong>, <strong>Raum</strong>, <strong>Notiz</strong> – ältere
+              Dateien mit „Firma/Abteilung“ werden weiter gelesen
             </li>
             <li>
               <strong>Zutritt erlaubt</strong>: ja oder nein (leer = ja)
@@ -146,7 +148,8 @@ export function ImportPage() {
                     <th>Zeile</th>
                     <th>Aktion</th>
                     <th>Name</th>
-                    <th>Firma</th>
+                    <th>Einheit · Stellung</th>
+                    <th>Raum</th>
                     <th>Gruppe</th>
                     <th>Gültig</th>
                     <th>Hinweis</th>
@@ -163,7 +166,8 @@ export function ImportPage() {
                         {r.action.kind === 'error' && <>✕ Fehler</>}
                       </td>
                       <td>{holderName(r.holder) || '–'}</td>
-                      <td>{r.holder.company ?? ''}</td>
+                      <td>{holderUnitLine(r.holder)}</td>
+                      <td>{r.holder.room ?? ''}</td>
                       <td>{r.group ? <GroupBadge group={r.group} /> : r.action.kind === 'unassigned' ? '–' : (r.groupRef ?? '')}</td>
                       <td>
                         {r.validFrom || r.validUntil ? `${formatIsoDate(r.validFrom) || '…'} – ${formatIsoDate(r.validUntil) || '…'}` : ''}

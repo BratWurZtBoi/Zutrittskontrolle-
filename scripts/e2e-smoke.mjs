@@ -237,9 +237,16 @@ try {
   const b3 = cards.find((c) => c.number === 'B-003');
   await page.goto(`${URL}#/karten/${b3.id}`);
   await page.getByRole('button', { name: 'Person zuweisen' }).click();
+  const holderLabels = (await page.locator('.holder-fields > label').allTextContents()).map((t) => t.trim());
+  check(
+    holderLabels.join(' | ') === 'Dienstgrad | Vorname | Nachname | Einheit/Abteilung | Stellung/Posten | Raum',
+    `Personendaten: Dienstgrad vor dem Vornamen, Einheit/Abteilung, Stellung/Posten, Raum (${holderLabels.join(' | ')})`,
+  );
+  check((await page.locator('#' + (await page.getByLabel('Einheit/Abteilung').getAttribute('list')) + ' option').count()) > 0, 'Vorschläge aus vorhandenen Einheiten');
   await page.getByLabel('Vorname').fill('Berta');
   await page.getByLabel('Nachname').fill('Besuch');
-  await page.getByLabel('Firma / Abteilung').fill('Beispiel AG');
+  await page.getByLabel('Einheit/Abteilung').fill('Beispiel AG');
+  await page.getByLabel('Raum').fill('Foyer');
   await page.getByRole('button', { name: 'Nur heute' }).click();
   await page.getByRole('button', { name: 'Speichern' }).click();
   await page.getByText('Gespeichert.').waitFor();
@@ -326,8 +333,18 @@ try {
   check((await page.locator('.chip-present').textContent()).includes('2'), 'Übersicht: 2 anwesend');
   check((await page.locator('.data-table tbody tr').count()) === 11, 'Übersicht: alle 11 zugeordneten Karten (freie ausgeblendet)');
   await page.getByLabel('Personen suchen').fill('muster');
-  check((await page.locator('.data-table tbody tr').count()) === 3, 'Übersicht: Suche „muster“ findet Name und Firma (3)');
+  check((await page.locator('.data-table tbody tr').count()) === 3, 'Übersicht: Suche „muster“ findet Name und Einheit (3)');
+  await page.getByLabel('Personen suchen').fill('s4');
+  check((await page.locator('.data-table tbody tr').count()) === 1 && (await page.locator('.data-table tbody').textContent()).includes('OFw Musterfrau, Erika'), 'Suche nach Stellung/Posten, Dienstgrad vor dem Namen');
+  await page.getByLabel('Personen suchen').fill('2.14');
+  check((await page.locator('.data-table tbody tr').count()) === 1, 'Suche nach Raum');
   await page.getByLabel('Personen suchen').fill('');
+  await page.locator('.filter-bar-status').getByLabel('Einheit/Abteilung').selectOption('Stab');
+  check((await page.locator('.data-table tbody tr').count()) === 3, 'Filter Einheit/Abteilung „Stab“ (3)');
+  await page.locator('.filter-bar-status').getByLabel('Stellung/Posten').selectOption('Admin');
+  check((await page.locator('.data-table tbody tr').count()) === 1, 'Filter kombinierbar: Stab + Admin (1)');
+  await page.locator('.filter-bar-status').getByLabel('Einheit/Abteilung').selectOption('');
+  await page.locator('.filter-bar-status').getByLabel('Stellung/Posten').selectOption('');
   await page.getByLabel('Status').selectOption('absent');
   check((await page.locator('.data-table tbody tr').count()) === 9, 'Übersicht: Filter „Nur abwesend“');
   await page.getByLabel('Status').selectOption('all');
@@ -434,7 +451,10 @@ try {
   const templatePath = `${OUT}/${templateDownload.suggestedFilename()}`;
   await templateDownload.saveAs(templatePath);
   const template = readFileSync(templatePath, 'utf8');
-  check(template.startsWith('﻿Kartennummer;Gruppe;Vorname;Nachname;Firma/Abteilung;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis'), 'Vorlage mit Kopfzeile heruntergeladen');
+  check(
+    template.startsWith('﻿Kartennummer;Gruppe;Dienstgrad;Vorname;Nachname;Einheit/Abteilung;Stellung/Posten;Raum;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis'),
+    'Vorlage mit neuer Kopfzeile heruntergeladen (Import unten mit alter Kopfzeile „Firma/Abteilung“)',
+  );
   const importCsv = [
     'Kartennummer;Gruppe;Vorname;Nachname;Firma/Abteilung;Notiz;Zutritt erlaubt;Gültig ab;Gültig bis',
     ';Besucher;Anna;Import;Import GmbH;;ja;;',
@@ -805,15 +825,16 @@ try {
   check(/^B-\d+$/.test(visitorCard), `Erste freie Besucherkarte vorgeschlagen (${visitorCard})`);
   await dialog.getByLabel('Vorname').fill('Vera');
   await dialog.getByLabel('Nachname').fill('Vorab');
-  await dialog.getByLabel('Firma / Abteilung').fill('Beispiel AG');
+  await dialog.getByLabel('Dienstgrad').fill('OLt');
+  await dialog.getByLabel('Einheit/Abteilung').fill('Beispiel AG');
   await page.screenshot({ path: `${OUT}/25-besucher-anmelden.png` });
   await dialog.getByRole('button', { name: 'Anmelden' }).click();
-  await page.getByText(`Besucher angemeldet: Vera Vorab → Karte ${visitorCard}`).waitFor();
-  const veraRow = page.locator('.dash-list tbody tr', { hasText: 'Vorab, Vera' });
+  await page.getByText(`Besucher angemeldet: OLt Vera Vorab → Karte ${visitorCard}`).waitFor();
+  const veraRow = page.locator('.dash-list tbody tr', { hasText: 'OLt Vorab, Vera' });
   await veraRow.waitFor();
   check(true, 'Besucher angemeldet und gleich eingebucht (ohne Bestätigung, der Bediener bucht selbst)');
   await veraRow.getByRole('button', { name: 'Zurückgeben' }).click();
-  await page.getByText(`Karte zurückgegeben: Vera Vorab`).waitFor();
+  await page.getByText(`Karte zurückgegeben: OLt Vera Vorab`).waitFor();
   await veraRow.waitFor({ state: 'detached' });
   check(true, 'Besucherkarte zurückgegeben (ausgebucht, Personendaten entfernt)');
 
@@ -850,6 +871,8 @@ try {
   check((await emergencyLinks()) === 1, 'Auch auf der Notfallliste nur ein Notfall-Knopf (im Menü markiert)');
   const emergencyRows = await page.locator('.emergency-table tbody tr').count();
   check(emergencyRows === presentBefore, `Notfallliste: alle ${emergencyRows} Anwesenden`);
+  const emergencyHead = await page.locator('.emergency-table thead').first().textContent();
+  check(emergencyHead.includes('Raum') && emergencyHead.includes('Einheit/Abteilung'), 'Notfallliste mit Einheit/Abteilung und Raum');
   await page.screenshot({ path: `${OUT}/26-notfallliste.png`, fullPage: true });
   await page.locator('.emergency-page').getByRole('button', { name: 'Zurück' }).click();
   await page.locator('.dashboard').waitFor();

@@ -45,10 +45,16 @@ export type GroupInput = Pick<
 
 /** Personendaten hinter einer Karte – jederzeit änderbar oder entfernbar. */
 export interface CardHolder {
+  /** Dienstgrad, z. B. „Hptm“ – steht vor dem Namen. */
+  rank?: string;
   firstName: string;
   lastName: string;
-  /** Firma, Abteilung oder Funktion. */
+  /** Einheit/Abteilung (bis Version 0.16 „Firma/Abteilung“ – Feldname bleibt für vorhandene Daten). */
   company?: string;
+  /** Stellung/Posten, z. B. „Kompaniechef“, „S4“, „Admin“. */
+  position?: string;
+  /** Raum (Dienstzimmer/Arbeitsplatz) – steht auf der Notfallliste. */
+  room?: string;
   /** Foto als Data-URL (JPEG, verkleinert). */
   photo?: string;
   note?: string;

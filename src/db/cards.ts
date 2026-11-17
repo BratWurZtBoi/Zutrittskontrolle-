@@ -1,6 +1,6 @@
 import { generateCardToken } from '../domain/cardCode';
 import { isValidIsoDate } from '../domain/dates';
-import { holderName } from '../domain/texts';
+import { holderName, personKey } from '../domain/texts';
 import type { AccessEventRecord, Card, CardHolder, CardRecord, CardUpdate, Group } from '../domain/types';
 import { decryptJson, encryptJson, encryptText } from '../security/crypto';
 import { cachedDecrypt } from '../security/decryptCache';
@@ -141,9 +141,12 @@ export async function listCards(): Promise<CardWithGroup[]> {
 export function normalizeHolder(holder: CardHolder | undefined): CardHolder | undefined {
   if (!holder) return undefined;
   const h: CardHolder = {
+    rank: holder.rank?.trim() || undefined,
     firstName: holder.firstName.trim(),
     lastName: holder.lastName.trim(),
     company: holder.company?.trim() || undefined,
+    position: holder.position?.trim() || undefined,
+    room: holder.room?.trim() || undefined,
     photo: holder.photo || undefined,
     note: holder.note?.trim() || undefined,
   };
@@ -173,7 +176,7 @@ export async function updateCard(id: string, update: CardUpdate, now = Date.now(
   const before = await db.cards.get(id);
   if (!before) throw new ValidationError('Karte nicht gefunden.');
   const previous = (await toCard(before, key)).holder;
-  const personChanged = holderName(previous) !== holderName(holder);
+  const personChanged = personKey(previous) !== personKey(holder); // Beförderung ≠ Personenwechsel
   const holderEnc = holder ? await encryptJson(key, holder) : undefined;
   const nameEnc = holder ? await encryptText(key, holderName(holder) ?? '') : undefined;
 
