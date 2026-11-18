@@ -272,6 +272,25 @@ function registerIpc() {
   handle('zk:get-autostart', () => getAutostart());
   handle('zk:set-autostart', (on) => setAutostart(Boolean(on)));
 
+  // Dateien (Einladungen als PDF, Versandliste) in einen im Dialog gewählten Ordner speichern.
+  // Nur einfache Dateinamen mit .pdf/.csv – nichts außerhalb des gewählten Ordners.
+  ipcMain.handle('zk:save-to-folder', async (event, files, title) => {
+    fromApp(event);
+    if (!Array.isArray(files) || files.length === 0 || files.length > 5000) throw new Error('Keine Dateien.');
+    for (const f of files) {
+      if (typeof f?.name !== 'string' || !/^[\w.-]{1,150}\.(pdf|csv)$/i.test(f.name) || f.name.startsWith('.')) throw new Error(`Ungültiger Dateiname: ${f?.name}`);
+      if (!(f.data instanceof Uint8Array)) throw new Error('Ungültiger Inhalt.');
+    }
+    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+      title: typeof title === 'string' ? title : 'Ordner wählen',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    const folder = result.canceled ? undefined : result.filePaths[0];
+    if (!folder) return null;
+    for (const f of files) fs.writeFileSync(path.join(folder, f.name), f.data);
+    return { path: folder, count: files.length };
+  });
+
   // Drucken ohne Dialog (Notfallliste): druckt die Seite, die gerade angezeigt wird
   ipcMain.handle('zk:printers', async (event) => {
     fromApp(event);

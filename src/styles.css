@@ -2726,6 +2726,10 @@ code.path {
   .print-cardpage {
     break-after: page;
   }
+  .print-sheet:last-child,
+  .print-cardpage:last-child {
+    break-after: auto;
+  }
   .print-sheet.sheet-portrait {
     page: a4-hoch;
   }
@@ -3663,5 +3667,55 @@ code.path {
 @media (max-width: 480px) {
   .nav-label[data-short]::after {
     font-size: 0.68rem;
+  }
+}
+
+/* ---------- Einladungen (Serienbrief) ---------- */
+.invitation-layout {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+@media (min-width: 900px) {
+  .invitation-layout {
+    grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.invitation-preview .card-view-large,
+.invitation-preview .card-view-large.card-portrait {
+  width: 100%;
+  border-radius: 0;
+}
+.invitation-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.invitation-actions > .btn {
+  align-self: flex-start;
+}
+.btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.mail-help ol {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+}
+/* Editor: Einladungen (A4/A5/DIN lang) größer anzeigen als Karten */
+.card-view-large.card-format-a4,
+.card-view-large.card-format-a5,
+.card-view-large.card-format-dl {
+  border-radius: 0;
+}
+.card-view-large.card-portrait.card-format-a4,
+.card-view-large.card-portrait.card-format-a5,
+.card-view-large.card-portrait.card-format-dl {
+  width: min(100%, 560px);
+}
+@media screen {
+  .invitation-print .print-cardpage {
+    margin-bottom: 1rem;
   }
 }

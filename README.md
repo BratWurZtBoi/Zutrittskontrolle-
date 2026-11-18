@@ -315,7 +315,19 @@ Für Feiern, Empfänge, Tage der offenen Tür … – getrennt von der normalen 
 - **Teilnahme**: eingeladen, eingelassen (Quote), offen, storniert, abgewiesen, je Kategorie,
   **Einlass im Zeitverlauf** (15 Minuten), Einlass-Protokoll, **Teilnehmerliste als CSV**.
 - Danach **„Gästedaten löschen“** (Namen weg, Zahlen bleiben) oder die ganze Veranstaltung löschen.
-- Veranstaltungen sind im verschlüsselten Backup enthalten.
+- **Einladungen** (Reiter „Einladungen“):
+  - **Einladung gestalten** im gewohnten Editor (Ziehen, Anfasser, Rückgängig): Formate **A4, A5, A6/Postkarte,
+    DIN lang**, Bausteine Briefanrede, Einladungstext, Veranstaltung, Datum/Ort/Einlass, Name des Gastes,
+    Nr., QR-Code, Logo, Farbfläche. Platzhalter z. B. `{briefanrede}` („Sehr geehrter Herr Oberst
+    Mustermann“), `{name}`, `{einheit}`, `{veranstaltung}`, `{datum}` („Samstag, 12. Dezember 2026“),
+    `{ort}`, `{einlass}`, `{nr}`. Vorlagen „Brief“ (hoch) und „Karte“ (quer).
+  - **Für wen:** alle, nur ohne E-Mail (Post), nur mit E-Mail, noch nicht eingelassen – plus Kategorie.
+  - **Drucken / ein PDF** (Serienbrief, je Gast eine Seite; A6 auch zwei je A4 mit Schnittmarken).
+  - **PDF je Gast**: eine Datei je Gast (`Einladung_012_Mustermann_Max.pdf`) – im Browser als ZIP, im
+    Programm für Windows/Linux direkt in einen gewählten Ordner. Ohne Internet erzeugt.
+  - **Versandliste (CSV)**: E-Mail, Briefanrede und Dateiname je Gast – z. B. für Outlook. Die App
+    verschickt selbst keine E-Mails.
+- Veranstaltungen (mit Einladung) sind im verschlüsselten Backup enthalten.
 - Hinweis: Ohne Server prüft jedes Gerät nur seine eigene Gästeliste – für einen Eingang gedacht.
 
 ## Einmalige Einrichtung (im Browser auf github.com)
@@ -424,7 +436,7 @@ Merge nach `main` automatisch gebaut.
 | USB-Scanner (Tastatur-Modus) mit Scanner-Test | ✅ |
 | CSV-Import: Personen ohne Gruppe unter „Nicht zugeordnet“, später zuordnen | ✅ |
 | Veranstaltungen: Gästeliste, Einladungs-Codes nur einmal gültig, Einlass-Dashboard, Teilnahme | ✅ |
-| Einladungen als Serienbrief, PDF je Gast, Versandliste | geplant |
+| Einladungen: Editor (A4/A5/A6/DIN lang), Serienbrief, PDF je Gast (ZIP/Ordner), Versandliste | ✅ |
 
 ## Technik
 

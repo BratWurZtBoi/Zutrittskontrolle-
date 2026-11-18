@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { CardView } from '../components/CardView';
 import { GuestDialog } from '../components/occasion/GuestDialog';
 import { OccasionForm } from '../components/occasion/OccasionForm';
 import { OccasionBadge } from '../components/OccasionBadge';
@@ -13,6 +14,7 @@ import {
   undoAdmission,
   updateOccasion,
 } from '../db/occasions';
+import { formatLabel } from '../domain/cardLayout';
 import { csvFilename } from '../domain/csv';
 import { decodeCsvBytes } from '../domain/csvImport';
 import { formatIsoDate, formatTime } from '../domain/dates';
@@ -31,14 +33,27 @@ import {
   type GuestStatusFilter,
   type Occasion,
 } from '../domain/occasion';
+import {
+  INVITATION_SELECTIONS,
+  SAMPLE_GUEST,
+  defaultInvitation,
+  invitationCardData,
+  invitationValues,
+  mailingListCsv,
+  selectInvitationGuests,
+  type InvitationSelection,
+} from '../domain/invitation';
 import { reasonText } from '../domain/texts';
 import { useGuests, useOccasion, useOccasionLog } from '../hooks/useOccasion';
 import { useSettings } from '../hooks/useSettings';
-import { downloadText } from '../lib/download';
+import { getDesktop } from '../lib/desktop';
+import { downloadBlob, downloadText } from '../lib/download';
+import { invitationFiles, zipFiles } from '../lib/invitationRender';
 
-type Tab = 'gaeste' | 'teilnahme' | 'einstellungen';
+type Tab = 'gaeste' | 'einladungen' | 'teilnahme' | 'einstellungen';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'gaeste', label: 'Gäste' },
+  { id: 'einladungen', label: 'Einladungen' },
   { id: 'teilnahme', label: 'Teilnahme' },
   { id: 'einstellungen', label: 'Einstellungen' },
 ];
@@ -119,6 +134,7 @@ export function OccasionPage() {
         ))}
       </nav>
       {tab === 'gaeste' && <GuestsTab occasion={occasion} guests={guests} />}
+      {tab === 'einladungen' && <InvitationsTab occasion={occasion} guests={guests} />}
       {tab === 'teilnahme' && <ParticipationTab occasion={occasion} guests={guests} />}
       {tab === 'einstellungen' && <SettingsTab occasion={occasion} />}
     </div>
@@ -296,6 +312,132 @@ function GuestsTab({ occasion, guests }: { occasion: Occasion; guests: Guest[] }
           }}
         />
       )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Einladungen (Serienbrief, PDF je Gast, Versandliste)
+// ---------------------------------------------------------------------------
+
+function InvitationsTab({ occasion, guests }: { occasion: Occasion; guests: Guest[] }) {
+  const { orgName } = useSettings();
+  const desktop = getDesktop();
+  const [selection, setSelection] = useState<InvitationSelection>('all');
+  const [category, setCategory] = useState('');
+  const [progress, setProgress] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const layout = occasion.invitation ?? defaultInvitation(occasion.id);
+  const chosen = selectInvitationGuests(guests, selection, category);
+  const categories = guestCategories(guests);
+  const firstGuest: Guest | undefined = chosen[0];
+  const first = firstGuest ?? SAMPLE_GUEST;
+  const params = new URLSearchParams({ auswahl: selection, ...(category ? { kategorie: category } : {}) }).toString();
+  const withoutMail = chosen.filter((g) => !g.person?.email).length;
+  const locked = chosen.some((g) => g.hasPerson && !g.person);
+  const slug = occasion.name.replace(/[^\w-]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'veranstaltung';
+
+  const exportPdfs = async () => {
+    setMessage(null);
+    try {
+      const files = await invitationFiles(layout, occasion, chosen, orgName, (done, total) => setProgress(`PDF ${done} von ${total} …`));
+      if (desktop) {
+        setProgress('Ordner wählen …');
+        const saved = await desktop.saveToFolder(files, 'Ordner für die Einladungen wählen');
+        setMessage(saved ? { ok: true, text: `${saved.count} PDFs gespeichert in ${saved.path}` } : null);
+      } else {
+        downloadBlob(zipFiles(files), `einladungen-${slug}.zip`);
+        setMessage({ ok: true, text: `${files.length} PDFs als ZIP-Datei heruntergeladen.` });
+      }
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Erstellen fehlgeschlagen.' });
+    } finally {
+      setProgress(null);
+    }
+  };
+
+  return (
+    <section className="invitations">
+      <div className="invitation-layout">
+        <div className="invitation-preview" aria-label="Vorschau der Einladung">
+          <CardView
+            layout={layout}
+            data={invitationCardData(occasion, first, orgName)}
+            values={invitationValues(occasion, first, orgName)}
+            token={firstGuest?.token ?? 'BEISPIELEINLADUNGVORSCHAU2'}
+            qrKind="guest"
+            large
+          />
+          <p className="muted small">
+            {formatLabel(layout)} · Vorschau {firstGuest ? `für Nr. ${firstGuest.number}` : 'mit Beispielgast'}
+          </p>
+        </div>
+        <div className="invitation-actions">
+          <Link className="btn btn-primary" to={`/veranstaltungen/${occasion.id}/einladung`}>
+            Einladung gestalten
+          </Link>
+          <div className="form-grid">
+            <label>
+              Für wen
+              <select value={selection} onChange={(e) => setSelection(e.target.value as InvitationSelection)}>
+                {INVITATION_SELECTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Kategorie
+              <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">Alle Kategorien</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p>
+            <strong>{chosen.length}</strong> Einladung(en){selection !== 'post' && withoutMail > 0 ? ` – davon ${withoutMail} ohne E-Mail-Adresse` : ''}.
+          </p>
+          {locked && <p className="hint">Personendaten gesperrt – bitte als Admin anmelden.</p>}
+          <div className="button-row">
+            <Link className={chosen.length ? 'btn' : 'btn disabled'} aria-disabled={!chosen.length} to={chosen.length ? `/veranstaltungen/${occasion.id}/einladungen/druck?${params}` : '#'}>
+              Drucken / ein PDF
+            </Link>
+            <button type="button" className="btn" disabled={!chosen.length || progress !== null || locked} onClick={() => void exportPdfs()}>
+              {desktop ? 'PDF je Gast in Ordner speichern' : 'PDF je Gast (ZIP)'}
+            </button>
+            <button type="button" className="btn" disabled={!chosen.length} onClick={() => downloadText(mailingListCsv(chosen), `versandliste-${slug}.csv`)}>
+              Versandliste (CSV)
+            </button>
+          </div>
+          {progress && (
+            <p className="muted" role="status">
+              {progress}
+            </p>
+          )}
+          {message && (
+            <p className={message.ok ? 'form-success' : 'form-error'} role="status">
+              {message.text}
+            </p>
+          )}
+          <details className="mail-help">
+            <summary>Per E-Mail verschicken – so geht es</summary>
+            <ol>
+              <li>„PDF je Gast“ erstellen – jede Datei heißt z. B. „Einladung_012_Mustermann_Max.pdf“.</li>
+              <li>„Versandliste (CSV)“ herunterladen: E-Mail, Briefanrede und Dateiname je Gast.</li>
+              <li>
+                Im E-Mail-Programm (z. B. Outlook) die Einladung an die Adresse aus der Liste schicken und die passende PDF anhängen. Die
+                App selbst verschickt nichts – sie arbeitet ohne Internet.
+              </li>
+            </ol>
+            <p className="muted small">Hinweis: PDFs und CSV sind nicht verschlüsselt – nach dem Versand löschen.</p>
+          </details>
+        </div>
+      </div>
     </section>
   );
 }

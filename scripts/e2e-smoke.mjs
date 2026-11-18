@@ -1245,6 +1245,35 @@ try {
   check((await page.locator('.participation .summary-chips').textContent()).includes('3 eingelassen (75 %)'), 'Teilnahme: 3 eingelassen (75 %)');
   check((await page.locator('.timeline li').count()) >= 1, 'Teilnahme: Einlass im Zeitverlauf');
   await page.screenshot({ path: `${OUT}/35-teilnahme.png`, fullPage: true });
+
+  // Einladungen: Vorschau, PDF je Gast (ZIP), Versandliste, Editor, Serienbrief
+  await page.getByRole('button', { name: 'Einladungen' }).click();
+  await page.locator('.invitation-preview .card-view').waitFor();
+  check((await page.locator('.invitation-preview').textContent()).includes('Sommerfest Test'), 'Einladung: Vorschau mit der Veranstaltung');
+  const [zipDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF je Gast (ZIP)' }).click()]);
+  const zipPath = `${OUT}/${zipDownload.suggestedFilename()}`;
+  await zipDownload.saveAs(zipPath);
+  const zipBytes = readFileSync(zipPath);
+  const pdfCount = zipBytes.toString('latin1').split('%PDF-1.4').length - 1;
+  check(zipBytes.subarray(0, 2).toString() === 'PK' && pdfCount === 4, `PDF je Gast als ZIP (${pdfCount} PDFs für 4 Gäste)`);
+  check(zipBytes.toString('latin1').includes('Einladung_001_Gastmann_Max.pdf'), 'Dateiname je Gast (Nummer und Name)');
+  const [mailingDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Versandliste (CSV)' }).click()]);
+  await mailingDownload.saveAs(`${OUT}/versandliste.csv`);
+  const mailing = readFileSync(`${OUT}/versandliste.csv`, 'utf8');
+  check(mailing.includes('E-Mail;Briefanrede') && mailing.includes('max.gastmann@example.com') && mailing.includes('Einladung_001_Gastmann_Max.pdf'), 'Versandliste mit E-Mail, Briefanrede und Dateiname');
+  await page.getByRole('link', { name: 'Einladung gestalten' }).click();
+  await page.locator('.ce-canvas .card-view').waitFor();
+  check((await page.locator('.ce-format-pill').textContent()).includes('A5'), 'Einladungs-Editor: Standard A5');
+  await page.locator('.ce-tile', { hasText: 'Freier Text' }).click();
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText('Gespeichert.').waitFor();
+  const savedOccasion = (await readStore(page, 'occasions')).find((o) => o.name === 'Sommerfest Test');
+  check(savedOccasion?.invitation?.elements.some((e) => e.text === 'Text'), 'Einladung gespeichert (an der Veranstaltung)');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await page.getByRole('link', { name: 'Drucken / ein PDF' }).click();
+  await page.locator('.invitation-page').first().waitFor();
+  check((await page.locator('.invitation-page').count()) === 4, 'Serienbrief: je Gast eine Seite (4)');
+  await page.screenshot({ path: `${OUT}/36-einladungen-druck.png` });
   await page.locator('.occasion-band-end').click();
   await page.locator('.occasion-band').waitFor({ state: 'detached' });
   check(!(await page.locator('.app-nav').textContent()).includes('Einlass'), 'Einlass beendet: wieder normale Zutrittskontrolle');

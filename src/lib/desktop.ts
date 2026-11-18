@@ -26,6 +26,8 @@ export interface DesktopApi {
   printers(): Promise<DesktopPrinter[]>;
   /** Aktuelle Seite ohne Druckdialog drucken ('' = Standarddrucker). */
   printDirect(options: { printer: string; copies: number }): Promise<{ ok: boolean; error?: string }>;
+  /** Dateien (nur .pdf/.csv) in einen im Dialog gewählten Ordner speichern; null = abgebrochen. */
+  saveToFolder(files: { name: string; data: Uint8Array }[], title: string): Promise<{ path: string; count: number } | null>;
 }
 
 export interface DesktopPrinter {

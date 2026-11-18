@@ -61,6 +61,16 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   Veranstaltung. Seiten `#/veranstaltungen`, `/neu`, `/:id` (Reiter Gäste/Teilnahme/Einstellungen),
   CSV `domain/guestImport.ts`. Im Backup (`occasions`, `guests`, `occasionLog`). Ohne Server: jedes
   Gerät prüft nur seine eigene Liste (ein Eingang).
+  **Einladungen** (Serienbrief): `occasion.invitation` = `CardLayout` (Formate `INVITATION_FORMATS`
+  a4/a5/a6/dl, `saveInvitation`), Logik `domain/invitation.ts` (Platzhalter `invitationValues` inkl.
+  `{briefanrede}`, Vorlagen/Bausteine, `selectInvitationGuests`, `invitationFilename`, `mailingListCsv`).
+  Editor = `CardLayoutEditor` mit `config` (`LayoutEditorConfig`, `CARD_EDITOR` bzw.
+  `invitationEditorConfig` in `pages/InvitationEditorPage.tsx`); `CardView` mit `values`/`qrKind`.
+  Druck `pages/InvitationPrintPage.tsx` (je Gast eine Seite, kleine Formate auf A4). PDF je Gast:
+  `lib/invitationRender.ts` zeichnet das Layout in ein Canvas (200 dpi, Umbruch `domain/textWrap.ts`
+  wie `pre-line`) → `domain/pdf.ts` (JPEG-Seite) → `domain/zip.ts` (ZIP „stored“); im Programm
+  `zkDesktop.saveToFolder` (nur `*.pdf`/`*.csv`-Namen, Ordner per Dialog). `cardText` entfernt Trennzeichen
+  am Rand nur, wenn ein Platzhalter leer war.
 - **Ereignis** (`AccessEvent`): enthält Momentaufnahmen (Kartennummer, Gruppe, Name), damit
   die Historie nach Änderungen lesbar bleibt. **Anwesenheit** je Karte.
 - Gespeichert werden `CardRecord`/`AccessEventRecord` (Personendaten verschlüsselt), die
@@ -179,7 +189,7 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   (`ZK_AUTOSTART_DIR` für Tests). `preload.cjs` stellt `window.zkDesktop` bereit
   (`lib/desktop.ts`: Präsentation, Sicherungsordner – Schreiben nur in den im Dialog gewählten
   Ordner und nur Backup-Dateinamen –, Autostart, Info, Drucker + Drucken ohne Dialog
-  `printDirect` = `webContents.print({ silent })` der aufrufenden Seite). Im Browser ist `getDesktop()` null.
+  `printDirect` = `webContents.print({ silent })` der aufrufenden Seite, `saveToFolder` für Einladungs-PDFs). Im Browser ist `getDesktop()` null.
   Kein Service Worker im Programm. Test: `npm run build && xvfb-run -a npm run desktop:smoke`
   (gepackt: `ZK_DESKTOP_EXE=…`, z. B. installiertes .deb `/opt/Zutrittskontrolle/zutrittskontrolle`).
   `.github/workflows/desktop.yml`: Windows-Installationsdatei auf `windows-latest`
@@ -258,8 +268,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
     Gästebildschirm-Platzhaltern, Namensform „Dienstgrad + Nachname“ (Version 0.17).
 18. ✅ Veranstaltungen (Teil 1): Gästeliste (CSV), Einladungs-Codes nur einmal gültig, Einlass-Modus je Gerät
     (Band, „Einlass“-Dashboard, Notfallliste mit Gästen), Teilnahme mit Zeitverlauf (Version 0.18).
-    Teil 2 (abgestimmt): Einladungs-Editor (A4/A5/A6/DIN lang), Serienbrief-Druck, PDF je Gast (ZIP/Ordner),
-    Versandliste. Danach: Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe; integrierte Hilfe besprechen.
+19. ✅ Veranstaltungen (Teil 2): Einladungs-Editor (A4/A5/A6/DIN lang), Serienbrief-Druck, PDF je Gast
+    (ZIP bzw. Ordner im Programm), Versandliste (Version 0.19). Als Nächstes: integrierte Hilfe besprechen;
+    später Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe.
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
