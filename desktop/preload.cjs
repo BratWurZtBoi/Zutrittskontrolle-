@@ -18,4 +18,5 @@ contextBridge.exposeInMainWorld('zkDesktop', {
   setAutostart: (on) => ipcRenderer.invoke('zk:set-autostart', on),
   printers: () => ipcRenderer.invoke('zk:printers'),
   printDirect: (options) => ipcRenderer.invoke('zk:print-direct', options),
+  saveToFolder: (files, title) => ipcRenderer.invoke('zk:save-to-folder', files, title),
 });

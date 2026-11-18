@@ -3,6 +3,7 @@
  * Web Crypto nie innerhalb einer Transaktion: erst lesen, dann (ent)schlüsseln, dann schreiben.
  */
 import { entryBlocker, type Decision } from '../domain/access';
+import { normalizeCardLayout, type CardLayout } from '../domain/cardLayout';
 import { generateCardToken, parseAppCode } from '../domain/cardCode';
 import { isValidIsoDate, toLocalDateString } from '../domain/dates';
 import {
@@ -87,6 +88,13 @@ export async function updateOccasion(id: string, input: OccasionInput, now = Dat
   const next: Occasion = { ...current, ...normalizeOccasion(input), updatedAt: now };
   await db.occasions.put(next);
   return next;
+}
+
+/** Einladung (Serienbrief-Layout) der Veranstaltung speichern. */
+export async function saveInvitation(occasionId: string, layout: CardLayout, now = Date.now()): Promise<void> {
+  const invitation = normalizeCardLayout({ ...layout, id: `einladung-${occasionId}`, updatedAt: now });
+  const changed = await db.occasions.update(occasionId, { invitation, updatedAt: now });
+  if (!changed) throw new ValidationError('Veranstaltung nicht gefunden.');
 }
 
 /** Löscht die Veranstaltung mit Gästeliste und Einlass-Protokoll. Läuft gerade der Einlass, wird er beendet. */

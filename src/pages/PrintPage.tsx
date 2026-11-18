@@ -273,7 +273,7 @@ export function PrintPage() {
 }
 
 /** Schnittmarken an den Ecken (außerhalb der Karte) und Falzmarken beim Falten. */
-function CutMarks({ x, y, w, h, foldX }: { x: number; y: number; w: number; h: number; foldX?: number }) {
+export function CutMarks({ x, y, w, h, foldX }: { x: number; y: number; w: number; h: number; foldX?: number }) {
   const len = 3;
   const off = 0.8;
   const lines: { left: number; top: number; width: number; height: number; dashed?: boolean }[] = [];

@@ -31,6 +31,10 @@ interface Props {
   edit?: EditHandlers<CardElement>;
   /** Druck: Ecken nicht abrunden (Kartendrucker, Bogen mit Schnittmarken). */
   square?: boolean;
+  /** Eigene Platzhalter-Werte (Einladungen) statt der Kartendaten. */
+  values?: Record<string, string>;
+  /** QR-Code als Ausweis (ZK1) oder Einladung (ZE1). */
+  qrKind?: 'card' | 'guest';
 }
 
 const CORNERS: ResizeHandle[] = ['nw', 'ne', 'sw', 'se'];
@@ -39,12 +43,13 @@ const CORNERS: ResizeHandle[] = ['nw', 'ne', 'sw', 'se'];
  * Eine Kartenseite nach Layout. Positionen in % der Karte, Schriftgrößen in % der Kartenhöhe
  * (cqh) – dieselbe Darstellung im Druck (echte Millimeter) und in der großen Vorschau.
  */
-export function CardView({ layout, data, token, face = 'front', large = false, edit, square = false }: Props) {
+export function CardView({ layout, data, token, face = 'front', large = false, edit, square = false, values: ownValues, qrKind = 'card' }: Props) {
   const size = cardSize(layout);
   const side = sideOf(layout, face);
   const onGroup = textColorOn(data.groupColor);
-  const values = cardValues(data);
-  const hasHolder = Boolean(data.holder);
+  const values = ownValues ?? cardValues(data);
+  // Einladungen: keine Unterscheidung mit/ohne Person
+  const hasHolder = ownValues ? true : Boolean(data.holder);
   const { surfaceRef, elementHandlers, surfaceHandlers, handleHandlers, guides } = useElementDrag(
     edit,
     side.elements,
@@ -86,7 +91,7 @@ export function CardView({ layout, data, token, face = 'front', large = false, e
         break;
       }
       case 'qr':
-        content = <QrImage token={token} className="cv-qr" />;
+        content = <QrImage token={token} kind={qrKind} className="cv-qr" />;
         break;
       case 'photo': {
         const h = data.holder;

@@ -137,6 +137,12 @@ try {
   const files = readdirSync(backupDir);
   check(files.length === 1 && /^zutrittskontrolle-backup-.*\.zkb$/.test(files[0]), `Sicherung im Ordner (${files.join(', ')})`);
 
+  // Einladungen als PDF in den gewählten Ordner (Dialog oben ersetzt → backupDir)
+  const saved = await page.evaluate(() => window.zkDesktop.saveToFolder([{ name: 'Einladung_001_Test.pdf', data: new Uint8Array([37, 80, 68, 70]) }], 'Ordner'));
+  check(saved?.count === 1 && existsSync(join(backupDir, 'Einladung_001_Test.pdf')), 'Einladungen (PDF) im gewählten Ordner gespeichert');
+  const evil = await page.evaluate(() => window.zkDesktop.saveToFolder([{ name: '../boese.pdf', data: new Uint8Array([1]) }], 'Ordner').then(() => 'gespeichert', () => 'abgelehnt'));
+  check(evil === 'abgelehnt', 'Dateinamen mit Pfad werden abgelehnt');
+
   console.log('5) Allgemein & Gerät');
   await page.evaluate(() => (location.hash = '#/einstellungen/allgemein'));
   const label = process.platform === 'linux' ? 'Linux-Programm' : 'Windows-Programm';

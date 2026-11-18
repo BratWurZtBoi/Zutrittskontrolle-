@@ -11,8 +11,8 @@ import type { CardHolder } from './types';
 
 export type { ResizeHandle, SnapGuides } from './editorGeometry';
 export type CardOrientation = 'landscape' | 'portrait';
-/** Kartengröße: Scheckkarte (ID-1), A7, A6 oder eigene Größe. */
-export type CardFormat = 'id1' | 'a7' | 'a6' | 'custom';
+/** Kartengröße: Scheckkarte (ID-1), A7, A6 oder eigene Größe – Einladungen zusätzlich A5, A4, DIN lang. */
+export type CardFormat = 'id1' | 'a7' | 'a6' | 'custom' | 'a5' | 'a4' | 'dl';
 export type CardFace = 'front' | 'back';
 /** Breite × Höhe der gedruckten Karte in mm. */
 export interface CardSize {
@@ -93,6 +93,14 @@ export const CARD_FORMATS: { id: Exclude<CardFormat, 'custom'>; label: string; s
   { id: 'a7', label: 'A7', short: 74, long: 105 },
   { id: 'a6', label: 'A6', short: 105, long: 148 },
 ];
+/** Formate für Einladungen (Veranstaltungen). */
+export const INVITATION_FORMATS: { id: Exclude<CardFormat, 'custom'>; label: string; short: number; long: number }[] = [
+  { id: 'a4', label: 'A4', short: 210, long: 297 },
+  { id: 'a5', label: 'A5', short: 148, long: 210 },
+  { id: 'a6', label: 'A6 / Postkarte', short: 105, long: 148 },
+  { id: 'dl', label: 'DIN lang', short: 99, long: 210 },
+];
+const ALL_FORMATS = [...CARD_FORMATS, ...INVITATION_FORMATS.filter((f) => !CARD_FORMATS.some((c) => c.id === f.id))];
 /** Eigene Größe: passt auf einen A4-Bogen mit Druckrand. */
 export const CUSTOM_SIZE_LIMITS = { min: 30, maxW: 190, maxH: 277 };
 
@@ -107,7 +115,7 @@ export function cardSize(layout: Pick<CardLayout, 'orientation' | 'format' | 'cu
       h: Math.round(clampNum(layout.customSize.h, min, maxH) * 10) / 10,
     };
   }
-  const f = CARD_FORMATS.find((x) => x.id === layout.format) ?? CARD_FORMATS[0]!;
+  const f = ALL_FORMATS.find((x) => x.id === layout.format) ?? CARD_FORMATS[0]!;
   return layout.orientation === 'portrait' ? { w: f.short, h: f.long } : { w: f.long, h: f.short };
 }
 
@@ -116,7 +124,7 @@ export function formatLabel(layout: Pick<CardLayout, 'orientation' | 'format' | 
   const { w, h } = cardSize(layout);
   const dims = `${String(w).replace('.', ',')} × ${String(h).replace('.', ',')} mm`;
   if (layout.format === 'custom') return `Eigene Größe · ${dims}`;
-  const f = CARD_FORMATS.find((x) => x.id === layout.format) ?? CARD_FORMATS[0]!;
+  const f = ALL_FORMATS.find((x) => x.id === layout.format) ?? CARD_FORMATS[0]!;
   return `${f.label} ${layout.orientation === 'portrait' ? 'hoch' : 'quer'} · ${dims}`;
 }
 
@@ -476,7 +484,10 @@ export function cardText(element: CardElement, values: Record<string, string>): 
     return values[k] ?? '';
   });
   if (missing && element.hideIfEmpty) return null;
-  const cleaned = text.replace(/[ \t]{2,}/g, ' ').replace(/^[\s·,]+|[\s·,]+$/g, '');
+  // Trennzeichen am Anfang/Ende nur entfernen, wenn ein Platzhalter leer war („Max , “) –
+  // sonst bleibt z. B. das Komma nach „{briefanrede},“ stehen.
+  const collapsed = text.replace(/[ \t]{2,}/g, ' ');
+  const cleaned = missing ? collapsed.replace(/^[\s·,]+|[\s·,]+$/g, '') : collapsed.trim();
   return cleaned || null;
 }
 
@@ -508,7 +519,7 @@ export function copyCardLayout(source: CardLayout, id: string, name: string, now
 }
 
 export function normalizeCardLayout(raw: Partial<CardLayout> & { id: string }): CardLayout {
-  const format: CardFormat = raw.format === 'a7' || raw.format === 'a6' || raw.format === 'custom' ? raw.format : 'id1';
+  const format: CardFormat = raw.format === 'custom' || ALL_FORMATS.some((f) => f.id === raw.format) ? raw.format! : 'id1';
   const customSize =
     format === 'custom' && raw.customSize && Number.isFinite(raw.customSize.w) && Number.isFinite(raw.customSize.h)
       ? { w: raw.customSize.w, h: raw.customSize.h }

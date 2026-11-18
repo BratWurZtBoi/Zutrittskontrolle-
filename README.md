@@ -163,6 +163,18 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Eine Liste nur mit Vor- und Nachnamen reicht also aus. Wer dort schon steht, wird beim erneuten
   Einlesen nicht doppelt abgelegt. Die Personendaten sind verschlüsselt und im Backup enthalten.
 
+### Integrierte Hilfe
+
+- **? Hilfe** im Menü (auf dem Handy das Fragezeichen unten) öffnet eine Seitenleiste mit den Anleitungen
+  **zur gerade geöffneten Seite** – Schritt für Schritt, die Beschriftungen der App **fett**, mit Direktlinks
+  („Datensicherung →“). Am breiten Bildschirm rückt die Seite zur Seite, sodass man beim Lesen mitmachen kann;
+  auf Handy/Tablet deckt die Hilfe die Seite ab und schließt sich nach einem Link. **Esc** schließt.
+- Suche über alle Themen (auch ohne Umlaute, z. B. „sicherung“, „besucher“), **Alle Hilfethemen** →
+  Seite *#/hilfe* mit den Bereichen Erste Schritte, Am Empfang, Karten und Personen, Veranstaltungen,
+  Gästebildschirm und Geräte, Daten und Sicherheit.
+- **Bediener** (PIN) sehen nur die Themen für den Empfang und keine Links in Admin-Bereiche.
+- Die Inhalte stehen in `src/help/topics.ts`; ein Test prüft, dass jede Seite der Bedienung passende Themen hat.
+
 ### Mehrfachauswahl
 
 - *Karten* → **Auswählen** → Karten antippen oder „Alle angezeigten“ → **Personendaten entfernen**
@@ -315,7 +327,19 @@ Für Feiern, Empfänge, Tage der offenen Tür … – getrennt von der normalen 
 - **Teilnahme**: eingeladen, eingelassen (Quote), offen, storniert, abgewiesen, je Kategorie,
   **Einlass im Zeitverlauf** (15 Minuten), Einlass-Protokoll, **Teilnehmerliste als CSV**.
 - Danach **„Gästedaten löschen“** (Namen weg, Zahlen bleiben) oder die ganze Veranstaltung löschen.
-- Veranstaltungen sind im verschlüsselten Backup enthalten.
+- **Einladungen** (Reiter „Einladungen“):
+  - **Einladung gestalten** im gewohnten Editor (Ziehen, Anfasser, Rückgängig): Formate **A4, A5, A6/Postkarte,
+    DIN lang**, Bausteine Briefanrede, Einladungstext, Veranstaltung, Datum/Ort/Einlass, Name des Gastes,
+    Nr., QR-Code, Logo, Farbfläche. Platzhalter z. B. `{briefanrede}` („Sehr geehrter Herr Oberst
+    Mustermann“), `{name}`, `{einheit}`, `{veranstaltung}`, `{datum}` („Samstag, 12. Dezember 2026“),
+    `{ort}`, `{einlass}`, `{nr}`. Vorlagen „Brief“ (hoch) und „Karte“ (quer).
+  - **Für wen:** alle, nur ohne E-Mail (Post), nur mit E-Mail, noch nicht eingelassen – plus Kategorie.
+  - **Drucken / ein PDF** (Serienbrief, je Gast eine Seite; A6 auch zwei je A4 mit Schnittmarken).
+  - **PDF je Gast**: eine Datei je Gast (`Einladung_012_Mustermann_Max.pdf`) – im Browser als ZIP, im
+    Programm für Windows/Linux direkt in einen gewählten Ordner. Ohne Internet erzeugt.
+  - **Versandliste (CSV)**: E-Mail, Briefanrede und Dateiname je Gast – z. B. für Outlook. Die App
+    verschickt selbst keine E-Mails.
+- Veranstaltungen (mit Einladung) sind im verschlüsselten Backup enthalten.
 - Hinweis: Ohne Server prüft jedes Gerät nur seine eigene Gästeliste – für einen Eingang gedacht.
 
 ## Einmalige Einrichtung (im Browser auf github.com)
@@ -391,6 +415,7 @@ Merge nach `main` automatisch gebaut.
 5. Echter Kameratest: *Karten* → Reiter **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
    und mit dem Gerät scannen, auf dem die Karten erstellt wurden.
 6. *Dashboard* und *Auswertung* zeigen, wer eingebucht ist und welche Buchungen es gab.
+7. Bei Fragen: **? Hilfe** im Menü – zeigt die Anleitungen zur gerade geöffneten Seite.
 
 ## Wichtige Hinweise zum Speicher
 
@@ -424,7 +449,8 @@ Merge nach `main` automatisch gebaut.
 | USB-Scanner (Tastatur-Modus) mit Scanner-Test | ✅ |
 | CSV-Import: Personen ohne Gruppe unter „Nicht zugeordnet“, später zuordnen | ✅ |
 | Veranstaltungen: Gästeliste, Einladungs-Codes nur einmal gültig, Einlass-Dashboard, Teilnahme | ✅ |
-| Einladungen als Serienbrief, PDF je Gast, Versandliste | geplant |
+| Einladungen: Editor (A4/A5/A6/DIN lang), Serienbrief, PDF je Gast (ZIP/Ordner), Versandliste | ✅ |
+| Integrierte Hilfe: „?“ mit Anleitungen zur Seite, Hilfe-Seite mit Suche, Admin/Bediener getrennt | ✅ |
 
 ## Technik
 

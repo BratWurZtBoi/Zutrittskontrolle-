@@ -8,10 +8,13 @@ import { CardLayoutsPage } from './pages/CardLayoutsPage';
 import { CardListPage } from './pages/CardListPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EmergencyListPage } from './pages/EmergencyListPage';
+import { HelpPage } from './pages/HelpPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { ImportPage } from './pages/ImportPage';
 import { LayoutsPage } from './pages/LayoutsPage';
 import { LoginPage } from './pages/LoginPage';
+import { InvitationEditorPage } from './pages/InvitationEditorPage';
+import { InvitationPrintPage } from './pages/InvitationPrintPage';
 import { OccasionPage } from './pages/OccasionPage';
 import { OccasionCreatePage, OccasionsPage } from './pages/OccasionsPage';
 import { OverviewPage } from './pages/OverviewPage';
@@ -46,6 +49,7 @@ export function App() {
             <Route path="auswertung" element={<OverviewPage />} />
             <Route path="uebersicht" element={<Navigate to="/auswertung" replace />} />
             <Route path="notfallliste" element={<EmergencyListPage />} />
+            <Route path="hilfe" element={<HelpPage />} />
           </Route>
           {/* nur mit Admin-Anmeldung */}
           <Route element={<RequireRole allow="admin" />}>
@@ -57,6 +61,8 @@ export function App() {
             <Route path="veranstaltungen" element={<OccasionsPage />} />
             <Route path="veranstaltungen/neu" element={<OccasionCreatePage />} />
             <Route path="veranstaltungen/:id" element={<OccasionPage />} />
+            <Route path="veranstaltungen/:id/einladung" element={<InvitationEditorPage />} />
+            <Route path="veranstaltungen/:id/einladungen/druck" element={<InvitationPrintPage />} />
             <Route path="einstellungen" element={<SettingsHome />} />
             <Route path="einstellungen/allgemein" element={<GeneralSettings />} />
             <Route path="einstellungen/scanner" element={<ScannerSettings />} />

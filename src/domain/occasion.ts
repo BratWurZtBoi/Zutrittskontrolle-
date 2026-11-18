@@ -3,6 +3,7 @@
  * Reine Funktionen ohne Datenbank – Entscheidung, Kennzahlen, Filter, Zeitverlauf.
  */
 import type { Decision } from './access';
+import type { CardLayout } from './cardLayout';
 import type { AccessEventRecord, EncryptedData, ReasonCode } from './types';
 
 /** Eine Veranstaltung (enthält keine Personendaten). */
@@ -22,6 +23,8 @@ export interface Occasion {
   /** Gästebildschirm: Scan-Anzeige bzw. Ruhebildschirm (leer = wie sonst). */
   resultLayoutId?: string;
   idleLayoutId?: string;
+  /** Gestaltung der Einladung (Serienbrief); fehlt = Standard-Einladung. Enthält keine Personendaten. */
+  invitation?: CardLayout;
   createdAt: number;
   updatedAt: number;
 }

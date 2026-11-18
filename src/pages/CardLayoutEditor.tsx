@@ -60,9 +60,14 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'general', label: 'Allgemein' },
 ];
 
-export function elementLabel(e: CardElement): string {
+/** Kurzbezeichnung eines Elements; Platzhalter werden mit ihrer Bezeichnung gezeigt. */
+export function elementLabel(e: CardElement, placeholders?: { key: string; label: string }[]): string {
   if (e.type !== 'text') return TYPE_LABEL[e.type];
-  const t = friendlyText(e.text ?? '').replace(/\s+/g, ' ').trim();
+  const raw = e.text ?? '';
+  const friendly = placeholders && placeholders !== CARD_PLACEHOLDERS
+    ? raw.replace(/\{(\w+)\}/g, (m, key: string) => placeholders.find((p) => p.key === `{${key.toLowerCase()}}`)?.label ?? m)
+    : friendlyText(raw);
+  const t = friendly.replace(/\s+/g, ' ').trim();
   return t ? (t.length > 26 ? `${t.slice(0, 25)}…` : t) : 'Textfeld (leer)';
 }
 
@@ -85,19 +90,67 @@ const parseNum = (v: string): number | null => {
   return v.trim() !== '' && Number.isFinite(n) ? n : null;
 };
 
+type FormatDef = { id: Exclude<CardFormat, 'custom'>; label: string; short: number; long: number };
+
+/**
+ * Was der Editor gestaltet: Kartenlayouts (Standard) oder Einladungen (Veranstaltungen).
+ * Gleiche Bedienung, aber eigene Formate, Bausteine, Platzhalter und Vorschau.
+ */
+export interface LayoutEditorConfig {
+  kind: 'card' | 'invitation';
+  closeLabel: string;
+  nameLabel: string;
+  unsavedText: string;
+  formats: FormatDef[];
+  allowCustomSize: boolean;
+  allowBack: boolean;
+  /** Vorschau mit/ohne Person, Vorschau-Gruppe, „Anzeigen“ je Element, Gruppenzuordnung. */
+  cardFeatures: boolean;
+  presets: typeof CARD_PRESETS;
+  placeholders: { key: string; label: string }[];
+  templates: typeof CARD_TEMPLATES;
+  /** Bezeichnung für die Farbe „group“ */
+  colorLabel: string;
+  formatHint: (format: CardFormat) => string;
+  /** Feste Vorschau (Einladungen): Farben, Platzhalter-Werte, QR-Art. */
+  preview?: { data: CardData; values: Record<string, string>; qrKind: 'card' | 'guest' };
+  /** Eigenes Speichern (Einladungen); sonst Kartenlayout + Gruppen. */
+  onSave?: (layout: CardLayout) => Promise<void>;
+}
+
+export const CARD_EDITOR: LayoutEditorConfig = {
+  kind: 'card',
+  closeLabel: '← Kartenlayouts',
+  nameLabel: 'Name des Kartenlayouts',
+  unsavedText: 'Das Kartenlayout hat ungespeicherte Änderungen. Trotzdem verlassen?',
+  formats: CARD_FORMATS,
+  allowCustomSize: true,
+  allowBack: true,
+  cardFeatures: true,
+  presets: CARD_PRESETS,
+  placeholders: CARD_PLACEHOLDERS,
+  templates: CARD_TEMPLATES,
+  colorLabel: 'Gruppenfarbe',
+  formatHint: (format) =>
+    format === 'id1'
+      ? 'Scheckkarte: passt in Kartendrucker und Kartenhalter.'
+      : 'Größere Formate werden auf A4-Bögen gedruckt und ausgeschnitten (z. B. für Ausweishüllen).',
+};
+
 interface Props {
   initial: CardLayout;
   groups: Group[];
   orgName: string;
   defaultLayoutId: string;
   onClose: () => void;
+  config?: LayoutEditorConfig;
 }
 
 /**
  * Kartenlayout gestalten: oben Name, Format, Rückgängig und Speichern; links die Karte
  * (Vorder-/Rückseite) zum Anklicken, Ziehen und Größe ändern; rechts Reiter.
  */
-export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, onClose }: Props) {
+export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, onClose, config = CARD_EDITOR }: Props) {
   const history = useHistory<CardLayout>(initial);
   const layout = history.value;
   const [saved, setSaved] = useState(initial);
@@ -120,9 +173,11 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
   const selected = side.elements.find((e) => e.id === selectedId);
   const group = groups.find((g) => g.id === previewGroupId) ?? groups[0] ?? FALLBACK_GROUP;
   const sameSet = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every((x) => b.has(x));
-  const dirty = layout !== saved || !sameSet(assigned, savedGroups) || isDefault !== savedDefault;
+  const dirty = layout !== saved || (config.cardFeatures && (!sameSet(assigned, savedGroups) || isDefault !== savedDefault));
+  const previewData = config.preview?.data ?? sampleData(group, orgName, withHolder);
+  const previewValues = config.preview?.values;
 
-  useUnsavedGuard(dirty, rootRef, 'Das Kartenlayout hat ungespeicherte Änderungen. Trotzdem verlassen?');
+  useUnsavedGuard(dirty, rootRef, config.unsavedText);
 
   const updateSide = (fn: (s: CardSide) => CardSide, key?: string) => history.set((l) => withSide(l, face, fn(sideOf(l, face))), key);
   const updateElement = (element: CardElement, key = `el:${element.id}`) =>
@@ -158,7 +213,7 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
   const changeFormat = (next: Pick<CardLayout, 'format' | 'orientation' | 'customSize'>) => {
     // Wechsel Hoch ↔ Quer: Positionen in % passen dann meist nicht mehr – passende Vorlage anbieten
     const flipped = next.orientation !== layout.orientation;
-    const template = flipped ? CARD_TEMPLATES.find((t) => t.orientation === next.orientation) : undefined;
+    const template = flipped ? config.templates.find((t) => t.orientation === next.orientation) : undefined;
     const useTemplate =
       template !== undefined &&
       window.confirm(
@@ -188,9 +243,13 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
   const save = async () => {
     setMessage(null);
     try {
-      await saveCardLayout(layout);
-      if (!sameSet(assigned, savedGroups)) await setCardLayoutGroups(layout.id, assigned);
-      if (isDefault !== savedDefault) await saveSettings({ defaultCardLayoutId: isDefault ? layout.id : STANDARD_CARD_LAYOUT_ID });
+      if (config.onSave) {
+        await config.onSave(layout);
+      } else {
+        await saveCardLayout(layout);
+        if (!sameSet(assigned, savedGroups)) await setCardLayoutGroups(layout.id, assigned);
+        if (isDefault !== savedDefault) await saveSettings({ defaultCardLayoutId: isDefault ? layout.id : STANDARD_CARD_LAYOUT_ID });
+      }
       setSaved(layout);
       setSavedGroups(new Set(assigned));
       setSavedDefault(isDefault);
@@ -225,7 +284,8 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
       } else {
         const logo = await fileToScaledDataUrl(file, { maxWidth: 800, maxHeight: 400, type: 'image/png' });
         setLayout({ logo });
-        if (!side.elements.some((x) => x.type === 'logo')) addElement((id, s) => CARD_PRESETS.find((p) => p.id === 'logo')!.make(id, s));
+        const logoPreset = config.presets.find((p) => p.id === 'logo');
+        if (logoPreset && !side.elements.some((x) => x.type === 'logo')) addElement(logoPreset.make);
       }
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Das Bild konnte nicht übernommen werden.' });
@@ -236,13 +296,13 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
     <div className="ce" ref={rootRef}>
       <div className="ce-topbar">
         <button type="button" className="btn btn-ghost" onClick={close}>
-          ← Kartenlayouts
+          {config.closeLabel}
         </button>
         <input
           className="ce-name"
           value={layout.name}
           maxLength={40}
-          aria-label="Name des Kartenlayouts"
+          aria-label={config.nameLabel}
           onChange={(e) => setLayout({ name: e.target.value }, 'name')}
         />
         <button type="button" className="ce-format-pill" onClick={() => setTab('design')} title="Format ändern (Reiter „Design“)">
@@ -271,6 +331,7 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
       <div className="ce-main">
         <section className="ce-stage" aria-label="Vorschau">
           <div className="ce-stage-tools">
+            {config.allowBack && (
             <Segmented
               label="Seite"
               value={face}
@@ -283,6 +344,8 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
                 setSelectedId(undefined);
               }}
             />
+            )}
+            {config.cardFeatures && (
             <Segmented
               label="Vorschau"
               value={withHolder ? 'holder' : 'anonymous'}
@@ -292,7 +355,8 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
               ]}
               onChange={(v) => setWithHolder(v === 'holder')}
             />
-            {groups.length > 1 && (
+            )}
+            {config.cardFeatures && groups.length > 1 && (
               <label className="inline-select">
                 Vorschau-Gruppe
                 <select value={group.id} onChange={(e) => setPreviewGroupId(e.target.value)}>
@@ -318,7 +382,9 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
               <CardView
                 layout={layout}
                 face={face}
-                data={sampleData(group, orgName, withHolder)}
+                data={previewData}
+                values={previewValues}
+                qrKind={config.preview?.qrKind}
                 token={SAMPLE_TOKEN}
                 large
                 edit={{ selectedId, onSelect: select, onChange: (e) => updateElement(e, `move:${e.id}`), onGestureStart: history.checkpoint }}
@@ -342,6 +408,8 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
           <div className="ce-panel-body" role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
             {tab === 'add' && (
               <AddTab
+                presets={config.presets}
+                placeholders={config.placeholders}
                 face={face}
                 side={side}
                 selectedId={selectedId}
@@ -354,9 +422,11 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
             {tab === 'edit' &&
               (selected ? (
                 <EditTab
+                  config={config}
                   element={selected}
                   size={size}
-                  data={sampleData(group, orgName, withHolder)}
+                  data={previewData}
+                  values={previewValues}
                   onChange={updateElement}
                   onRemove={() => removeElement(selected.id)}
                   onDuplicate={() => duplicateElement(selected)}
@@ -366,11 +436,12 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
                 <div className="ce-empty">
                   <p>Kein Element ausgewählt.</p>
                   <p className="muted small">Ein Element auf der Karte anklicken – oder unter „+ Hinzufügen“ ein neues einfügen.</p>
-                  <ElementChips elements={side.elements} selectedId={selectedId} onSelect={select} />
+                  <ElementChips elements={side.elements} selectedId={selectedId} onSelect={select} placeholders={config.placeholders} />
                 </div>
               ))}
             {tab === 'design' && (
               <DesignTab
+                config={config}
                 layout={layout}
                 face={face}
                 side={side}
@@ -385,6 +456,7 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
             )}
             {tab === 'general' && (
               <GeneralTab
+                config={config}
                 layout={layout}
                 groups={groups}
                 assigned={assigned}
@@ -392,7 +464,7 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
                 onAssigned={setAssigned}
                 onDefault={setIsDefault}
                 onTemplate={(id) => {
-                  const t = CARD_TEMPLATES.find((x) => x.id === id);
+                  const t = config.templates.find((x) => x.id === id);
                   if (!t || !window.confirm(`Vorlage „${t.label}“ auf die Vorderseite anwenden? Die bisherigen Elemente werden ersetzt.`)) return;
                   history.set((l) => {
                     const merged = { ...l, orientation: l.format === 'custom' ? l.orientation : t.orientation };
@@ -420,14 +492,24 @@ export function CardLayoutEditor({ initial, groups, orgName, defaultLayoutId, on
 // Bausteine
 // ---------------------------------------------------------------------------
 
-function ElementChips({ elements, selectedId, onSelect }: { elements: CardElement[]; selectedId?: string; onSelect: (id: string) => void }) {
+function ElementChips({
+  elements,
+  selectedId,
+  onSelect,
+  placeholders,
+}: {
+  elements: CardElement[];
+  selectedId?: string;
+  onSelect: (id: string) => void;
+  placeholders?: { key: string; label: string }[];
+}) {
   if (elements.length === 0) return <p className="muted small">Auf dieser Seite ist noch nichts.</p>;
   return (
     <ul className="element-list" aria-label="Elemente auf der Karte">
       {[...elements].reverse().map((e) => (
         <li key={e.id}>
           <button type="button" className={e.id === selectedId ? 'chip active' : 'chip'} onClick={() => onSelect(e.id)}>
-            {elementLabel(e)}
+            {elementLabel(e, placeholders)}
           </button>
         </li>
       ))}
@@ -436,6 +518,8 @@ function ElementChips({ elements, selectedId, onSelect }: { elements: CardElemen
 }
 
 function AddTab(props: {
+  presets: typeof CARD_PRESETS;
+  placeholders: { key: string; label: string }[];
   face: CardFace;
   side: CardSide;
   selectedId?: string;
@@ -458,7 +542,7 @@ function AddTab(props: {
     <>
       <h3 className="ce-title">Element hinzufügen ({FACE_LABEL[props.face]})</h3>
       <div className="ce-tiles">
-        {CARD_PRESETS.map((p) => (
+        {props.presets.map((p) => (
           <button key={p.id} type="button" className="ce-tile" onClick={() => props.onAdd(p.make)}>
             <strong>{p.label}</strong>
             <small>{p.hint}</small>
@@ -466,8 +550,8 @@ function AddTab(props: {
         ))}
       </div>
       <div className="ce-section">
-        <h4>Auf der Karte (antippen zum Bearbeiten)</h4>
-        <ElementChips elements={props.side.elements} selectedId={props.selectedId} onSelect={props.onSelect} />
+        <h4>Vorhanden (antippen zum Bearbeiten)</h4>
+        <ElementChips elements={props.side.elements} selectedId={props.selectedId} onSelect={props.onSelect} placeholders={props.placeholders} />
       </div>
     </>
   );
@@ -480,17 +564,21 @@ function colorMode(c: CardColor | undefined): 'default' | 'group' | 'on-group' |
 }
 
 function EditTab({
+  config,
   element,
   size,
   data,
+  values,
   onChange,
   onRemove,
   onDuplicate,
   onReorder,
 }: {
+  config: LayoutEditorConfig;
   element: CardElement;
   size: CardSize;
   data: CardData;
+  values?: Record<string, string>;
   onChange: (e: CardElement, key?: string) => void;
   onRemove: () => void;
   onDuplicate: () => void;
@@ -504,7 +592,7 @@ function EditTab({
   const toMm = (pct: number, axis: 'w' | 'h') => (pct / 100) * size[axis];
   const toPct = (mm: number, axis: 'w' | 'h') => (mm / size[axis]) * 100;
   const fontMm = (element.size / 100) * size.h;
-  const preview = isText ? cardText(element, cardValues(data)) : null;
+  const preview = isText ? cardText(element, values ?? cardValues(data)) : null;
 
   const insert = (key: string) => {
     const ta = textRef.current;
@@ -523,13 +611,13 @@ function EditTab({
 
   const colorOptions: { value: ReturnType<typeof colorMode>; label: string }[] = isBand
     ? [
-        { value: 'group', label: 'Gruppenfarbe' },
+        { value: 'group', label: config.colorLabel },
         { value: 'on-group', label: 'Schwarz/Weiß passend' },
         { value: 'custom', label: 'Eigene' },
       ]
     : [
         { value: 'default', label: 'Standard' },
-        { value: 'group', label: 'Gruppenfarbe' },
+        { value: 'group', label: config.colorLabel },
         { value: 'on-group', label: 'Schwarz/Weiß passend' },
         { value: 'custom', label: 'Eigene' },
       ];
@@ -539,7 +627,7 @@ function EditTab({
       <div className="ce-edit-head">
         <h3 className="ce-title">
           {TYPE_LABEL[element.type]}
-          {isText && ` „${elementLabel(element)}“`}
+          {isText && ` „${elementLabel(element, config.placeholders)}“`}
         </h3>
         <div className="button-row">
           <button type="button" className="btn btn-small" onClick={onDuplicate}>
@@ -557,7 +645,7 @@ function EditTab({
           <textarea id={`card-text-${element.id}`} ref={textRef} rows={2} value={element.text ?? ''} onChange={(e) => set({ text: e.target.value }, `text:${element.id}`)} />
           <div className="ce-insert" aria-label="Einfügen">
             <span className="muted small">Einfügen:</span>
-            {CARD_PLACEHOLDERS.map((p) => (
+            {config.placeholders.map((p) => (
               <button key={p.key} type="button" className="chip chip-small" onClick={() => insert(p.key)} title={p.key}>
                 + {p.label}
               </button>
@@ -648,11 +736,13 @@ function EditTab({
         </div>
       </div>
 
-      <div className="ce-section">
-        <h4>Anzeigen</h4>
-        <Segmented label="Anzeigen" small value={element.showWhen ?? 'always'} options={SHOW_OPTIONS} onChange={(showWhen) => set({ showWhen: showWhen === 'always' ? undefined : showWhen })} />
-        <p className="muted small">„Mit Person“ gilt nur bei Gruppen, die Name und Foto drucken dürfen.</p>
-      </div>
+      {config.cardFeatures && (
+        <div className="ce-section">
+          <h4>Anzeigen</h4>
+          <Segmented label="Anzeigen" small value={element.showWhen ?? 'always'} options={SHOW_OPTIONS} onChange={(showWhen) => set({ showWhen: showWhen === 'always' ? undefined : showWhen })} />
+          <p className="muted small">„Mit Person“ gilt nur bei Gruppen, die Name und Foto drucken dürfen.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -686,6 +776,7 @@ function MmField({ label, value, onChange }: { label: string; value: number; onC
 }
 
 function DesignTab(props: {
+  config: LayoutEditorConfig;
   layout: CardLayout;
   face: CardFace;
   side: CardSide;
@@ -698,7 +789,8 @@ function DesignTab(props: {
   onRemoveLogo: () => void;
 }) {
   const { layout, side } = props;
-  const format: CardFormat = layout.format ?? 'id1';
+  const { config } = props;
+  const format: CardFormat = layout.format ?? config.formats[0]!.id;
   const size = cardSize(layout);
   const bgMode = side.background.color === 'group' ? 'group' : side.background.color.toLowerCase() === '#ffffff' ? 'white' : 'custom';
   const { min, maxW, maxH } = CUSTOM_SIZE_LIMITS;
@@ -707,7 +799,7 @@ function DesignTab(props: {
       <div className="ce-section">
         <h4>Format</h4>
         <label>
-          Kartengröße
+          {config.kind === 'invitation' ? 'Format' : 'Kartengröße'}
           <select
             value={format}
             onChange={(e) => {
@@ -715,12 +807,12 @@ function DesignTab(props: {
               props.onFormat(f === 'custom' ? { format: f, orientation: layout.orientation, customSize: { w: size.w, h: size.h } } : { format: f, orientation: layout.orientation, customSize: undefined });
             }}
           >
-            {CARD_FORMATS.map((f) => (
+            {config.formats.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.label} ({mmText(f.short)} × {mmText(f.long)} mm)
               </option>
             ))}
-            <option value="custom">Eigene Größe …</option>
+            {config.allowCustomSize && <option value="custom">Eigene Größe …</option>}
           </select>
         </label>
         {format === 'custom' ? (
@@ -742,20 +834,18 @@ function DesignTab(props: {
             onChange={(orientation) => props.onFormat({ format, orientation, customSize: undefined })}
           />
         )}
-        <p className="muted small">
-          {format === 'id1'
-            ? 'Scheckkarte: passt in Kartendrucker und Kartenhalter.'
-            : 'Größere Formate werden auf A4-Bögen gedruckt und ausgeschnitten (z. B. für Ausweishüllen).'}
-        </p>
+        <p className="muted small">{config.formatHint(format)}</p>
       </div>
 
-      <div className="ce-section">
-        <h4>Rückseite</h4>
-        <label className="checkbox-inline">
-          <input type="checkbox" checked={Boolean(layout.back)} onChange={(e) => props.onBack(e.target.checked)} />
-          Rückseite gestalten
-        </label>
-      </div>
+      {config.allowBack && (
+        <div className="ce-section">
+          <h4>Rückseite</h4>
+          <label className="checkbox-inline">
+            <input type="checkbox" checked={Boolean(layout.back)} onChange={(e) => props.onBack(e.target.checked)} />
+            Rückseite gestalten
+          </label>
+        </div>
+      )}
 
       {(props.face === 'front' || layout.back) && (
         <div className="ce-section">
@@ -767,7 +857,7 @@ function DesignTab(props: {
               value={bgMode}
               options={[
                 { value: 'white', label: 'Weiß' },
-                { value: 'group', label: 'Gruppenfarbe' },
+                { value: 'group', label: config.colorLabel },
                 { value: 'custom', label: 'Eigene' },
               ]}
               onChange={(v) => props.onBackground({ ...side.background, color: v === 'group' ? 'group' : v === 'white' ? '#ffffff' : '#f1f5f9' })}
@@ -809,6 +899,7 @@ function DesignTab(props: {
 }
 
 function GeneralTab(props: {
+  config: LayoutEditorConfig;
   layout: CardLayout;
   groups: Group[];
   assigned: Set<string>;
@@ -826,6 +917,7 @@ function GeneralTab(props: {
   };
   return (
     <div className="form ce-general">
+      {props.config.cardFeatures && (
       <div className="ce-section">
         <h4>Verwendung</h4>
         <fieldset className="ce-groups">
@@ -844,13 +936,14 @@ function GeneralTab(props: {
         </label>
         <p className="muted small">Wird beim Speichern übernommen.</p>
       </div>
+      )}
       <div className="ce-section">
         <h4>Vorlagen</h4>
         <label>
           Vorlage auf die Vorderseite anwenden
           <select value="" onChange={(e) => props.onTemplate(e.target.value)}>
             <option value="">– Vorlage wählen –</option>
-            {CARD_TEMPLATES.map((t) => (
+            {props.config.templates.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.label}
               </option>
@@ -867,7 +960,8 @@ function GeneralTab(props: {
         <h4>Hinweis</h4>
         <p className="muted small">
           Texte im Layout werden unverschlüsselt gespeichert – Namen daher nur über die Bausteine bzw. Platzhalter (
-          {CARD_PLACEHOLDERS.map((p) => p.label).join(', ')}), die beim Druck mit den Daten der Karte gefüllt werden.
+          {props.config.placeholders.map((p) => p.label).join(', ')}), die beim Druck mit den Daten
+          {props.config.kind === 'invitation' ? ' des Gastes' : ' der Karte'} gefüllt werden.
         </p>
       </div>
     </div>
