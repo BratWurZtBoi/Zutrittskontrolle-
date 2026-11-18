@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
 import { isCorrectable } from '../domain/overview';
+import { guestName } from '../domain/occasion';
 import { holderName, holderUnitLine } from '../domain/texts';
 import { describeOutcome, hideIdentityFor, type Audience } from '../lib/resultText';
 import { GroupBadge } from './GroupBadge';
+import { OccasionBadge } from './OccasionBadge';
 import { HolderPhoto } from './HolderPhoto';
 import { AlertIcon, CheckIcon, CrossIcon, ExitIcon, LockIcon } from './Icons';
 
@@ -28,7 +30,29 @@ function ResultContent({ result, audience }: { result: ScanOutcome; audience: Au
       </>
     );
   }
-  const { card, group } = result;
+  const { card, group, guest, occasion } = result;
+  if (guest) {
+    const person = guest.person;
+    return (
+      <>
+        <div className="result-head">
+          <Icon className="result-icon" />
+          <span className="result-title">{title}</span>
+        </div>
+        <div className="result-name">{guestName(person) ?? `Gast Nr. ${guest.number}`}</div>
+        {guest.hasPerson && !person && (
+          <div className="result-locked">
+            <LockIcon /> Name gesperrt
+          </div>
+        )}
+        <div className="result-id">
+          {occasion && <OccasionBadge name={guest.category || occasion.name} color={occasion.color} />} Einladung Nr. {guest.number}
+          {person?.company ? ` · ${person.company}` : ''}
+        </div>
+        <div className="result-detail">{detail}</div>
+      </>
+    );
+  }
   const holder = card?.holder;
   return (
     <>

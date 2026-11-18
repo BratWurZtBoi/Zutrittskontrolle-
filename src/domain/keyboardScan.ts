@@ -8,7 +8,7 @@
  *
  * Reine Logik ohne DOM – getestet in keyboardScan.test.ts.
  */
-import { CARD_PREFIX, parseCardPayload } from './cardCode';
+import { CARD_PREFIX, parseAppCode } from './cardCode';
 
 export type ScannerSpeed = 'fast' | 'slow';
 
@@ -95,7 +95,7 @@ export class KeyboardScanDetector {
     this.times.push(time);
     const first = this.chars.length === 1;
 
-    // Karten-Code vollständig? Dann sofort melden – auch Scanner ohne Enter am Ende funktionieren.
+    // Karten- bzw. Einladungs-Code vollständig? Dann sofort melden – auch Scanner ohne Enter am Ende funktionieren.
     if (this.chars.length >= CARD_PREFIX.length + 26 && scannedCardPayload(this.chars.join('')).payload) {
       const scan = this.take(null);
       this.openSuffixUntil = time + SUFFIX_GRACE_MS;
@@ -114,7 +114,7 @@ export class KeyboardScanDetector {
 }
 
 export interface ScannedPayload {
-  /** Gültiger Karten-Code („ZK1:…“) oder null. */
+  /** Gültiger Code („ZK1:…“ Ausweis bzw. „ZE1:…“ Einladung) oder null. */
   payload: string | null;
   /** Das Tastaturlayout des Scanners passte nicht zum Rechner – automatisch korrigiert. */
   layoutFixed: boolean;
@@ -125,14 +125,14 @@ export interface ScannedPayload {
  * - Feststelltaste an → Kleinbuchstaben
  * - Scanner auf US-Tastatur, Rechner auf Deutsch: Y/Z vertauscht, „:“ kommt als „Ö“
  * - Scanner auf Deutsch, Rechner auf US-Tastatur: Y/Z vertauscht, „:“ kommt als „>“
- * Erkennbar am Präfix: „ZK1:“ wird dann zu „YK1Ö“ bzw. „YK1>“.
+ * Erkennbar am Präfix: „ZK1:“ wird dann zu „YK1Ö“ bzw. „YK1>“ (Einladungen: „ZE1:“ → „YE1Ö“/„YE1>“).
  */
 export function scannedCardPayload(raw: string): ScannedPayload {
   const upper = raw.trim().toUpperCase();
-  if (parseCardPayload(upper)) return { payload: upper, layoutFixed: false };
-  let fixed = upper.replace(/^([YZ]K1)[Ö>]/, '$1:');
-  if (fixed.startsWith('YK1:')) fixed = swapYZ(fixed);
-  if (parseCardPayload(fixed)) return { payload: fixed, layoutFixed: true };
+  if (parseAppCode(upper)) return { payload: upper, layoutFixed: false };
+  let fixed = upper.replace(/^([YZ][KE]1)[Ö>]/, '$1:');
+  if (/^Y[KE]1:/.test(fixed)) fixed = swapYZ(fixed);
+  if (parseAppCode(fixed)) return { payload: fixed, layoutFixed: true };
   return { payload: null, layoutFixed: false };
 }
 

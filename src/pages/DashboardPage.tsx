@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CameraSelect } from '../components/CameraSelect';
 import { DashStatusBar } from '../components/DashStatusBar';
+import { EntryList, EntryStatusBar, type EntryTab } from '../components/occasion/EntryDashboard';
+import { GuestDialog } from '../components/occasion/GuestDialog';
 import { EventTable } from '../components/EventTable';
 import { GroupChips } from '../components/GroupChips';
 import { PendingPanel, usePendingShortcuts } from '../components/PendingPanel';
@@ -12,6 +14,11 @@ import { StatusTable } from '../components/StatusTable';
 import { TestScanPanel } from '../components/TestScanPanel';
 import { VisitorDialog } from '../components/VisitorDialog';
 import { returnCard } from '../db/cards';
+import { db } from '../db/db';
+import { startEntry } from '../db/occasions';
+import { toLocalDateString } from '../domain/dates';
+import { guestCategories, guestListName } from '../domain/occasion';
+import { useActiveOccasion, useGuests, useOccasionLog } from '../hooks/useOccasion';
 import { listGroups } from '../db/groups';
 import { saveSettings, type AppSettings, type DashCameraSize, type ScanInput } from '../db/settings';
 import {
@@ -45,7 +52,7 @@ type DashTab = 'presence' | 'events' | 'denied';
  * Scan-Ergebnis links, rechts eine Liste mit Reitern. Nur die Seite scrollt.
  */
 export function DashboardPage() {
-  const { settings, result, handleText, onCamera, onScanner, pending, resolvePending, bookCard, undo } = useScanProcessor({ confirm: true });
+  const { settings, result, handleText, onCamera, onScanner, pending, resolvePending, bookCard, admitGuest, undo } = useScanProcessor({ confirm: true });
   const [visitorOpen, setVisitorOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   usePendingShortcuts(pending, resolvePending, !visitorOpen);
@@ -78,10 +85,39 @@ export function DashboardPage() {
   const groups = useLiveQuery(listGroups, [], []);
   const stats = useDashboardStats();
   const [tab, setTab] = useState<DashTab>('presence');
+  // Einlass-Modus (Veranstaltung): eigene Statusleiste und Liste, Scanner-Spalte bleibt gleich
+  const occasion = useActiveOccasion();
+  const guests = useGuests(occasion?.id);
+  const occasionLog = useOccasionLog(occasion?.id);
+  const [entryTab, setEntryTab] = useState<EntryTab>('admitted');
+  const [guestDialogOpen, setGuestDialogOpen] = useState(false);
 
   return (
-    <div className={`dashboard dash-cam-${settings.dashCamera}`}>
-      <DashStatusBar settings={settings} stats={stats} groups={groups} onShow={setTab} onRegisterVisitor={() => setVisitorOpen(true)} />
+    <div className={`dashboard dash-cam-${settings.dashCamera}${occasion ? ' dash-entry' : ''}`}>
+      {occasion ? (
+        <EntryStatusBar
+          occasion={occasion}
+          settings={settings}
+          guests={guests}
+          deniedCount={(occasionLog ?? []).filter((e) => e.outcome === 'denied').length}
+          onShow={setEntryTab}
+          onAddGuest={() => setGuestDialogOpen(true)}
+        />
+      ) : (
+        <DashStatusBar settings={settings} stats={stats} groups={groups} onShow={setTab} onRegisterVisitor={() => setVisitorOpen(true)} />
+      )}
+      {occasion && guestDialogOpen && (
+        <GuestDialog
+          occasionId={occasion.id}
+          categories={guestCategories(guests ?? [])}
+          admitOption
+          onClose={() => setGuestDialogOpen(false)}
+          onSaved={(guest, admit) => {
+            setNotice(`Gast nachgetragen: ${guestListName(guest)} (Nr. ${guest.number})`);
+            if (admit) void admitGuest(guest.id);
+          }}
+        />
+      )}
       {visitorOpen && (
         <VisitorDialog
           groups={groups}
@@ -112,8 +148,12 @@ export function DashboardPage() {
           </p>
         )}
         <ResultPanel result={result} highlightSec={settings.resultDisplaySec} onUndo={(seq) => void onUndo(seq)} undoError={undoError} />
-        {settings.testMode && admin && <TestScanPanel onScan={(text) => void handleText(text, 'test')} />}
+        {settings.testMode && admin && <TestScanPanel onScan={(text) => void handleText(text, 'test')} guests={occasion ? guests : undefined} />}
+        {!occasion && admin && <OccasionTodayHint />}
       </aside>
+      {occasion ? (
+        <EntryList occasion={occasion} tab={entryTab} onTab={setEntryTab} guests={guests} log={occasionLog} onAdmit={(g) => void admitGuest(g.id)} />
+      ) : (
       <DashList
         tab={tab}
         onTab={setTab}
@@ -126,6 +166,24 @@ export function DashboardPage() {
           void returnCard(cardId).then(() => setNotice(`Karte zurückgegeben: ${label}`));
         }}
       />
+      )}
+    </div>
+  );
+}
+
+/** Normaler Betrieb: Hinweis, wenn heute eine Veranstaltung ist – Einlass mit einem Klick starten. */
+function OccasionTodayHint() {
+  const today = toLocalDateString(new Date());
+  const occasion = useLiveQuery(() => db.occasions.where('date').equals(today).first(), [today]);
+  if (!occasion) return null;
+  return (
+    <div className="occasion-today" style={{ borderColor: occasion.color }}>
+      <span>
+        Heute: <strong>{occasion.name}</strong>
+      </span>
+      <button type="button" className="btn btn-small" onClick={() => void startEntry(occasion.id)}>
+        Einlass starten
+      </button>
     </div>
   );
 }

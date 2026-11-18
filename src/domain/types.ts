@@ -164,7 +164,20 @@ export type ReasonCode =
   /** Nicht rechtzeitig bestätigt. */
   | 'CONFIRMATION_TIMEOUT'
   /** Korrektur: macht eine Fehlbuchung rückgängig (Gegenbuchung). */
-  | 'CORRECTION';
+  | 'CORRECTION'
+  // --- Veranstaltungen (Einlass mit Einladung) ---
+  /** Einladung wurde schon verwendet (nur einmal gültig). */
+  | 'ALREADY_ADMITTED'
+  /** Einladung storniert. */
+  | 'GUEST_CANCELLED'
+  /** Einladung gehört zu einer anderen Veranstaltung. */
+  | 'OTHER_OCCASION'
+  /** Einladungs-Code unbekannt (gelöscht oder falsch). */
+  | 'UNKNOWN_GUEST'
+  /** Dienstausweise gelten bei dieser Veranstaltung nicht. */
+  | 'CARDS_NOT_ADMITTED'
+  /** Einlass zurückgenommen (Fehlbedienung). */
+  | 'ADMISSION_UNDONE';
 
 /** 'pending' = wartet auf Bestätigung durch den Bediener (noch nicht gebucht). */
 export type Outcome = 'granted' | 'denied' | 'duplicate' | 'pending';

@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listLayouts } from '../db/layouts';
+import { admitGuestManually, processOccasionScan } from '../db/occasions';
 import { bookManually, processScan, resolvePendingScan, undoBooking, type PendingAction, type ScanOutcome } from '../db/scans';
 import { ScanDeduper } from '../domain/scanDeduper';
 import type { AccessEventRecord, Direction } from '../domain/types';
@@ -17,6 +18,7 @@ const SAME_CODE_HOLD_MS = 2500;
 
 function feedbackKind(o: ScanOutcome, staffView: boolean): FeedbackKind {
   if (o.decision.outcome === 'duplicate') return 'duplicate';
+  if (staffView && o.decision.reason === 'ALREADY_ADMITTED') return 'alert';
   if (staffView && o.decision.reason === 'CARD_LOST') return 'alert';
   if (o.decision.outcome === 'pending') return 'attention';
   if (o.decision.outcome === 'denied') return 'denied';
@@ -83,12 +85,18 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
       busy.current = true;
       try {
         const s = settingsRef.current;
-        const outcome = await processScan(text, {
-          mode: s.scanMode,
-          cooldownMs: s.cooldownSec * 1000,
-          source,
-          confirmation: confirm ? 'operator' : 'none',
-        });
+        // Einlass-Modus (Veranstaltung): Einladungen nur einmal gültig, eigenes Protokoll
+        const occasionOutcome = s.activeOccasionId
+          ? await processOccasionScan(text, { occasionId: s.activeOccasionId, cooldownMs: s.cooldownSec * 1000, source })
+          : null;
+        const outcome =
+          occasionOutcome ??
+          (await processScan(text, {
+            mode: s.scanMode,
+            cooldownMs: s.cooldownSec * 1000,
+            source,
+            confirmation: confirm ? 'operator' : 'none',
+          }));
         if (outcome.decision.outcome === 'pending') {
           const cardId = outcome.card?.id;
           // Wartet diese Karte schon? Dann nicht doppelt einreihen.
@@ -155,6 +163,15 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
     [showFinal],
   );
 
+  /** Einlass-Modus: Gast von Hand einlassen (Einladung vergessen). Abgelehnt → nur Anzeige. */
+  const admitGuest = useCallback(
+    async (guestId: string) => {
+      const outcome = await admitGuestManually(guestId);
+      showFinal(outcome, outcome.decision.outcome === 'granted');
+    },
+    [showFinal],
+  );
+
   /** Fehlbuchung rückgängig machen (Gegenbuchung). Liefert eine Fehlermeldung oder null. */
   const undo = useCallback(
     async (seq: number): Promise<string | null> => {
@@ -173,7 +190,7 @@ export function useScanProcessor({ confirm = false }: Options = {}) {
   const onScanner = useCallback((scan: KeyboardScan) => void handleText(scan.payload ?? scan.raw, 'scanner'), [handleText]);
   const clearResult = useCallback(() => setResult(null), []);
 
-  return { settings, result, clearResult, handleText, onCamera, onScanner, pending, resolvePending, bookCard, undo };
+  return { settings, result, clearResult, handleText, onCamera, onScanner, pending, resolvePending, bookCard, admitGuest, undo };
 }
 
 /** Hält den Bildschirm an, solange die Komponente angezeigt wird. */

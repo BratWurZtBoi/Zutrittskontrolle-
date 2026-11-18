@@ -12,6 +12,8 @@ import { GroupsPage } from './pages/GroupsPage';
 import { ImportPage } from './pages/ImportPage';
 import { LayoutsPage } from './pages/LayoutsPage';
 import { LoginPage } from './pages/LoginPage';
+import { OccasionPage } from './pages/OccasionPage';
+import { OccasionCreatePage, OccasionsPage } from './pages/OccasionsPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PresentationPage } from './pages/PresentationPage';
 import { PrintPage } from './pages/PrintPage';
@@ -52,6 +54,9 @@ export function App() {
             <Route path="karten/import" element={<ImportPage />} />
             <Route path="karten/:id" element={<CardDetailPage />} />
             <Route path="druck" element={<PrintPage />} />
+            <Route path="veranstaltungen" element={<OccasionsPage />} />
+            <Route path="veranstaltungen/neu" element={<OccasionCreatePage />} />
+            <Route path="veranstaltungen/:id" element={<OccasionPage />} />
             <Route path="einstellungen" element={<SettingsHome />} />
             <Route path="einstellungen/allgemein" element={<GeneralSettings />} />
             <Route path="einstellungen/scanner" element={<ScannerSettings />} />

@@ -46,6 +46,21 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   (`listFreeCards`), sonst neue, und zieht `holderEnc` je Person in einer Transaktion auf die Karte um.
   Import-Plan `kind: 'unassigned'` (nur Zeilen ohne Kartennummer; Doppelte per Name+Firma abgelehnt).
   Reiter auf `#/karten?ansicht=nicht-zugeordnet`. Im Backup (`unassigned`), bei „Alle Daten löschen“ weg.
+- **Veranstaltung** (`Occasion`, Tabelle `occasions`, DB-Version 5) mit **Gästen** (`GuestRecord`, `guests`:
+  Nummer je Veranstaltung, Token `ZE1:` (`encodeGuestPayload`/`parseAppCode`, Scanner-Layoutkorrektur
+  auch für `YE1Ö`), `personEnc`/`nameEnc` (`GuestPerson`: Anrede, Dienstgrad, Name, Einheit/Firma,
+  E-Mail, Notiz), `category` unverschlüsselt (Kennzahlen), `cancelled`, `admittedAt` einmalig) und
+  eigenem **Einlass-Protokoll** (`occasionLog`). Logik rein in `domain/occasion.ts` (`decideGuestEntry`:
+  einmalig, Doppelscan innerhalb Doppelscan-Schutz, storniert/andere Veranstaltung/unbekannt;
+  `occasionStats`, `admissionTimeline`, Filter), DB `db/occasions.ts`. **Einlass-Modus je Gerät**:
+  `settings.activeOccasionId` (nicht im Backup); `useScanProcessor` leitet dann an `processOccasionScan`
+  (liefert `ScanOutcome` mit `occasion`/`guest`; bucht NICHT in `events`/`presence`). Dienstausweise
+  nur mit `occasion.cardsAllowed` (Standard aus). Anzeige: Band `OccasionBand` in `Layout`, Menü
+  „Einlass“ statt „Dashboard“, `DashboardPage` mit `EntryStatusBar`/`EntryList`
+  (`components/occasion/`), Notfallliste + `listAdmittedPeople`, Gästebildschirm mit Layouts der
+  Veranstaltung. Seiten `#/veranstaltungen`, `/neu`, `/:id` (Reiter Gäste/Teilnahme/Einstellungen),
+  CSV `domain/guestImport.ts`. Im Backup (`occasions`, `guests`, `occasionLog`). Ohne Server: jedes
+  Gerät prüft nur seine eigene Liste (ein Eingang).
 - **Ereignis** (`AccessEvent`): enthält Momentaufnahmen (Kartennummer, Gruppe, Name), damit
   die Historie nach Änderungen lesbar bleibt. **Anwesenheit** je Karte.
 - Gespeichert werden `CardRecord`/`AccessEventRecord` (Personendaten verschlüsselt), die
@@ -71,7 +86,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   `allow="admin"`. Frei: `/`, `/anmelden`, `/einrichtung`, `/praesentation`. Startseite `/` =
   `pages/StartPage.tsx`: im **Kiosk-Modus** (`settings.kioskMode`, je Gerät, Standard aus) der
   Vollbild-Scanner (`ScannerPage`, scannt ohne Anmeldung, Menüpunkt „Kiosk“), sonst Dashboard bzw.
-  Anmeldung/Einrichtung. Menü: Dashboard | Auswertung | Karten | Einstellungen.
+  Anmeldung/Einrichtung. Menü: Dashboard (im Einlass-Modus „Einlass“) | Auswertung | Karten | Veranstaltungen
+  (Handy: „Events“ per `data-short`) | Einstellungen.
 - **Bestätigung je Gruppe** (`Group.requireConfirmation`): `decideAccess` liefert `pending`
   (Dashboard, `confirmation: 'operator'`) bzw. `denied/CONFIRMATION_REQUIRED` (Kiosk). Wartende Scans
   werden nicht gebucht; `resolvePendingScan` (accept prüft erneut / reject / timeout) schreibt das
@@ -240,6 +256,10 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
 17. ✅ Personendaten: Dienstgrad (vor dem Namen), Einheit/Abteilung statt Firma, Stellung/Posten, Raum –
     in Formularen (mit Vorschlägen), Listen, Notfallliste, Suche, Auswahlfiltern, CSV, Karten- und
     Gästebildschirm-Platzhaltern, Namensform „Dienstgrad + Nachname“ (Version 0.17).
+18. ✅ Veranstaltungen (Teil 1): Gästeliste (CSV), Einladungs-Codes nur einmal gültig, Einlass-Modus je Gerät
+    (Band, „Einlass“-Dashboard, Notfallliste mit Gästen), Teilnahme mit Zeitverlauf (Version 0.18).
+    Teil 2 (abgestimmt): Einladungs-Editor (A4/A5/A6/DIN lang), Serienbrief-Druck, PDF je Gast (ZIP/Ordner),
+    Versandliste. Danach: Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe; integrierte Hilfe besprechen.
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
