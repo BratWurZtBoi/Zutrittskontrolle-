@@ -15,6 +15,7 @@ import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useSettings } from '../hooks/useSettings';
 import { printCurrentPage } from '../lib/device';
 import { ensurePageSize } from '../lib/printPages';
+import { InfoTip } from '../components/InfoTip';
 
 /** Daten für den Druck: Name/Foto nur, wenn die Gruppe das erlaubt und eine Person zugeordnet ist. */
 export function cardDataFor(card: Card, group: Group | undefined, orgName: string): CardData {
@@ -173,7 +174,7 @@ export function PrintPage() {
         )}
         {!cardPrinter && backMode === 'duplex' && (
           <label className="inline-select">
-            Wenden an
+            Wenden an <InfoTip hint="printFlip" />
             <select value={settings.cardPrintFlip} onChange={(e) => save({ cardPrintFlip: e.target.value as AppSettings['cardPrintFlip'] })}>
               <option value="long">langer Kante</option>
               <option value="short">kurzer Kante</option>

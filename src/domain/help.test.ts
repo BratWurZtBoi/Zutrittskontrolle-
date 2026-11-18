@@ -21,6 +21,7 @@ const KNOWN_PAGES = [
   '/notfallliste',
   '/anmelden',
   '/einrichtung',
+  '/erste-schritte',
   '/karten',
   '/karten/neu',
   '/karten/import',

@@ -7,6 +7,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { pinProblem } from '../../security/crypto';
 import { disableOperatorPin, setOperatorPin } from '../../security/session';
 import { SettingsShell } from './SettingsShell';
+import { InfoTip } from '../../components/InfoTip';
 
 const OPERATOR_LOGOUT_OPTIONS = [
   { value: 0, label: 'nie (z. B. für eine ganze Schicht)' },
@@ -72,7 +73,9 @@ export function OperatorSettings() {
       <p className={hasPin ? 'form-success' : 'muted'}>{hasPin ? '✓ Bediener-Zugang ist eingerichtet.' : 'Noch keine Bediener-PIN eingerichtet.'}</p>
       <div className="form-grid">
         <label>
-          Bediener automatisch abmelden
+          <span>
+            Bediener automatisch abmelden <InfoTip hint="operatorLogout" />
+          </span>
           <select value={settings.operatorAutoLogoutMin} onChange={(e) => void saveSettings({ operatorAutoLogoutMin: Number(e.target.value) })}>
             {OPERATOR_LOGOUT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -82,7 +85,9 @@ export function OperatorSettings() {
           </select>
         </label>
         <label>
-          Offene Bestätigung verfällt nach
+          <span>
+            Offene Bestätigung verfällt nach <InfoTip hint="confirmTimeout" />
+          </span>
           <select value={settings.confirmTimeoutSec} onChange={(e) => void saveSettings({ confirmTimeoutSec: Number(e.target.value) })}>
             {CONFIRM_TIMEOUT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>

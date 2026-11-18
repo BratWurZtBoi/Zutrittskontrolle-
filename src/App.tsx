@@ -9,6 +9,7 @@ import { CardListPage } from './pages/CardListPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EmergencyListPage } from './pages/EmergencyListPage';
 import { HelpPage } from './pages/HelpPage';
+import { GettingStartedPage } from './pages/GettingStartedPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { ImportPage } from './pages/ImportPage';
 import { LayoutsPage } from './pages/LayoutsPage';
@@ -53,6 +54,7 @@ export function App() {
           </Route>
           {/* nur mit Admin-Anmeldung */}
           <Route element={<RequireRole allow="admin" />}>
+            <Route path="erste-schritte" element={<GettingStartedPage />} />
             <Route path="karten" element={<CardListPage />} />
             <Route path="karten/neu" element={<CardCreatePage />} />
             <Route path="karten/import" element={<ImportPage />} />

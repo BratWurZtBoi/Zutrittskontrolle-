@@ -174,6 +174,15 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Gästebildschirm und Geräte, Daten und Sicherheit.
 - **Bediener** (PIN) sehen nur die Themen für den Empfang und keine Links in Admin-Bereiche.
 - Die Inhalte stehen in `src/help/topics.ts`; ein Test prüft, dass jede Seite der Bedienung passende Themen hat.
+- **Erste Schritte** (nur Admin): Checkliste für die Einrichtung – Organisationsname, Gruppen prüfen, Karten anlegen,
+  drucken, Scannen ausprobieren, Backup, Testkarten entfernen; optional Gästebildschirm und Bediener-PIN. Was die App
+  erkennt, hakt sie selbst ab (z. B. sobald eine echte Karte als gedruckt markiert ist), den Rest hakt man von Hand ab.
+  Auf dem Dashboard zeigt eine kleine Karte den nächsten offenen Schritt („Weiter →“), bis alles erledigt ist
+  (mit × ausblendbar). Die ganze Liste: *Hilfe → Erste Schritte* (`#/erste-schritte`), je Schritt mit Link zur Seite
+  und zur Anleitung.
+- **ⓘ an Feldern:** kurze Erklärung zu erklärungsbedürftigen Einstellungen (z. B. Doppelscan-Schutz, Scanner-Tempo,
+  Löschfrist, Gruppenregeln, „Wenden an“ beim Drucken) mit Link „Mehr in der Hilfe“. Antippen öffnet, Esc oder
+  Tippen daneben schließt. Texte in `src/help/hints.ts`.
 
 ### Mehrfachauswahl
 
@@ -415,7 +424,8 @@ Merge nach `main` automatisch gebaut.
 5. Echter Kameratest: *Karten* → Reiter **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
    und mit dem Gerät scannen, auf dem die Karten erstellt wurden.
 6. *Dashboard* und *Auswertung* zeigen, wer eingebucht ist und welche Buchungen es gab.
-7. Bei Fragen: **? Hilfe** im Menü – zeigt die Anleitungen zur gerade geöffneten Seite.
+7. Bei Fragen: **? Hilfe** im Menü – zeigt die Anleitungen zur gerade geöffneten Seite. Für die echte Einrichtung
+   führt die Checkliste **Erste Schritte** (Dashboard bzw. *Hilfe → Erste Schritte*) durch alle Schritte.
 
 ## Wichtige Hinweise zum Speicher
 
@@ -451,6 +461,7 @@ Merge nach `main` automatisch gebaut.
 | Veranstaltungen: Gästeliste, Einladungs-Codes nur einmal gültig, Einlass-Dashboard, Teilnahme | ✅ |
 | Einladungen: Editor (A4/A5/A6/DIN lang), Serienbrief, PDF je Gast (ZIP/Ordner), Versandliste | ✅ |
 | Integrierte Hilfe: „?“ mit Anleitungen zur Seite, Hilfe-Seite mit Suche, Admin/Bediener getrennt | ✅ |
+| „Erste Schritte“-Checkliste (erkennt Erledigtes selbst) und ⓘ-Erklärungen an Feldern | ✅ |
 
 ## Technik
 

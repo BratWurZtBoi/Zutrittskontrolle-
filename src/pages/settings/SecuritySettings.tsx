@@ -6,6 +6,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { requestExit } from '../../security/exit';
 import { changePassword } from '../../security/session';
 import { SettingsShell } from './SettingsShell';
+import { InfoTip } from '../../components/InfoTip';
 
 const AUTO_LOGOUT_OPTIONS = [
   { value: 5, label: 'nach 5 Minuten' },
@@ -59,7 +60,9 @@ export function SecuritySettings() {
       </p>
       <div className="form-grid">
         <label>
-          Admin automatisch abmelden
+          <span>
+            Admin automatisch abmelden <InfoTip hint="adminLogout" />
+          </span>
           <select value={autoLogoutMin} onChange={(e) => void saveSettings({ autoLogoutMin: Number(e.target.value) })}>
             {AUTO_LOGOUT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -69,7 +72,9 @@ export function SecuritySettings() {
           </select>
         </label>
         <label>
-          Protokoll automatisch löschen nach (Löschfrist)
+          <span>
+            Protokoll automatisch löschen nach (Löschfrist) <InfoTip hint="retention" />
+          </span>
           <select value={retentionDays} onChange={(e) => void saveSettings({ retentionDays: Number(e.target.value) })}>
             {RETENTION_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>

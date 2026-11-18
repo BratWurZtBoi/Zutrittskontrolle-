@@ -10,6 +10,7 @@ import { STANDARD_CARD_LAYOUT } from '../domain/cardLayout';
 import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { GROUP_COLOR_PRESETS } from '../domain/color';
 import type { Group, GroupInput } from '../domain/types';
+import { InfoTip } from '../components/InfoTip';
 
 const NEW_GROUP: GroupInput = {
   name: '',
@@ -125,7 +126,9 @@ function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
           <input value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={40} required />
         </label>
         <label>
-          Kürzel für Kartennummern {group && <span className="muted">(fest)</span>}
+          <span>
+            Kürzel für Kartennummern {group && <span className="muted">(fest)</span>} <InfoTip hint="groupPrefix" />
+          </span>
           <input
             value={form.prefix}
             onChange={(e) => set({ prefix: e.target.value.toUpperCase() })}
@@ -157,15 +160,15 @@ function GroupForm({ group, initial, cardCount = 0, onDone }: FormProps) {
       </fieldset>
       <label className="checkbox">
         <input type="checkbox" checked={form.accessGranted} onChange={(e) => set({ accessGranted: e.target.checked })} />
-        Zutritt für diese Gruppe erlaubt
+        Zutritt für diese Gruppe erlaubt <InfoTip hint="groupAccess" />
       </label>
       <label className="checkbox">
         <input type="checkbox" checked={form.printHolder} onChange={(e) => set({ printHolder: e.target.checked })} />
-        Name und Foto auf die Karte drucken
+        Name und Foto auf die Karte drucken <InfoTip hint="groupPrintHolder" />
       </label>
       <label className="checkbox">
         <input type="checkbox" checked={form.allowUnassigned} onChange={(e) => set({ allowUnassigned: e.target.checked })} />
-        Zutritt auch für Karten ohne zugeordnete Person
+        Zutritt auch für Karten ohne zugeordnete Person <InfoTip hint="groupUnassigned" />
       </label>
       <label className="checkbox">
         <input

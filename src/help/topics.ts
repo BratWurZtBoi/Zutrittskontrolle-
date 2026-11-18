@@ -14,11 +14,12 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Die App einrichten (erstes Mal)',
     category: 'start',
     audience: 'admin',
-    pages: ['/einstellungen', '/einrichtung'],
+    pages: ['/einstellungen', '/einrichtung', '/erste-schritte'],
     summary: 'Vom ersten Start bis zum betriebsbereiten Empfang.',
     keywords: ['start', 'neu', 'installation', 'erste schritte'],
     steps: [
       { text: 'Beim ersten Start ein **Admin-Passwort** festlegen (mindestens 8 Zeichen) und gut aufbewahren – ohne es sind die Personendaten nicht lesbar.' },
+      { text: 'Die Checkliste **Erste Schritte** (auf dem Dashboard und hier in der Hilfe) führt durch alles Weitere und hakt Erledigtes selbst ab.', link: { to: '/erste-schritte', label: 'Erste Schritte' } },
       { text: 'Unter **Einstellungen → Allgemein & Gerät** unter **Name der Organisation** den Namen eintragen und hell/dunkel wählen.', link: { to: '/einstellungen/allgemein', label: 'Allgemein & Gerät' } },
       { text: 'Unter **Einstellungen → Gruppen** Gruppen anlegen bzw. anpassen (z. B. Bestandspersonal, Besucher) – mit Farbe, Kürzel und Regeln.', link: { to: '/einstellungen/gruppen', label: 'Gruppen' } },
       { text: 'Unter **Karten → + Karten erstellen** Karten anlegen und Personen zuweisen (oder per **CSV-Import**).', link: { to: '/karten', label: 'Karten' } },
