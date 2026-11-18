@@ -10,6 +10,7 @@ import { GroupChips } from '../components/GroupChips';
 import { PendingPanel, usePendingShortcuts } from '../components/PendingPanel';
 import { ResultPanel } from '../components/ScanResult';
 import { ScannerInactiveNote } from '../components/ScannerStatus';
+import { SetupCard } from '../components/setup/SetupCard';
 import { StatusTable } from '../components/StatusTable';
 import { TestScanPanel } from '../components/TestScanPanel';
 import { VisitorDialog } from '../components/VisitorDialog';
@@ -150,6 +151,7 @@ export function DashboardPage() {
         <ResultPanel result={result} highlightSec={settings.resultDisplaySec} onUndo={(seq) => void onUndo(seq)} undoError={undoError} />
         {settings.testMode && admin && <TestScanPanel onScan={(text) => void handleText(text, 'test')} guests={occasion ? guests : undefined} />}
         {!occasion && admin && <OccasionTodayHint />}
+        {!occasion && admin && <SetupCard />}
       </aside>
       {occasion ? (
         <EntryList occasion={occasion} tab={entryTab} onTab={setEntryTab} guests={guests} log={occasionLog} onAdmit={(g) => void admitGuest(g.id)} />

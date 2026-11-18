@@ -14,6 +14,7 @@ import {
 import { formatDateTime } from '../domain/dates';
 import { passwordProblem } from '../security/crypto';
 import { PasswordInput } from './PasswordInput';
+import { InfoTip } from './InfoTip';
 
 const INTERVALS = [
   { value: 24, label: 'täglich' },
@@ -171,7 +172,9 @@ function AutoBackupSetup({ onDone, message }: { onDone: (text: string) => void; 
           </select>
         </label>
         <label>
-          Aufbewahren
+          <span>
+            Aufbewahren <InfoTip hint="autoBackupKeep" />
+          </span>
           <select value={keep} onChange={(e) => setKeep(Number(e.target.value))}>
             {KEEP.map((k) => (
               <option key={k} value={k}>

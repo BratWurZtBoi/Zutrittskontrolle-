@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 import { HelpTopicList, HelpTopicView } from '../components/help/HelpContent';
 import { HELP_CATEGORIES, searchTopics, visibleTopics, type HelpRole } from '../domain/help';
 import { HELP_TOPICS } from '../help/topics';
+import { SetupProgressBar } from '../components/setup/SetupCard';
+import { useSetupStatus } from '../hooks/useSetup';
 import { useSecurity } from '../security/useSecurity';
 
 /** Alle Hilfethemen nach Bereichen, mit Suche; ?thema=… zeigt ein Thema, ?suche=… die Treffer. */
@@ -14,6 +16,7 @@ export function HelpPage() {
   const topics = useMemo(() => visibleTopics(HELP_TOPICS, role), [role]);
   const topic = topics.find((t) => t.id === params.get('thema'));
   const results = useMemo(() => (query.trim() ? searchTopics(HELP_TOPICS, query, role) : null), [query, role]);
+  const setup = useSetupStatus(role === 'admin');
   const select = (id: string) => {
     setParams({ thema: id });
     window.scrollTo(0, 0);
@@ -43,6 +46,15 @@ export function HelpPage() {
         <strong> ?</strong> oben im Menü zeigt die Hilfe zur gerade geöffneten Seite.
         {role === 'operator' && ' Angezeigt werden die Themen für den Empfang.'}
       </p>
+      {setup && (
+        <Link to="/erste-schritte" className="help-setup-link">
+          <span>
+            <strong>Erste Schritte</strong> – Checkliste für die Einrichtung
+            <span className="muted"> · {setup.progress.complete ? 'alles erledigt' : `${setup.progress.done} von ${setup.progress.total} erledigt`}</span>
+          </span>
+          <SetupProgressBar progress={setup.progress} />
+        </Link>
+      )}
       <input
         type="search"
         className="help-search"

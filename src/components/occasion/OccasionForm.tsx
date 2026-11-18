@@ -4,6 +4,7 @@ import { listLayouts } from '../../db/layouts';
 import type { OccasionInput } from '../../db/occasions';
 import { OCCASION_COLORS } from '../../domain/occasion';
 import { BUILT_IN_LAYOUTS } from '../../domain/presentationLayout';
+import { InfoTip } from '../InfoTip';
 
 interface Props {
   initial: OccasionInput;
@@ -54,7 +55,9 @@ export function OccasionForm({ initial, submitLabel, onSubmit, onCancel }: Props
           <input value={form.location ?? ''} onChange={(e) => set({ location: e.target.value })} autoComplete="off" />
         </label>
         <label>
-          Einlass ab (optional)
+          <span>
+            Einlass ab (optional) <InfoTip hint="occasionEntry" />
+          </span>
           <input type="time" value={form.entryFrom ?? ''} onChange={(e) => set({ entryFrom: e.target.value })} />
         </label>
         <label>
@@ -79,7 +82,7 @@ export function OccasionForm({ initial, submitLabel, onSubmit, onCancel }: Props
       </fieldset>
       <label className="checkbox">
         <input type="checkbox" checked={form.cardsAllowed} onChange={(e) => set({ cardsAllowed: e.target.checked })} />
-        Dienstausweise gelten zusätzlich (Personal kommt ohne Einladung hinein)
+        Dienstausweise gelten zusätzlich (Personal kommt ohne Einladung hinein) <InfoTip hint="occasionCards" />
       </label>
       <div className="form-grid">
         <label>

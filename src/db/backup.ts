@@ -40,6 +40,8 @@ export const BACKUP_VERSION = 1;
 /** Einstellungen, die mitgesichert werden (gerätebezogene wie Kamera bleiben auf dem Gerät). */
 const PORTABLE_SETTINGS = [
   'orgName',
+  'setupDone',
+  'setupHidden',
   'scanMode',
   'cooldownSec',
   'resultDisplaySec',

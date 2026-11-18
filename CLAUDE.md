@@ -183,7 +183,16 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   auf die aktuelle Seite zeigen), Seite `#/hilfe` (`?thema=`, `?suche=`, staff). Ab 1200 px rückt `.app-main` zur
   Seite (`.app.help-open`), darunter deckt die Leiste die Seite ab und schließt nach Links/Seitenwechsel. Tasten im
   Panel werden nicht weitergereicht (sonst Enter/Esc = Einlassen/Abweisen). **Bei neuen Funktionen/Beschriftungen
-  die Hilfetexte mit anpassen.** Navigation: auf Tablet (768–1099 px) Symbol über Beschriftung, 1100–1439 px
+  die Hilfetexte mit anpassen.** **Erste Schritte** (Admin): `domain/gettingStarted.ts` (`SETUP_STEPS` mit `detect`
+  aus `SetupFacts` bzw. nur von Hand, `optional` zählt nicht; `setupProgress`, `toggleManualStep`), Fakten ohne
+  Entschlüsseln in `hooks/useSetup.ts` (Testkarten zählen nicht, Scan = Quelle camera/scanner, Backup = `lastBackupAt`
+  oder Auto-Sicherung), `settings.setupDone`/`setupHidden` (im Backup); Dashboard-Karte `components/setup/SetupCard`
+  (linke Spalte, verschwindet wenn fertig/ausgeblendet), Seite `pages/GettingStartedPage.tsx` `#/erste-schritte`
+  (Häkchen optimistisch), Link oben auf `#/hilfe`. (`pages/SetupPage.tsx` ist die Passwort-Einrichtung!)
+  **ⓘ-Hinweise:** `components/InfoTip` (`hint` = Schlüssel in `help/hints.ts`, Test: jeder Hinweis wird verwendet,
+  Themen existieren). Auslöser ist ein `span role="button"` – ein `<button>` im `<label>` vor dem Eingabefeld würde
+  dem Feld die Beschriftung wegnehmen (erstes „labelable“ Element); Klick mit `preventDefault` (Häkchen bleibt).
+  Navigation: auf Tablet (768–1099 px) Symbol über Beschriftung, 1100–1439 px
   „Hilfe“/„Abmelden“ nur Symbol; Beschriftungen kürzen sich notfalls mit „…“ (Notfall nie) – E2E prüft 360–1536 px.
 - Einstellungen: Übersicht `#/einstellungen` (Kacheln in Gruppen `SETTINGS_GROUPS`) + je Bereich eine
   Seite unter `pages/settings/` mit `SettingsShell` (Seitenleiste ab 1000 px, gruppiert, sonst
@@ -282,8 +291,8 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
     (ZIP bzw. Ordner im Programm), Versandliste (Version 0.19).
 20. ✅ Integrierte Hilfe (Admin + Bediener, Schritt für Schritt): „?“-Seitenleiste zur aktuellen Seite, Hilfe-Seite
     mit Suche; Menü passt jetzt auch auf Tablets (Notfall/Abmelden waren dort abgeschnitten) (Version 0.20).
-    Als Nächstes (abgestimmt): „Erste Schritte“-Liste, ⓘ-Hinweise an Feldern; später Begleitpersonen,
-    Kategorie-Farben, Abendkasse, Outlook-Hilfe.
+21. ✅ Hilfe Teil 2: „Erste Schritte“-Checkliste (erkennt Erledigtes selbst, Dashboard-Karte) und ⓘ-Erklärungen an
+    erklärungsbedürftigen Feldern (Version 0.21). Später: Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe.
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
@@ -294,5 +303,4 @@ Teilen (`lib/download.ts`): Chrome teilt nur bestimmte Endungen – `shareableFi
 Mögliche nächste Schritte (mit dem Nutzer abstimmen): Fremdkarten (QR/Strichcode einlernen,
 zurückgestellt – der USB-Scanner liest sie bereits), Musik/Animationen in Layouts (zurückgestellt),
 Test auf echten Geräten (Scanner, Linux/Raspberry Pi, Kartendrucker, Duplex) und Feinschliff,
-„Erste Schritte“-Liste und ⓘ-Hinweise (Hilfe Teil 2),
 Datenschutz (Hinweis, Auskunft/Löschen je Person), Zutrittszeiten je Gruppe, Backup zusammenführen.

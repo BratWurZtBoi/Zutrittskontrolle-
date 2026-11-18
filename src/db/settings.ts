@@ -71,6 +71,10 @@ export interface AppSettings {
   emergencyCopies: number;
   /** Einlass läuft für diese Veranstaltung (je Gerät; leer = normale Zutrittskontrolle). */
   activeOccasionId?: string;
+  /** „Erste Schritte“: von Hand abgehakte Schritte (IDs aus SETUP_STEPS). */
+  setupDone: string[];
+  /** „Erste Schritte“ auf dem Dashboard ausgeblendet. */
+  setupHidden: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -102,6 +106,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   emergencyDirectPrint: false,
   emergencyPrinter: '',
   emergencyCopies: 1,
+  setupDone: [],
+  setupHidden: false,
 };
 
 const KEY = 'app';

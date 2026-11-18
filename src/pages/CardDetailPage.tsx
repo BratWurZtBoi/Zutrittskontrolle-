@@ -23,6 +23,7 @@ import { BUILT_IN_LAYOUTS } from '../domain/presentationLayout';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatDate, formatDateTime, formatTime, toLocalDateString } from '../domain/dates';
 import type { Card, CardHolder, CardUpdate, Group } from '../domain/types';
+import { InfoTip } from '../components/InfoTip';
 
 const EMPTY_HOLDER: CardHolder = { firstName: '', lastName: '' };
 
@@ -148,7 +149,7 @@ export function CardDetailPage() {
           <h2>Zutrittsberechtigung</h2>
           <label className="checkbox">
             <input type="checkbox" checked={form.accessGranted} onChange={(e) => set({ accessGranted: e.target.checked })} />
-            Zutritt erlaubt
+            Zutritt erlaubt <InfoTip hint="cardAccess" />
           </label>
           <div className="form-grid">
             <label>

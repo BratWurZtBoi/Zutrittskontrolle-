@@ -7,6 +7,7 @@ import { SCANNER_MAX_GAP_MS, type ScannerSpeed } from '../../domain/keyboardScan
 import { useKeyboardScanner, type KeyboardScan } from '../../hooks/useKeyboardScanner';
 import { useSettings } from '../../hooks/useSettings';
 import { SettingsShell } from './SettingsShell';
+import { InfoTip } from '../../components/InfoTip';
 
 export function ScannerSettings() {
   const settings = useSettings();
@@ -17,11 +18,15 @@ export function ScannerSettings() {
       <section className="card form">
         <div className="form-grid">
           <label>
-            Doppelscan-Schutz (Sekunden)
+            <span>
+              Doppelscan-Schutz (Sekunden) <InfoTip hint="cooldown" />
+            </span>
             <NumberField value={settings.cooldownSec} min={0} max={3600} onChange={(cooldownSec) => save({ cooldownSec })} />
           </label>
           <label>
-            Anzeigedauer Ergebnis (Sekunden)
+            <span>
+              Anzeigedauer Ergebnis (Sekunden) <InfoTip hint="resultDisplay" />
+            </span>
             <NumberField
               value={settings.resultDisplaySec}
               min={1}
@@ -40,7 +45,7 @@ export function ScannerSettings() {
         </label>
         <label className="checkbox">
           <input type="checkbox" checked={settings.testMode} onChange={(e) => save({ testMode: e.target.checked })} />
-          Testmodus (Scans im Scanner simulieren – nur sichtbar, solange ein Admin angemeldet ist)
+          Testmodus (Scans im Scanner simulieren – nur sichtbar, solange ein Admin angemeldet ist) <InfoTip hint="testMode" />
         </label>
       </section>
 
@@ -65,7 +70,9 @@ export function ScannerSettings() {
         </p>
         <div className="form-grid">
           <label>
-            Scannen mit
+            <span>
+              Scannen mit <InfoTip hint="scanInput" />
+            </span>
             <select value={settings.scanInput} onChange={(e) => save({ scanInput: e.target.value as ScanInput })}>
               <option value="both">Kamera und USB-Scanner</option>
               <option value="camera">Nur Kamera</option>
@@ -73,7 +80,9 @@ export function ScannerSettings() {
             </select>
           </label>
           <label>
-            Scanner-Tempo
+            <span>
+              Scanner-Tempo <InfoTip hint="scannerSpeed" />
+            </span>
             <select value={settings.scannerSpeed} onChange={(e) => save({ scannerSpeed: e.target.value as ScannerSpeed })}>
               <option value="fast">Normal (USB-Scanner)</option>
               <option value="slow">Langsam (Bluetooth- oder gedrosselte Scanner)</option>
