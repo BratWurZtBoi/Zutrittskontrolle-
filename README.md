@@ -163,6 +163,18 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
   Eine Liste nur mit Vor- und Nachnamen reicht also aus. Wer dort schon steht, wird beim erneuten
   Einlesen nicht doppelt abgelegt. Die Personendaten sind verschlüsselt und im Backup enthalten.
 
+### Integrierte Hilfe
+
+- **? Hilfe** im Menü (auf dem Handy das Fragezeichen unten) öffnet eine Seitenleiste mit den Anleitungen
+  **zur gerade geöffneten Seite** – Schritt für Schritt, die Beschriftungen der App **fett**, mit Direktlinks
+  („Datensicherung →“). Am breiten Bildschirm rückt die Seite zur Seite, sodass man beim Lesen mitmachen kann;
+  auf Handy/Tablet deckt die Hilfe die Seite ab und schließt sich nach einem Link. **Esc** schließt.
+- Suche über alle Themen (auch ohne Umlaute, z. B. „sicherung“, „besucher“), **Alle Hilfethemen** →
+  Seite *#/hilfe* mit den Bereichen Erste Schritte, Am Empfang, Karten und Personen, Veranstaltungen,
+  Gästebildschirm und Geräte, Daten und Sicherheit.
+- **Bediener** (PIN) sehen nur die Themen für den Empfang und keine Links in Admin-Bereiche.
+- Die Inhalte stehen in `src/help/topics.ts`; ein Test prüft, dass jede Seite der Bedienung passende Themen hat.
+
 ### Mehrfachauswahl
 
 - *Karten* → **Auswählen** → Karten antippen oder „Alle angezeigten“ → **Personendaten entfernen**
@@ -403,6 +415,7 @@ Merge nach `main` automatisch gebaut.
 5. Echter Kameratest: *Karten* → Reiter **Drucken** → als PDF speichern, auf einem zweiten Gerät öffnen
    und mit dem Gerät scannen, auf dem die Karten erstellt wurden.
 6. *Dashboard* und *Auswertung* zeigen, wer eingebucht ist und welche Buchungen es gab.
+7. Bei Fragen: **? Hilfe** im Menü – zeigt die Anleitungen zur gerade geöffneten Seite.
 
 ## Wichtige Hinweise zum Speicher
 
@@ -437,6 +450,7 @@ Merge nach `main` automatisch gebaut.
 | CSV-Import: Personen ohne Gruppe unter „Nicht zugeordnet“, später zuordnen | ✅ |
 | Veranstaltungen: Gästeliste, Einladungs-Codes nur einmal gültig, Einlass-Dashboard, Teilnahme | ✅ |
 | Einladungen: Editor (A4/A5/A6/DIN lang), Serienbrief, PDF je Gast (ZIP/Ordner), Versandliste | ✅ |
+| Integrierte Hilfe: „?“ mit Anleitungen zur Seite, Hilfe-Seite mit Suche, Admin/Bediener getrennt | ✅ |
 
 ## Technik
 

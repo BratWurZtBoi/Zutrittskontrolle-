@@ -72,6 +72,23 @@ const viewport = { width: 412, height: 915 };
 const PASSWORD = 'Test-Passwort-123';
 const problems = [];
 
+/** Menüpunkte außerhalb des Bildschirms bzw. (ohne allowEllipsis) abgeschnittene Beschriftungen bei dieser Breite. */
+async function navLayoutProblems(page, width, allowEllipsis) {
+  await page.setViewportSize({ width, height: 800 });
+  return page.$$eval(
+    '.app-nav > a, .app-nav > button, .app-nav .nav-link > span',
+    (els, { w, ellipsis }) =>
+      els
+        .filter((e) => {
+          const r = e.getBoundingClientRect();
+          if (r.width <= 1) return false; // nur Symbol (Beschriftung nur für Screenreader)
+          return r.left < -0.5 || r.right > w + 0.5 || (!ellipsis && e.scrollWidth > e.clientWidth + 1);
+        })
+        .map((e) => e.textContent.trim()),
+    { w: width, ellipsis: allowEllipsis },
+  );
+}
+
 async function openContext(extraArgs = []) {
   const ctx = await chromium.launchPersistentContext(PROFILE, {
     viewport,
@@ -116,7 +133,13 @@ try {
   const raw = JSON.stringify(cards) + JSON.stringify(await readStore(page, 'events'));
   check(!/Mustermann|Musterfrau|Platzhalter/.test(raw), 'Datenbank enthält keine Namen im Klartext');
   const navLabels = (await page.locator('.app-nav .nav-link').allTextContents()).map((t) => t.trim());
-  check(navLabels.join(' | ') === 'Dashboard | Auswertung | Karten | Veranstaltungen | Einstellungen | Notfall | Abmelden', `Menü ohne Kiosk-Scanner, Auswertung neben dem Dashboard, Veranstaltungen, roter Notfall-Knopf (${navLabels.join(' | ')})`);
+  check(navLabels.join(' | ') === 'Dashboard | Auswertung | Karten | Veranstaltungen | Einstellungen | Notfall | Hilfe | Abmelden', `Menü ohne Kiosk-Scanner, Auswertung neben dem Dashboard, Veranstaltungen, roter Notfall-Knopf, Hilfe (${navLabels.join(' | ')})`);
+  // Menü passt auf jede Breite: alle Knöpfe sichtbar, nichts gekürzt (früher fehlten auf Tablets „Notfall“/„Abmelden“)
+  for (const width of [360, 384, 800, 1024, 1280, 1536]) {
+    const problems = await navLayoutProblems(page, width, false);
+    check(problems.length === 0, `Menü passt bei ${width} px${problems.length ? ` – Problem: ${problems.join(', ')}` : ''}`);
+  }
+  await page.setViewportSize(viewport);
   await page.goto(`${URL}#/`);
   await page.locator('.dashboard').waitFor();
   check(true, 'Startseite ohne Kiosk-Modus: Dashboard');
@@ -644,6 +667,23 @@ try {
   const navText = await page.locator('.app-nav').textContent();
   check(!navText.includes('Karten') && !navText.includes('Einstellungen') && navText.includes('Auswertung'), 'Bediener sieht nur Dashboard und Auswertung');
   check((await page.locator('.dash-side .test-panel').count()) === 0, 'Testmodus bleibt dem Admin vorbehalten');
+  // Hilfe für Bediener: nur Empfangs-Themen, keine Links in Admin-Bereiche
+  await page.locator('.app-nav').getByRole('button', { name: 'Hilfe' }).click();
+  await page.locator('.help-panel').waitFor();
+  const operatorHelp = await page.locator('.help-panel .help-list-title').allTextContents();
+  check(operatorHelp.includes('Besucher anmelden und Karte zurückgeben') && operatorHelp.includes('Notfallliste drucken (Evakuierung)'), `Bediener-Hilfe zum Dashboard (${operatorHelp.length} Themen)`);
+  await page.locator('.help-panel .help-list-item', { hasText: 'Notfallliste drucken' }).click();
+  await page.locator('.help-panel .help-steps li').first().waitFor();
+  check((await page.locator('.help-panel .help-step-link').count()) === 0, 'Bediener-Hilfe: keine Links zu Admin-Einstellungen');
+  await page.locator('.help-panel').getByRole('button', { name: '← Zurück' }).click();
+  await page.locator('.help-panel .help-search').fill('Backup');
+  await page.locator('.help-panel .help-section-title', { hasText: 'Nichts gefunden' }).waitFor();
+  check(true, 'Bediener-Hilfe: Admin-Themen (Backup) werden nicht gefunden');
+  await page.locator('.help-panel').getByRole('button', { name: 'Hilfe schließen' }).click();
+  await page.goto(`${URL}#/hilfe`);
+  await page.getByRole('heading', { name: 'Hilfe', exact: true }).waitFor();
+  const operatorCategories = await page.locator('.help-category h2').allTextContents();
+  check(!operatorCategories.includes('Karten und Personen') && operatorCategories.includes('Am Empfang'), `Hilfe-Seite für Bediener: ${operatorCategories.join(', ')}`);
   await page.goto(`${URL}#/auswertung`);
   await page.locator('.data-table tbody tr').first().waitFor();
   check((await page.getByRole('button', { name: /CSV-Export/ }).count()) === 0, 'Bediener: kein CSV-Export');
@@ -853,7 +893,7 @@ try {
     }, ms);
   // Notfall-Knopf genau einmal je Seite (nur oben im Menü)
   const emergencyLinks = () => page.locator('a[href*="notfallliste"]').count();
-  for (const path of ['dashboard', 'auswertung', 'karten', 'einstellungen/allgemein']) {
+  for (const path of ['dashboard', 'auswertung', 'karten', 'einstellungen/allgemein', 'hilfe']) {
     await page.goto(`${URL}#/${path}`);
     await page.locator('.app-nav .nav-emergency').waitFor();
     check((await emergencyLinks()) === 1, `Notfall-Knopf genau einmal auf #/${path}`);
@@ -1281,6 +1321,68 @@ try {
   await page.getByLabel('Doppelscan-Schutz (Sekunden)').fill('30');
   await page.getByLabel('Doppelscan-Schutz (Sekunden)').blur();
   await page.waitForTimeout(300);
+
+  console.log('17i) Integrierte Hilfe');
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-status').waitFor();
+  const helpButton = page.locator('.app-nav').getByRole('button', { name: 'Hilfe' });
+  await helpButton.click();
+  await page.locator('.help-panel').waitFor();
+  const dashTopics = await page.locator('.help-panel .help-list-title').allTextContents();
+  check(dashTopics[0] === 'Das Dashboard im Überblick' && dashTopics.length >= 6, `„?“ zeigt die Hilfe zur Seite (${dashTopics.length} Themen, zuerst „${dashTopics[0]}“)`);
+  const mainBox = await page.locator('.app-main').boundingBox();
+  const panelBox = await page.locator('.help-panel').boundingBox();
+  check(mainBox.x + mainBox.width <= panelBox.x + 1, 'Breiter Bildschirm: Seite rückt neben die Hilfe (nichts verdeckt)');
+  await page.locator('.help-panel .help-list-item', { hasText: 'Besucher anmelden' }).click();
+  check((await page.locator('.help-panel .help-steps li').count()) === 5, 'Thema mit 5 nummerierten Schritten');
+  check((await page.locator('.help-panel .help-steps strong').first().textContent()) === '+ Besucher anmelden', 'Beschriftungen der App fett');
+  await page.screenshot({ path: `${OUT}/37-hilfe-dashboard.png` });
+  await page.keyboard.press('Escape');
+  await page.locator('.help-panel .help-search').waitFor();
+  check(true, 'Esc: zurück zur Themenliste');
+  await page.keyboard.press('Escape');
+  await page.locator('.help-panel').waitFor({ state: 'detached' });
+  check(await helpButton.evaluate((el) => el === document.activeElement), 'Esc schließt die Hilfe, Fokus zurück auf „?“');
+  await page.goto(`${URL}#/karten`);
+  await page.locator('.card-row').first().waitFor();
+  await helpButton.click();
+  check((await page.locator('.help-panel .help-list-title').first().textContent()) === 'Karten erstellen und Personen zuweisen', 'Auf „Karten“: Kartenthemen zuerst');
+  await page.locator('.help-panel .help-list-item').first().click();
+  await page.locator('.help-panel .help-step-link', { hasText: 'Karten erstellen' }).click();
+  await page.getByLabel('Anzahl').waitFor();
+  check(page.url().includes('#/karten/neu') && (await page.locator('.help-panel').count()) === 1, 'Link „Zur Seite“: Seite wechselt, Hilfe bleibt zum Mitmachen offen');
+  await page.locator('.help-panel').getByRole('link', { name: /Als Seite öffnen/ }).click();
+  await page.getByRole('heading', { name: 'Karten erstellen und Personen zuweisen', level: 1 }).waitFor();
+  check(page.url().includes('thema=karten-erstellen'), 'Thema als eigene Seite (#/hilfe?thema=…)');
+  await helpButton.click();
+  await page.locator('.help-panel').waitFor({ state: 'detached' });
+  await page.goto(`${URL}#/hilfe`);
+  await page.getByRole('heading', { name: 'Hilfe', exact: true }).waitFor();
+  check((await page.locator('.help-category h2').allTextContents()).join(' | ') === 'Erste Schritte | Am Empfang | Karten und Personen | Veranstaltungen | Gästebildschirm und Geräte | Daten und Sicherheit', 'Hilfe-Seite: alle Bereiche für den Admin');
+  await page.screenshot({ path: `${OUT}/38-hilfe-seite.png`, fullPage: true });
+  await page.locator('.help-page .help-search').fill('sicherung');
+  await page.locator('.help-page .help-list-item', { hasText: 'Backup erstellen und einspielen' }).click();
+  await page.locator('.help-page .help-steps li').first().waitFor();
+  check(page.url().includes('thema=backup'), 'Suche „sicherung“ findet „Backup erstellen und einspielen“');
+  // Mit Kiosk-Menüpunkt (9 Punkte): alle Knöpfe bleiben sichtbar, Beschriftungen dürfen notfalls mit „…“ gekürzt sein
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-status').waitFor();
+  for (const width of [360, 800, 1100]) {
+    const problems = await navLayoutProblems(page, width, true);
+    check(problems.length === 0, `Menü mit „Kiosk“ bei ${width} px: alle Knöpfe sichtbar${problems.length ? ` – Problem: ${problems.join(', ')}` : ''}`);
+  }
+  // Handy: Hilfe deckt die Seite ab und schließt nach einem Link
+  await page.setViewportSize({ width: 390, height: 844 });
+  await helpButton.click();
+  await page.locator('.help-panel .help-list-item', { hasText: 'Notfallliste drucken' }).click();
+  const phonePanel = await page.locator('.help-panel').boundingBox();
+  const phoneNav = await page.locator('.app-nav').boundingBox();
+  check(phonePanel.width === 390 && phonePanel.y + phonePanel.height <= phoneNav.y + 1, 'Handy: Hilfe über der Seite, Menüleiste bleibt sichtbar');
+  await page.screenshot({ path: `${OUT}/39-hilfe-handy.png` });
+  await page.locator('.help-panel .help-step-link').first().click();
+  await page.locator('.help-panel').waitFor({ state: 'detached' });
+  check(page.url().includes('#/einstellungen/allgemein'), 'Handy: nach dem Link schließt sich die Hilfe');
 
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);

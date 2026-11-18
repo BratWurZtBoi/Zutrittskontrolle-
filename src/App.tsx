@@ -8,6 +8,7 @@ import { CardLayoutsPage } from './pages/CardLayoutsPage';
 import { CardListPage } from './pages/CardListPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EmergencyListPage } from './pages/EmergencyListPage';
+import { HelpPage } from './pages/HelpPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { ImportPage } from './pages/ImportPage';
 import { LayoutsPage } from './pages/LayoutsPage';
@@ -48,6 +49,7 @@ export function App() {
             <Route path="auswertung" element={<OverviewPage />} />
             <Route path="uebersicht" element={<Navigate to="/auswertung" replace />} />
             <Route path="notfallliste" element={<EmergencyListPage />} />
+            <Route path="hilfe" element={<HelpPage />} />
           </Route>
           {/* nur mit Admin-Anmeldung */}
           <Route element={<RequireRole allow="admin" />}>

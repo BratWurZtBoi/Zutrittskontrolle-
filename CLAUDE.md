@@ -92,12 +92,12 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   nichts – nur möglich, solange der Datenschlüssel geladen ist. `DEVICE_SECRET_KEYS` (Tresor + PIN)
   bleiben bei „Alle Daten löschen“ und Backup-Wiederherstellung erhalten.
 - Routen: `RequireRole allow="staff"` (Admin oder Bediener) für `/dashboard`, `/auswertung`
-  (früher `/uebersicht`, leitet weiter), `/notfallliste` (Liste in `lib/roles.ts`), alles andere
+  (früher `/uebersicht`, leitet weiter), `/notfallliste`, `/hilfe` (Liste in `lib/roles.ts`), alles andere
   `allow="admin"`. Frei: `/`, `/anmelden`, `/einrichtung`, `/praesentation`. Startseite `/` =
   `pages/StartPage.tsx`: im **Kiosk-Modus** (`settings.kioskMode`, je Gerät, Standard aus) der
   Vollbild-Scanner (`ScannerPage`, scannt ohne Anmeldung, Menüpunkt „Kiosk“), sonst Dashboard bzw.
   Anmeldung/Einrichtung. Menü: Dashboard (im Einlass-Modus „Einlass“) | Auswertung | Karten | Veranstaltungen
-  (Handy: „Events“ per `data-short`) | Einstellungen.
+  (Handy: „Events“ per `data-short`) | Einstellungen | ⚠ Notfall | ? Hilfe | Abmelden.
 - **Bestätigung je Gruppe** (`Group.requireConfirmation`): `decideAccess` liefert `pending`
   (Dashboard, `confirmation: 'operator'`) bzw. `denied/CONFIRMATION_REQUIRED` (Kiosk). Wartende Scans
   werden nicht gebucht; `resolvePendingScan` (accept prüft erneut / reject / timeout) schreibt das
@@ -175,6 +175,16 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   absolut positioniert (`@page a4-hoch/a4-quer`), Kartengrößen-Seiten per CSSOM (`lib/printPages.ts`,
   CSP-verträglich). Einstellungen `cardPrintBack/Flip/CutMarks` je Gerät.
   Ziehen/Anfasser/Pfeiltasten in beiden Editoren über `hooks/useElementDrag.ts`.
+- **Integrierte Hilfe:** Logik rein in `domain/help.ts` (`topicsForPath` längstes Pfad-Muster zuerst, „/“ nur exakt;
+  `searchTopics` mit Umlaut-Faltung; `visibleTopics` – Bediener nur `audience: 'all'`; `emphasisParts` für `**fett**`),
+  Inhalte in `src/help/topics.ts` (`HELP_TOPICS`: Schritte mit **Beschriftungen der App** fett, `link` nur auf
+  existierende Routen; Test prüft Seiten-Abdeckung). Anzeige `components/help/` (`HelpPanel` = Seitenleiste über
+  „?“ in der Navigation, `HelpTopicView` blendet Links aus, die die Rolle nicht öffnen darf (`isStaffPath`) oder
+  auf die aktuelle Seite zeigen), Seite `#/hilfe` (`?thema=`, `?suche=`, staff). Ab 1200 px rückt `.app-main` zur
+  Seite (`.app.help-open`), darunter deckt die Leiste die Seite ab und schließt nach Links/Seitenwechsel. Tasten im
+  Panel werden nicht weitergereicht (sonst Enter/Esc = Einlassen/Abweisen). **Bei neuen Funktionen/Beschriftungen
+  die Hilfetexte mit anpassen.** Navigation: auf Tablet (768–1099 px) Symbol über Beschriftung, 1100–1439 px
+  „Hilfe“/„Abmelden“ nur Symbol; Beschriftungen kürzen sich notfalls mit „…“ (Notfall nie) – E2E prüft 360–1536 px.
 - Einstellungen: Übersicht `#/einstellungen` (Kacheln in Gruppen `SETTINGS_GROUPS`) + je Bereich eine
   Seite unter `pages/settings/` mit `SettingsShell` (Seitenleiste ab 1000 px, gruppiert, sonst
   „← Einstellungen“). Neue Bereiche in `SETTINGS_SECTIONS` (mit `group`) eintragen; keine langen
@@ -269,8 +279,11 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
 18. ✅ Veranstaltungen (Teil 1): Gästeliste (CSV), Einladungs-Codes nur einmal gültig, Einlass-Modus je Gerät
     (Band, „Einlass“-Dashboard, Notfallliste mit Gästen), Teilnahme mit Zeitverlauf (Version 0.18).
 19. ✅ Veranstaltungen (Teil 2): Einladungs-Editor (A4/A5/A6/DIN lang), Serienbrief-Druck, PDF je Gast
-    (ZIP bzw. Ordner im Programm), Versandliste (Version 0.19). Als Nächstes: integrierte Hilfe besprechen;
-    später Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe.
+    (ZIP bzw. Ordner im Programm), Versandliste (Version 0.19).
+20. ✅ Integrierte Hilfe (Admin + Bediener, Schritt für Schritt): „?“-Seitenleiste zur aktuellen Seite, Hilfe-Seite
+    mit Suche; Menü passt jetzt auch auf Tablets (Notfall/Abmelden waren dort abgeschnitten) (Version 0.20).
+    Als Nächstes (abgestimmt): „Erste Schritte“-Liste, ⓘ-Hinweise an Feldern; später Begleitpersonen,
+    Kategorie-Farben, Abendkasse, Outlook-Hilfe.
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.
@@ -281,5 +294,5 @@ Teilen (`lib/download.ts`): Chrome teilt nur bestimmte Endungen – `shareableFi
 Mögliche nächste Schritte (mit dem Nutzer abstimmen): Fremdkarten (QR/Strichcode einlernen,
 zurückgestellt – der USB-Scanner liest sie bereits), Musik/Animationen in Layouts (zurückgestellt),
 Test auf echten Geräten (Scanner, Linux/Raspberry Pi, Kartendrucker, Duplex) und Feinschliff,
-später „Erste Schritte“-Liste,
+„Erste Schritte“-Liste und ⓘ-Hinweise (Hilfe Teil 2),
 Datenschutz (Hinweis, Auskunft/Löschen je Person), Zutrittszeiten je Gruppe, Backup zusammenführen.

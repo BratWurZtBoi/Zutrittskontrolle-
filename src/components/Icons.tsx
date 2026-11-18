@@ -100,3 +100,11 @@ export const CalendarIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M3 10h18M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2" />
   </svg>
 );
+
+export const HelpIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6" />
+    <path d="M12 17h.01" />
+  </svg>
+);

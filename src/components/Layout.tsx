@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useSettings } from '../hooks/useSettings';
 import { requestExit } from '../security/exit';
@@ -8,7 +9,8 @@ import { textColorOn } from '../domain/color';
 import { formatIsoDate } from '../domain/dates';
 import type { Occasion } from '../domain/occasion';
 import { useActiveOccasion } from '../hooks/useOccasion';
-import { AlertIcon, CalendarIcon, CardIcon, DashboardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon, TicketIcon } from './Icons';
+import { AlertIcon, CalendarIcon, CardIcon, DashboardIcon, ExitIcon, HelpIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon, TicketIcon } from './Icons';
+import { HelpPanel, helpCoversPage } from './help/HelpPanel';
 
 /** short = Beschriftung in der schmalen Menüleiste unten (Handy). */
 const NAV: { to: string; label: string; short?: string; icon: typeof DashboardIcon; operator: boolean }[] = [
@@ -26,9 +28,23 @@ export function Layout() {
   const occasion = useActiveOccasion();
   // Vollbild-Scanner nur im Kiosk-Modus (Gerät am Eingang ohne Bediener)
   const { kioskMode } = useSettings();
+  const staff = security.admin || security.operator;
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpButton = useRef<HTMLButtonElement>(null);
+  const closeHelp = () => {
+    setHelpOpen(false);
+    helpButton.current?.focus();
+  };
+  // Hilfe deckt auf schmalen Bildschirmen die Seite ab → beim Seitenwechsel schließen; nach dem Abmelden immer
+  useEffect(() => {
+    if (helpCoversPage()) setHelpOpen(false);
+  }, [location.pathname]);
+  useEffect(() => {
+    if (!staff) setHelpOpen(false);
+  }, [staff]);
 
   return (
-    <div className="app">
+    <div className={helpOpen && staff ? 'app help-open' : 'app'}>
       <nav className="app-nav no-print" aria-label="Hauptnavigation">
         <span className="app-title">
           Zutrittskontrolle
@@ -40,7 +56,7 @@ export function Layout() {
             <span>Kiosk</span>
           </NavLink>
         )}
-        {security.admin || security.operator ? (
+        {staff ? (
           <>
             {NAV.filter((n) => security.admin || n.operator).map(({ to, label, short, icon: Icon }) => {
               // Einlass-Modus: aus dem Dashboard wird „Einlass“
@@ -66,6 +82,18 @@ export function Layout() {
               <span>Notfall</span>
             </NavLink>
             <button
+              ref={helpButton}
+              type="button"
+              aria-label="Hilfe"
+              aria-expanded={helpOpen}
+              title="Hilfe zu dieser Seite"
+              className={helpOpen ? 'nav-link nav-button nav-help active' : 'nav-link nav-button nav-help'}
+              onClick={() => (helpOpen ? closeHelp() : setHelpOpen(true))}
+            >
+              <HelpIcon />
+              <span className="nav-label-optional">Hilfe</span>
+            </button>
+            <button
               type="button"
               aria-label="Abmelden"
               title="Abmelden"
@@ -86,7 +114,8 @@ export function Layout() {
           </NavLink>
         )}
       </nav>
-      {occasion && (security.admin || security.operator) && <OccasionBand occasion={occasion} canEnd={security.admin} />}
+      {occasion && staff && <OccasionBand occasion={occasion} canEnd={security.admin} />}
+      {helpOpen && staff && <HelpPanel path={location.pathname} role={security.admin ? 'admin' : 'operator'} onClose={closeHelp} />}
       <main className="app-main">
         <Outlet />
       </main>
