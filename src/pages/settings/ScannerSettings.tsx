@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NumberField } from '../../components/NumberField';
 import { db } from '../../db/db';
 import { saveSettings, type AppSettings, type ScanInput } from '../../db/settings';
-import { parseCardPayload } from '../../domain/cardCode';
+import { parseCardPayload, parseGuestPayload } from '../../domain/cardCode';
 import { SCANNER_MAX_GAP_MS, type ScannerSpeed } from '../../domain/keyboardScan';
 import { useKeyboardScanner, type KeyboardScan } from '../../hooks/useKeyboardScanner';
 import { useSettings } from '../../hooks/useSettings';
@@ -107,6 +107,8 @@ export function ScannerSettings() {
 interface TestResult {
   scan: KeyboardScan;
   card?: { number: string; group?: string };
+  /** Einladung einer Veranstaltung */
+  guest?: { number: number; occasion?: string };
 }
 
 /** Für die Anzeige kürzen – bei Karten-Codes ist das Token der „Schlüssel“ der Karte und wird nicht gezeigt. */
@@ -123,6 +125,13 @@ function ScannerTest({ speed }: { speed: ScannerSpeed }) {
     (scan) => {
       setCount((n) => n + 1);
       void (async () => {
+        const guestToken = scan.payload ? parseGuestPayload(scan.payload) : null;
+        if (guestToken) {
+          const guest = await db.guests.where('token').equals(guestToken).first();
+          const occasion = guest ? await db.occasions.get(guest.occasionId) : undefined;
+          setResult({ scan, guest: guest ? { number: guest.number, occasion: occasion?.name } : { number: 0 } });
+          return;
+        }
         const token = scan.payload ? parseCardPayload(scan.payload) : null;
         const card = token ? await db.cards.where('token').equals(token).first() : undefined;
         const group = card ? await db.groups.get(card.groupId) : undefined;
@@ -147,8 +156,12 @@ function ScannerTest({ speed }: { speed: ScannerSpeed }) {
       ) : (
         <dl className="scanner-test-result" data-testid="scanner-test-result">
           <dt>Ergebnis</dt>
-          <dd className={scan.payload ? (result?.card ? 'ok-text' : 'warn-text') : 'danger-text'}>
-            {scan.payload
+          <dd className={scan.payload ? (result?.card || result?.guest?.number ? 'ok-text' : 'warn-text') : 'danger-text'}>
+            {result?.guest
+              ? result.guest.number
+                ? `Einladung Nr. ${result.guest.number}${result.guest.occasion ? ` („${result.guest.occasion}“)` : ''} erkannt – hier wird nichts gebucht`
+                : 'Einladungs-Code erkannt, aber diese Einladung gibt es hier nicht (gelöscht).'
+              : scan.payload
               ? result?.card
                 ? `Karte ${result.card.number}${result.card.group ? ` (${result.card.group})` : ''} erkannt`
                 : 'Karten-Code erkannt, aber diese Karte gibt es hier nicht (gelöscht oder ersetzt).'

@@ -42,21 +42,11 @@ const MAX_GROUPS = 3;
  * nichts kommt hinzu, verschwindet oder bricht um, wenn sich Zahlen oder Zustände ändern.
  */
 export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisitor }: Props) {
-  const connected = usePresentationConnected();
-  const autoBackupError = useLiveQuery(async () => (await loadAutoBackup())?.lastError, [], undefined);
-  const [hint, setHint] = useState<string | null>(null);
   const perGroup = stats ? countPerGroup(stats.presentGroupIds, groups) : [];
   const { shown, rest } = splitTopGroups(perGroup, MAX_GROUPS);
   const breakdown = perGroup.map(({ group, count }) => `${count} ${group.name}`).join(', ');
   const denied = stats?.denied ?? 0;
 
-  useEffect(() => {
-    if (!hint) return;
-    const t = window.setTimeout(() => setHint(null), 10_000);
-    return () => window.clearTimeout(t);
-  }, [hint]);
-
-  const openPresentation = async () => setHint(OPEN_HINT[await openPresentationWindow()]);
 
   return (
     <div className="dash-status no-print">
@@ -112,6 +102,25 @@ export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisit
         + Besucher anmelden
       </button>
 
+      <StatusActions settings={settings} />
+    </div>
+  );
+}
+
+/** Präsentation öffnen bzw. „läuft“ und Backup-Stand – feste Plätze in beiden Statusleisten (Zutritt/Einlass). */
+export function StatusActions({ settings }: { settings: AppSettings }) {
+  const connected = usePresentationConnected();
+  const autoBackupError = useLiveQuery(async () => (await loadAutoBackup())?.lastError, [], undefined);
+  const [hint, setHint] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hint) return;
+    const t = window.setTimeout(() => setHint(null), 10_000);
+    return () => window.clearTimeout(t);
+  }, [hint]);
+  const openPresentation = async () => setHint(OPEN_HINT[await openPresentationWindow()]);
+
+  return (
+    <>
       <div className="ds-actions">
         {connected ? (
           <span className="presentation-state ds-presentation" role="status">
@@ -124,13 +133,12 @@ export function DashStatusBar({ settings, stats, groups, onShow, onRegisterVisit
         )}
         <BackupState lastBackupAt={settings.lastBackupAt} error={autoBackupError} />
       </div>
-
       {hint && (
         <p className="dash-status-hint" role="status">
           {hint}
         </p>
       )}
-    </div>
+    </>
   );
 }
 

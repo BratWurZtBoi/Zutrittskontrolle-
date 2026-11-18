@@ -69,6 +69,8 @@ export interface AppSettings {
   emergencyPrinter: string;
   /** Anzahl Ausdrucke (z. B. einer je Sammelplatz). */
   emergencyCopies: number;
+  /** Einlass läuft für diese Veranstaltung (je Gerät; leer = normale Zutrittskontrolle). */
+  activeOccasionId?: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

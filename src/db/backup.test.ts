@@ -9,6 +9,8 @@ import { createGroup, ensureDefaultGroups, listGroups } from './groups';
 import { listPresentCards, listRecentEvents, processScan } from './scans';
 import { loadSettings, saveSettings } from './settings';
 import { addUnassigned, listUnassigned } from './unassigned';
+import { createSampleOccasion, listGuests, listOccasionLog, listOccasions, processOccasionScan } from './occasions';
+import { encodeGuestPayload } from '../domain/cardCode';
 
 const FAST = 1000;
 const PW = 'Backup-Passwort';
@@ -32,15 +34,19 @@ async function sampleData() {
   await processScan('fremder Code', opts);
   await saveSettings({ orgName: 'Testfirma', cooldownSec: 45, camera: 'device:xyz' });
   await addUnassigned([{ holder: { firstName: 'Nina', lastName: 'Wartend', company: 'Extern' }, accessGranted: false, validUntil: '2030-01-31', groupHint: 'Besuchr' }]);
-  return { a: a!, b: b! };
+  const occasion = await createSampleOccasion();
+  const [guest] = await listGuests(occasion.id);
+  await processOccasionScan(encodeGuestPayload(guest!.token), { occasionId: occasion.id, cooldownMs: 0, source: 'test' });
+  return { a: a!, b: b!, occasion, guest: guest! };
 }
 
 beforeEach(freshDevice);
 
 describe('Backup', () => {
   it('sichert alles verschlüsselt und stellt es vollständig wieder her', async () => {
-    const { a } = await sampleData();
+    const { a, occasion, guest } = await sampleData();
     const before = await listCards();
+    const guestsBefore = await listGuests(occasion.id);
     const { blob, filename, summary } = await createBackupFile(PW, '0.5.0', FAST);
     expect(filename).toMatch(/^zutrittskontrolle-backup-\d{4}-\d{2}-\d{2}-\d{4}\.zkb$/);
     expect(summary).toMatchObject({ groups: 3, cards: 3, assignedCards: 2, events: 3, unassigned: 1, appVersion: '0.5.0' });
@@ -71,6 +77,16 @@ describe('Backup', () => {
 
     // Karten funktionieren nach dem Einspielen weiter
     expect((await processScan(encodeCardPayload(a.token), opts)).decision.direction).toBe('out');
+
+    // Veranstaltung mit Gästen, Einlass und Protokoll ist wieder da – Einladung bleibt verbraucht
+    expect((await listOccasions()).map((o) => [o.name, o.admitted])).toEqual([[occasion.name, 1]]);
+    expect((await listGuests(occasion.id)).map((g) => [g.number, g.person, g.admittedAt])).toEqual(
+      guestsBefore.map((g) => [g.number, g.person, g.admittedAt]),
+    );
+    expect((await listOccasionLog(occasion.id))[0]?.name).toBe('Oberst Max Mustermann');
+    expect(JSON.stringify(await db.guests.toArray())).not.toContain('Mustermann');
+    const again = await processOccasionScan(encodeGuestPayload(guest.token), { occasionId: occasion.id, cooldownMs: 0, source: 'test' });
+    expect(again?.decision.reason).toBe('ALREADY_ADMITTED');
   });
 
   it('lehnt ein falsches Backup-Passwort ab', async () => {

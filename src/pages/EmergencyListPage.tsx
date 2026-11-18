@@ -3,12 +3,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { listGroups } from '../db/groups';
+import { listAdmittedPeople } from '../db/occasions';
 import { listPresentCards, type PresentCard } from '../db/scans';
 import { DEFAULT_SETTINGS } from '../db/settings';
 import { formatDateTime, formatShortDateTime } from '../domain/dates';
 import { directPrintDone, emergencyPrintPlan, printErrorText } from '../domain/emergencyPrint';
+import { guestListName, sortGuestsByName } from '../domain/occasion';
 import { holderListName, holderUnitLine } from '../domain/texts';
 import type { Group } from '../domain/types';
+import { useActiveOccasion } from '../hooks/useOccasion';
 import { useSecureLiveQuery } from '../hooks/useSecureLiveQuery';
 import { useLoadedSettings } from '../hooks/useSettings';
 import { getDesktop } from '../lib/desktop';
@@ -57,6 +60,16 @@ export function EmergencyListPage() {
   const settings = loaded ?? DEFAULT_SETTINGS;
   const present = useSecureLiveQuery(listPresentCards, []);
   const groups = useLiveQuery(listGroups, []);
+  // Einlass einer Veranstaltung läuft: eingelassene Gäste gehören auch auf die Liste
+  const occasion = useActiveOccasion();
+  const admitted = useSecureLiveQuery(
+    () => (occasion ? listAdmittedPeople(occasion.id) : Promise.resolve(null)),
+    [occasion?.id],
+  );
+  const presentIds = new Set((present ?? []).map((p) => p.card.id));
+  const admittedGuests = admitted ? sortGuestsByName(admitted.guests) : [];
+  const admittedCards = (admitted?.cards ?? []).filter((c) => !presentIds.has(c.card.id));
+  const total = (present?.length ?? 0) + admittedGuests.length + admittedCards.length;
   const [photoChoice, setPhotoChoice] = useState<boolean>();
   const withPhotos = photoChoice ?? settings.emergencyPhotos;
   const [createdAt] = useState(() => Date.now());
@@ -69,11 +82,11 @@ export function EmergencyListPage() {
   const goBack = () => (from.current ? navigate(-1) : navigate('/dashboard', { replace: true }));
 
   useEffect(() => {
-    if (!autoPrint || started.current || !present || !groups || !loaded) return;
+    if (!autoPrint || started.current || !present || !groups || !loaded || occasion === undefined || (occasion && !admitted)) return;
     started.current = true;
     // Parameter entfernen: Zurück/Neuladen druckt nicht noch einmal
     navigate('/notfallliste', { replace: true, state: location.state });
-    if (present.length === 0) {
+    if (total === 0) {
       setStatus({ kind: 'info', text: 'Zurzeit ist niemand eingebucht – es wurde nichts gedruckt.' });
       return;
     }
@@ -100,7 +113,7 @@ export function EmergencyListPage() {
       if (performance.now() - t0 > 400) goBack();
     })();
     // nur einmal, sobald Liste, Gruppen und Einstellungen geladen sind (started verhindert Wiederholung)
-  }, [autoPrint, present, groups, loaded]);
+  }, [autoPrint, present, groups, loaded, occasion, admitted]);
 
   if (!present) return null;
   let n = 0;
@@ -110,7 +123,7 @@ export function EmergencyListPage() {
       <header className="page-header no-print">
         <h1>Notfallliste</h1>
         <div className="button-row">
-          <button type="button" className="btn btn-primary" onClick={printCurrentPage} disabled={present.length === 0}>
+          <button type="button" className="btn btn-primary" onClick={printCurrentPage} disabled={total === 0}>
             Drucken
           </button>
           <button type="button" className="btn btn-ghost" onClick={goBack}>
@@ -131,12 +144,18 @@ export function EmergencyListPage() {
       <div className="emergency-head">
         <h2>Notfall- / Evakuierungsliste – {settings.orgName}</h2>
         <p>
-          Stand: <strong>{formatDateTime(createdAt)} Uhr</strong> · <strong>{present.length}</strong> Person(en) anwesend
+          Stand: <strong>{formatDateTime(createdAt)} Uhr</strong> · <strong>{total}</strong> Person(en) anwesend
+          {occasion && (
+            <>
+              {' '}
+              (davon {admittedGuests.length + admittedCards.length} Gäste „{occasion.name}“)
+            </>
+          )}
         </p>
         <p className="muted small">Vertraulich – enthält Personendaten. Nach Gebrauch vernichten.</p>
       </div>
 
-      {present.length === 0 ? (
+      {total === 0 ? (
         <p className="empty-note">Zurzeit ist niemand eingebucht.</p>
       ) : (
         sections.map(({ group, rows }) => (
@@ -182,6 +201,55 @@ export function EmergencyListPage() {
             </table>
           </section>
         ))
+      )}
+
+      {occasion && admittedGuests.length + admittedCards.length > 0 && (
+        <section className="emergency-section emergency-guests">
+          <h3 style={{ borderLeftColor: occasion.color }}>
+            Gäste: {occasion.name} <span className="muted">({admittedGuests.length + admittedCards.length})</span>
+          </h3>
+          <table className="data-table emergency-table">
+            <thead>
+              <tr>
+                <th className="th-plain">Nr.</th>
+                <th className="th-plain">Name</th>
+                <th className="th-plain">Einheit/Firma</th>
+                <th className="th-plain">Kategorie</th>
+                <th className="th-plain">Einladung</th>
+                <th className="th-plain">eingelassen</th>
+                <th className="th-plain">am Sammelplatz</th>
+              </tr>
+            </thead>
+            <tbody>
+              {admittedGuests.map((g) => (
+                <tr key={g.id}>
+                  <td>{++n}</td>
+                  <td className="cell-strong">{g.hasPerson && !g.person ? '🔒 Name gesperrt' : guestListName(g)}</td>
+                  <td>{g.person?.company ?? ''}</td>
+                  <td>{g.category ?? ''}</td>
+                  <td>Nr. {g.number}</td>
+                  <td>{formatShortDateTime(g.admittedAt!, new Date(createdAt))}</td>
+                  <td>
+                    <span className="tick-box" aria-label="zum Abhaken" />
+                  </td>
+                </tr>
+              ))}
+              {admittedCards.map(({ card, since }) => (
+                <tr key={card.id}>
+                  <td>{++n}</td>
+                  <td className="cell-strong">{card.holder ? holderListName(card.holder) : card.hasHolder ? '🔒 Name gesperrt' : 'Karte ohne Person'}</td>
+                  <td>{holderUnitLine(card.holder)}</td>
+                  <td>Dienstausweis</td>
+                  <td>Karte {card.number}</td>
+                  <td>{formatShortDateTime(since, new Date(createdAt))}</td>
+                  <td>
+                    <span className="tick-box" aria-label="zum Abhaken" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       )}
     </div>
   );

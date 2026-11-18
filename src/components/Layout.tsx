@@ -3,21 +3,27 @@ import { useSettings } from '../hooks/useSettings';
 import { requestExit } from '../security/exit';
 import { useSecurity } from '../security/useSecurity';
 import { EMERGENCY_PRINT_PATH, type EmergencyNavState } from '../lib/emergency';
-import { AlertIcon, CardIcon, DashboardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon } from './Icons';
+import { endEntry } from '../db/occasions';
+import { textColorOn } from '../domain/color';
+import { formatIsoDate } from '../domain/dates';
+import type { Occasion } from '../domain/occasion';
+import { useActiveOccasion } from '../hooks/useOccasion';
+import { AlertIcon, CalendarIcon, CardIcon, DashboardIcon, ExitIcon, ListIcon, LockIcon, ScanIcon, SettingsIcon, TicketIcon } from './Icons';
 
-const ADMIN_NAV = [
-  { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-  { to: '/auswertung', label: 'Auswertung', icon: ListIcon },
-  { to: '/karten', label: 'Karten', icon: CardIcon },
-  { to: '/einstellungen', label: 'Einstellungen', icon: SettingsIcon },
+/** short = Beschriftung in der schmalen Menüleiste unten (Handy). */
+const NAV: { to: string; label: string; short?: string; icon: typeof DashboardIcon; operator: boolean }[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon, operator: true },
+  { to: '/auswertung', label: 'Auswertung', icon: ListIcon, operator: true },
+  { to: '/karten', label: 'Karten', icon: CardIcon, operator: false },
+  { to: '/veranstaltungen', label: 'Veranstaltungen', short: 'Events', icon: CalendarIcon, operator: false },
+  { to: '/einstellungen', label: 'Einstellungen', icon: SettingsIcon, operator: false },
 ];
-/** Bediener (PIN): nur Empfangsaufgaben. */
-const OPERATOR_NAV = ADMIN_NAV.filter((n) => n.to === '/dashboard' || n.to === '/auswertung');
 
 export function Layout() {
   const security = useSecurity();
   const navigate = useNavigate();
   const location = useLocation();
+  const occasion = useActiveOccasion();
   // Vollbild-Scanner nur im Kiosk-Modus (Gerät am Eingang ohne Bediener)
   const { kioskMode } = useSettings();
 
@@ -36,12 +42,19 @@ export function Layout() {
         )}
         {security.admin || security.operator ? (
           <>
-            {(security.admin ? ADMIN_NAV : OPERATOR_NAV).map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} className="nav-link">
-                <Icon />
-                <span>{label}</span>
-              </NavLink>
-            ))}
+            {NAV.filter((n) => security.admin || n.operator).map(({ to, label, short, icon: Icon }) => {
+              // Einlass-Modus: aus dem Dashboard wird „Einlass“
+              const entry = to === '/dashboard' && occasion;
+              const ItemIcon = entry ? TicketIcon : Icon;
+              return (
+                <NavLink key={to} to={to} className="nav-link">
+                  <ItemIcon />
+                  <span className="nav-label" data-short={short}>
+                    {entry ? 'Einlass' : label}
+                  </span>
+                </NavLink>
+              );
+            })}
             {/* Einziger Notfall-Knopf (auf jeder Seite genau einmal): Notfallliste sofort drucken */}
             <NavLink
               to={EMERGENCY_PRINT_PATH}
@@ -73,9 +86,35 @@ export function Layout() {
           </NavLink>
         )}
       </nav>
+      {occasion && (security.admin || security.operator) && <OccasionBand occasion={occasion} canEnd={security.admin} />}
       <main className="app-main">
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+/** Farbiges Band auf jeder Seite, solange auf diesem Gerät der Einlass einer Veranstaltung läuft. */
+function OccasionBand({ occasion, canEnd }: { occasion: Occasion; canEnd: boolean }) {
+  const color = textColorOn(occasion.color);
+  return (
+    <div className="occasion-band no-print" style={{ background: occasion.color, color }} role="status">
+      <TicketIcon className="occasion-band-icon" />
+      <span className="occasion-band-text">
+        <strong>{occasion.name}</strong> · {formatIsoDate(occasion.date)} · Einlass läuft
+      </span>
+      {canEnd && (
+        <button
+          type="button"
+          className="occasion-band-end"
+          style={{ color, borderColor: color }}
+          onClick={() => {
+            if (window.confirm(`Einlass für „${occasion.name}“ auf diesem Gerät beenden? Danach gilt wieder die normale Zutrittskontrolle.`)) void endEntry();
+          }}
+        >
+          Einlass beenden
+        </button>
+      )}
     </div>
   );
 }

@@ -289,6 +289,35 @@ etwas anzuklicken.
 - Alternativ **„Neuer QR-Code“**: gleiche Kartennummer, neu drucken – der alte Code ist ungültig.
 - **„Wiedergefunden – entsperren“** hebt die Meldung auf.
 
+### Veranstaltungen (einmalige Events)
+
+Für Feiern, Empfänge, Tage der offenen Tür … – getrennt von der normalen Zutrittskontrolle.
+
+- Menü **Veranstaltungen** (auf dem Handy „Events“): **+ Neue Veranstaltung** mit Name, Datum, Ort,
+  Einlass von/bis, Farbe, optional eigenem Gästebildschirm. Zum Ausprobieren gibt es eine
+  **Beispielveranstaltung** mit fiktiven Gästen.
+- **Gästeliste**: Anrede, Dienstgrad, Vor-/Nachname, Einheit/Firma, Kategorie (z. B. VIP, Presse),
+  E-Mail, Notiz – einzeln oder per **CSV-Import** (Vorlage zum Herunterladen, Vorschau mit Fehlern).
+  Jeder Gast hat eine Nummer und einen eigenen QR-Code (`ZE1:…`, verschieden von Ausweisen).
+  Einladungen lassen sich stornieren; Personendaten liegen verschlüsselt auf dem Gerät.
+- **„Einlass starten“** (je Gerät): oben erscheint ein **farbiges Band** mit der Veranstaltung, aus
+  „Dashboard“ wird **„Einlass“**. Am Veranstaltungstag bietet das Dashboard den Start selbst an.
+  - Jeder Einladungs-Code gilt **nur einmal**. Ein zweiter Scan zeigt **„Bereits eingelassen um …“**
+    (orange). Stornierte Einladungen, Einladungen anderer Veranstaltungen und unbekannte Codes
+    werden abgewiesen.
+  - **Dienstausweise** gelten standardmäßig nicht; je Veranstaltung einschaltbar.
+  - Statusleiste: **Eingelassen · von · Quote · Noch offen · abgewiesen**; Reiter **Eingelassen /
+    Noch offen / Abgewiesen**. Einladung vergessen → in „Noch offen“ **Einlassen**; nicht auf der
+    Liste → **+ Gast nachtragen** (gleich einlassen). Fehlbedienung → **Zurücknehmen**.
+  - Einlässe landen **nicht** in Anwesenheit und Protokoll der Zutrittskontrolle, sondern im
+    Einlass-Protokoll der Veranstaltung. Die **Notfallliste** enthält währenddessen zusätzlich alle
+    eingelassenen Gäste.
+- **Teilnahme**: eingeladen, eingelassen (Quote), offen, storniert, abgewiesen, je Kategorie,
+  **Einlass im Zeitverlauf** (15 Minuten), Einlass-Protokoll, **Teilnehmerliste als CSV**.
+- Danach **„Gästedaten löschen“** (Namen weg, Zahlen bleiben) oder die ganze Veranstaltung löschen.
+- Veranstaltungen sind im verschlüsselten Backup enthalten.
+- Hinweis: Ohne Server prüft jedes Gerät nur seine eigene Gästeliste – für einen Eingang gedacht.
+
 ## Einmalige Einrichtung (im Browser auf github.com)
 
 1. Repository öffentlich: *Settings* → *Danger Zone* → *Change visibility* → *Public*.
@@ -394,6 +423,8 @@ Merge nach `main` automatisch gebaut.
 | Karteneditor mit Reitern, Rückgängig, Anfassern; Formate A7/A6/eigene; Rückseite; Duplex/Falten | ✅ |
 | USB-Scanner (Tastatur-Modus) mit Scanner-Test | ✅ |
 | CSV-Import: Personen ohne Gruppe unter „Nicht zugeordnet“, später zuordnen | ✅ |
+| Veranstaltungen: Gästeliste, Einladungs-Codes nur einmal gültig, Einlass-Dashboard, Teilnahme | ✅ |
+| Einladungen als Serienbrief, PDF je Gast, Versandliste | geplant |
 
 ## Technik
 

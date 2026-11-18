@@ -41,6 +41,18 @@ export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | '
       return 'Nicht rechtzeitig bestätigt.';
     case 'CORRECTION':
       return 'Fehlbuchung rückgängig gemacht.';
+    case 'ALREADY_ADMITTED':
+      return 'Diese Einladung wurde bereits verwendet.';
+    case 'GUEST_CANCELLED':
+      return 'Diese Einladung wurde storniert.';
+    case 'OTHER_OCCASION':
+      return 'Diese Einladung gilt für eine andere Veranstaltung.';
+    case 'UNKNOWN_GUEST':
+      return 'Einladung unbekannt.';
+    case 'CARDS_NOT_ADMITTED':
+      return 'Dienstausweise gelten bei dieser Veranstaltung nicht – bitte die Einladung vorzeigen.';
+    case 'ADMISSION_UNDONE':
+      return 'Einlass zurückgenommen.';
   }
 }
 

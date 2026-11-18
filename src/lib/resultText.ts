@@ -1,6 +1,7 @@
 /** Texte und Farbton für ein Scan-Ergebnis – gemeinsam für Scanner, Dashboard und Präsentation. */
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
+import { guestName } from '../domain/occasion';
 import { directionText, holderName, reasonText } from '../domain/texts';
 
 export type ResultTone = 'ok' | 'out' | 'deny' | 'warn';
@@ -35,6 +36,17 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
     return { tone: 'warn', title: 'Bitte kurz warten', detail: 'Ihr Eintritt wird gleich bestätigt.' };
   }
   if (decision.outcome === 'denied') {
+    if (result.occasion && decision.reason === 'ALREADY_ADMITTED') {
+      const when = result.guest?.admittedAt;
+      return { tone: 'warn', title: 'Bereits eingelassen', detail: when ? `Diese Einladung wurde um ${formatTime(when)} Uhr verwendet.` : reasonText(decision.reason) };
+    }
+    if (decision.reason === 'OTHER_OCCASION') {
+      return {
+        tone: 'deny',
+        title: 'Falsche Veranstaltung',
+        detail: result.otherOccasion ? `Diese Einladung gilt für „${result.otherOccasion.name}“.` : reasonText(decision.reason),
+      };
+    }
     if (hideIdentityFor(audience, result)) return { tone: 'deny', title: 'Kein Zutritt', detail: 'Bitte wenden Sie sich an den Empfang.' };
     if (decision.reason === 'CARD_LOST') return { tone: 'deny', title: 'Verlorene Karte!', detail: reasonText(decision.reason, card) };
     return { tone: 'deny', title: 'Kein Zutritt', detail: reasonText(decision.reason, card) };
@@ -46,6 +58,10 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
       detail: `Fehlbuchung rückgängig gemacht – jetzt ${decision.direction === 'in' ? 'anwesend' : 'abwesend'}.`,
     };
   }
+  if (result.occasion) {
+    const how = result.manual ? ' (von Hand)' : result.card ? ' mit Dienstausweis' : '';
+    return { tone: 'ok', title: 'Willkommen', detail: `Einlass ${result.occasion.name}${how} · ${formatTime(result.at)} Uhr` };
+  }
   const manual = result.event?.source === 'manual' ? ' (manuell)' : '';
   const detail = `${directionText(decision.direction)} gebucht${manual} · ${formatTime(result.at)} Uhr`;
   return decision.direction === 'out'
@@ -55,7 +71,8 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
 
 /** Anzeigename: Name der Person, sonst Kartennummer. */
 export function displayName(result: ScanOutcome, audience: Audience = 'staff'): string | undefined {
-  const { card } = result;
+  const { card, guest } = result;
+  if (guest) return guestName(guest.person) ?? `Gast Nr. ${guest.number}`;
   if (!card || hideIdentityFor(audience, result)) return undefined;
   return card.holder ? holderName(card.holder) : `Karte ${card.number}`;
 }

@@ -2,7 +2,7 @@
  * Datensicherung: verschlüsseltes Voll-Backup als Datei.
  *
  * Inhalt: Gruppen, Karten (mit Personendaten), nicht zugeordnete Personen, Protokoll,
- * Anwesenheit, Layouts und geräteunabhängige Einstellungen – komprimiert und mit einem eigenen
+ * Anwesenheit, Layouts, Veranstaltungen (Gästelisten, Einlass-Protokoll) und geräteunabhängige Einstellungen – komprimiert und mit einem eigenen
  * Backup-Passwort verschlüsselt (PBKDF2-SHA-256 + AES-256-GCM).
  * Das Admin-Passwort des Geräts wird NICHT übertragen: Beim Einspielen werden die
  * Personendaten mit dem Schlüssel des Zielgeräts neu verschlüsselt.
@@ -11,6 +11,8 @@ import { holderName } from '../domain/texts';
 import type { AccessEventRecord, CardHolder, CardRecord, Group, PresenceRecord, UnassignedRecord } from '../domain/types';
 import {
   compressionAvailable,
+  decryptJson,
+  decryptText,
   decryptWithPassword,
   encryptJson,
   encryptText,
@@ -30,6 +32,7 @@ import { toUnassignedPerson } from './unassigned';
 import { loadSettings, type AppSettings } from './settings';
 import { normalizeLayout, type PresentationLayout } from '../domain/presentationLayout';
 import { normalizeCardLayout, type CardLayout } from '../domain/cardLayout';
+import { guestName, type GuestPerson, type GuestRecord, type Occasion, type OccasionLogRecord } from '../domain/occasion';
 
 export const BACKUP_FORMAT = 'zutrittskontrolle-backup';
 export const BACKUP_VERSION = 1;
@@ -55,6 +58,8 @@ type PortableSettings = Partial<Pick<AppSettings, (typeof PORTABLE_SETTINGS)[num
 export type BackupCard = Omit<CardRecord, 'holderEnc' | 'nameEnc' | 'holder'> & { holder?: CardHolder };
 export type BackupEvent = Omit<AccessEventRecord, 'holderNameEnc'> & { holderName?: string };
 export type BackupUnassigned = Omit<UnassignedRecord, 'holderEnc'> & { holder: CardHolder };
+export type BackupGuest = Omit<GuestRecord, 'personEnc' | 'nameEnc'> & { person?: GuestPerson };
+export type BackupOccasionLog = Omit<OccasionLogRecord, 'nameEnc'> & { name?: string };
 
 export interface BackupPayload {
   exportedAt: number;
@@ -70,6 +75,10 @@ export interface BackupPayload {
   cardLayouts?: CardLayout[];
   /** Personen unter „Nicht zugeordnet“ (ab App-Version 0.12; fehlt in älteren Backups). */
   unassigned?: BackupUnassigned[];
+  /** Veranstaltungen mit Gästeliste und Einlass-Protokoll (ab App-Version 0.18; fehlt in älteren Backups). */
+  occasions?: Occasion[];
+  guests?: BackupGuest[];
+  occasionLog?: BackupOccasionLog[];
 }
 
 /** Äußere Hülle der Datei (JSON). */
@@ -114,16 +123,20 @@ export async function collectBackup(appVersion = 'unbekannt', now = Date.now()):
   const key = getDataKey();
   if (!key) throw new ValidationError('Die Daten sind gesperrt. Bitte zuerst anmelden.');
   // erst lesen, dann entschlüsseln
-  const [groups, cardRecords, eventRecords, presence, settings, layouts, cardLayouts, unassignedRecords] = await Promise.all([
-    db.groups.toArray(),
-    db.cards.toArray(),
-    db.events.toArray(),
-    db.presence.toArray(),
-    loadSettings(),
-    db.layouts.toArray(),
-    db.cardLayouts.toArray(),
-    db.unassigned.toArray(),
-  ]);
+  const [groups, cardRecords, eventRecords, presence, settings, layouts, cardLayouts, unassignedRecords, occasions, guestRecords, logRecords] =
+    await Promise.all([
+      db.groups.toArray(),
+      db.cards.toArray(),
+      db.events.toArray(),
+      db.presence.toArray(),
+      loadSettings(),
+      db.layouts.toArray(),
+      db.cardLayouts.toArray(),
+      db.unassigned.toArray(),
+      db.occasions.toArray(),
+      db.guests.toArray(),
+      db.occasionLog.toArray(),
+    ]);
   const cards: BackupCard[] = await Promise.all(
     cardRecords.map(async (r) => {
       const { hasHolder: _h, holder, ...rest } = await toCard(r, key);
@@ -144,9 +157,36 @@ export async function collectBackup(appVersion = 'unbekannt', now = Date.now()):
       return { ...rest, holder };
     }),
   );
+  const guests: BackupGuest[] = await Promise.all(
+    guestRecords.map(async ({ personEnc, nameEnc: _n, ...rest }) => {
+      if (!personEnc) return rest;
+      try {
+        return { ...rest, person: await decryptJson<GuestPerson>(key, personEnc) };
+      } catch {
+        throw new ValidationError(`Personendaten des Gastes Nr. ${rest.number} lassen sich nicht entschlüsseln.`);
+      }
+    }),
+  );
+  const occasionLog: BackupOccasionLog[] = await Promise.all(
+    logRecords.map(async ({ nameEnc, seq: _seq, ...rest }) => (nameEnc ? { ...rest, name: await decryptText(key, nameEnc) } : rest)),
+  );
   const portable: PortableSettings = {};
   for (const k of PORTABLE_SETTINGS) (portable as Record<string, unknown>)[k] = settings[k];
-  return { exportedAt: now, appVersion, groups, cards, events, presence, settings: portable, layouts, cardLayouts, unassigned };
+  return {
+    exportedAt: now,
+    appVersion,
+    groups,
+    cards,
+    events,
+    presence,
+    settings: portable,
+    layouts,
+    cardLayouts,
+    unassigned,
+    occasions,
+    guests,
+    occasionLog,
+  };
 }
 
 /** Erstellt die verschlüsselte Backup-Datei. */
@@ -230,6 +270,19 @@ export function validatePayload(p: unknown): BackupPayload {
   for (const u of unassigned) {
     if (!isStr(u?.id) || !isNum(u.createdAt) || !isStr(u.holder?.firstName) || !isStr(u.holder?.lastName)) fail('Nicht zugeordnet');
   }
+  const occasions = Array.isArray(x.occasions) ? x.occasions : [];
+  for (const o of occasions) if (!isStr(o?.id) || !isStr(o.name) || !isStr(o.date)) fail('Veranstaltung');
+  const occasionIds = new Set(occasions.map((o) => o.id));
+  const guests = Array.isArray(x.guests) ? x.guests : [];
+  const guestTokens = new Set<string>();
+  for (const g of guests) {
+    if (!isStr(g?.id) || !isStr(g.token) || !isNum(g.number) || !occasionIds.has(g.occasionId)) fail('Gast');
+    if (guestTokens.has(g.token)) fail(`doppelte Einladung Nr. ${g.number}`);
+    guestTokens.add(g.token);
+    if (g.person && (!isStr(g.person.firstName) || !isStr(g.person.lastName))) fail(`Personendaten Gast Nr. ${g.number}`);
+  }
+  const occasionLog = (Array.isArray(x.occasionLog) ? x.occasionLog : []).filter((e) => occasionIds.has(e?.occasionId));
+  for (const e of occasionLog) if (!isNum(e.timestamp) || !isStr(e.outcome) || !isStr(e.reason)) fail('Einlass-Protokoll');
   return {
     exportedAt: isNum(x.exportedAt) ? x.exportedAt : 0,
     appVersion: isStr(x.appVersion) ? x.appVersion : 'unbekannt',
@@ -241,6 +294,9 @@ export function validatePayload(p: unknown): BackupPayload {
     layouts: Array.isArray(x.layouts) ? x.layouts.filter((l) => isStr(l?.id)).map(normalizeLayout) : [],
     cardLayouts: Array.isArray(x.cardLayouts) ? x.cardLayouts.filter((l) => isStr(l?.id)).map(normalizeCardLayout) : [],
     unassigned: unassigned.map((u) => ({ ...u, accessGranted: u.accessGranted !== false })),
+    occasions,
+    guests,
+    occasionLog,
   };
 }
 
@@ -297,6 +353,14 @@ export async function restoreBackup(payload: BackupPayload): Promise<BackupSumma
   const unassigned: UnassignedRecord[] = await Promise.all(
     (payload.unassigned ?? []).map(async ({ holder, ...rest }) => ({ ...rest, holderEnc: await encryptJson(key, holder) })),
   );
+  const guests: GuestRecord[] = await Promise.all(
+    (payload.guests ?? []).map(async ({ person, ...rest }) =>
+      person ? { ...rest, personEnc: await encryptJson(key, person), nameEnc: await encryptText(key, guestName(person) ?? '') } : rest,
+    ),
+  );
+  const occasionLog: OccasionLogRecord[] = await Promise.all(
+    (payload.occasionLog ?? []).map(async ({ name, seq: _seq, ...rest }) => (name === undefined ? rest : { ...rest, nameEnc: await encryptText(key, name) })),
+  );
   // Gleiche Namen im Protokoll nur einmal verschlüsseln
   const nameCache = new Map<string, Promise<Awaited<ReturnType<typeof encryptText>>>>();
   const events: AccessEventRecord[] = await Promise.all(
@@ -315,16 +379,8 @@ export async function restoreBackup(payload: BackupPayload): Promise<BackupSumma
   }
 
   // 2. Alles in einer Transaktion ersetzen
-  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings, db.layouts, db.cardLayouts, db.unassigned], async () => {
-    await Promise.all([
-      db.groups.clear(),
-      db.cards.clear(),
-      db.events.clear(),
-      db.presence.clear(),
-      db.layouts.clear(),
-      db.cardLayouts.clear(),
-      db.unassigned.clear(),
-    ]);
+  await db.transaction('rw', [...db.tables], async () => {
+    await Promise.all(db.tables.filter((t) => t.name !== 'settings').map((t) => t.clear()));
     await db.settings.where('key').noneOf(DEVICE_SECRET_KEYS).delete();
     await db.layouts.bulkAdd(payload.layouts ?? []);
     await db.cardLayouts.bulkAdd(payload.cardLayouts ?? []);
@@ -333,6 +389,9 @@ export async function restoreBackup(payload: BackupPayload): Promise<BackupSumma
     await db.events.bulkAdd(events);
     await db.presence.bulkAdd(payload.presence);
     await db.unassigned.bulkAdd(unassigned);
+    await db.occasions.bulkAdd(payload.occasions ?? []);
+    await db.guests.bulkAdd(guests);
+    await db.occasionLog.bulkAdd(occasionLog);
     await db.settings.put({ key: 'app', value: settings });
   });
   return summarize(payload);

@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { CardLayout } from '../domain/cardLayout';
+import type { GuestRecord, Occasion, OccasionLogRecord } from '../domain/occasion';
 import type { PresentationLayout } from '../domain/presentationLayout';
 import type { AccessEventRecord, CardRecord, Group, PresenceRecord, UnassignedRecord } from '../domain/types';
 
@@ -27,6 +28,9 @@ export class ZkDatabase extends Dexie {
   layouts!: EntityTable<PresentationLayout, 'id'>;
   cardLayouts!: EntityTable<CardLayout, 'id'>;
   unassigned!: EntityTable<UnassignedRecord, 'id'>;
+  occasions!: EntityTable<Occasion, 'id'>;
+  guests!: EntityTable<GuestRecord, 'id'>;
+  occasionLog!: EntityTable<OccasionLogRecord, 'seq'>;
 
   constructor(name = DB_NAME) {
     super(name);
@@ -48,6 +52,12 @@ export class ZkDatabase extends Dexie {
     // v4: Personen aus dem Import ohne Gruppe („Nicht zugeordnet“)
     this.version(4).stores({
       unassigned: 'id, createdAt',
+    });
+    // v5: Veranstaltungen mit Gästeliste (Einladungen nur einmal gültig) und eigenem Einlass-Protokoll
+    this.version(5).stores({
+      occasions: 'id, date',
+      guests: 'id, occasionId, &token',
+      occasionLog: '++seq, occasionId',
     });
   }
 }
@@ -91,16 +101,8 @@ export const DEVICE_SECRET_KEYS = [VAULT_KEY, OPERATOR_PIN_KEY, AUTO_BACKUP_KEY,
  * Admin-Passwort und Bediener-PIN bleiben erhalten, außer `includePassword` ist gesetzt.
  */
 export async function clearAllData(includePassword = false): Promise<void> {
-  await db.transaction('rw', [db.groups, db.cards, db.events, db.presence, db.settings, db.layouts, db.cardLayouts, db.unassigned], async () => {
-    await Promise.all([
-      db.groups.clear(),
-      db.cards.clear(),
-      db.events.clear(),
-      db.presence.clear(),
-      db.layouts.clear(),
-      db.cardLayouts.clear(),
-      db.unassigned.clear(),
-    ]);
+  await db.transaction('rw', [...db.tables], async () => {
+    await Promise.all(db.tables.filter((t) => t.name !== 'settings').map((t) => t.clear()));
     if (includePassword) await db.settings.clear();
     else await db.settings.where('key').noneOf(DEVICE_SECRET_KEYS).delete();
   });

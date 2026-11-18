@@ -3417,3 +3417,251 @@ code.path {
   font-size: 0.92rem;
   padding: 0.5rem 0.25rem;
 }
+
+/* ---------- Veranstaltungen (Einlass mit Einladung) ---------- */
+
+/* Band unter dem Menü, solange der Einlass läuft (Farbe der Veranstaltung) */
+.occasion-band {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.35rem 1rem;
+  font-size: 0.95rem;
+}
+.occasion-band-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+.occasion-band-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.occasion-band-end {
+  flex: none;
+  min-height: 34px;
+  padding: 0.2rem 0.7rem;
+  border: 1.5px solid;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.occasion-color {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+.occasion-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.occasion-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.occasion-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+  min-height: 56px;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.occasion-row:hover {
+  border-color: var(--link);
+}
+.occasion-row-main {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+  min-width: 0;
+}
+.occasion-row-stats {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.occasion-live {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+.occasion-colors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+.occasion-colors legend {
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.color-swatch.active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--surface) inset;
+}
+.occasion-colors input[type='color'] {
+  width: 48px;
+  min-height: 40px;
+  padding: 2px;
+}
+
+.guest-actions {
+  margin: 0.6rem 0;
+}
+.file-button {
+  position: relative;
+  cursor: pointer;
+}
+.guest-status {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.guest-status-admitted {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+.guest-status-cancelled {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+.guest-qr {
+  margin: 0.5rem 0;
+}
+.guest-qr-image {
+  display: block;
+  width: 180px;
+  height: 180px;
+  margin: 0.5rem 0;
+  background: #fff;
+}
+.import-errors {
+  margin: 0.4rem 0;
+  color: var(--danger-fg);
+}
+.danger-zone {
+  margin-top: 1rem;
+  border-color: var(--danger-border);
+}
+
+/* Zeitverlauf (Balken je 15 Minuten) */
+.timeline {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+.timeline-bar {
+  display: block;
+  min-width: 2px;
+  height: 14px;
+  border-radius: 4px;
+}
+.timeline-time,
+.timeline-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+/* Einlass-Dashboard: Name der Veranstaltung auf dem Platz des Scan-Modus */
+.entry-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 18rem;
+  height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-left-width: 5px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.entry-name-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+.entry-name-text strong,
+.entry-name-text span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.entry-name-text span {
+  font-size: 0.8rem;
+}
+.dash-toolbar-row.entry-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, min(35%, 14rem));
+  grid-template-areas: none;
+}
+.dash-toolbar-row.entry-toolbar input[type='search'] {
+  grid-area: auto;
+}
+.occasion-today {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-left-width: 5px;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* Handy (Menüleiste unten): lange Beschriftungen kürzer, z. B. „Veranstaltungen“ → „Events“ */
+@media (max-width: 767.98px) {
+  .nav-label[data-short] {
+    font-size: 0;
+  }
+  .nav-label[data-short]::after {
+    content: attr(data-short);
+    font-size: 0.75rem;
+  }
+}
+@media (max-width: 480px) {
+  .nav-label[data-short]::after {
+    font-size: 0.68rem;
+  }
+}

@@ -1,5 +1,6 @@
 import { decideAccess, type ConfirmationContext, type Decision } from '../domain/access';
 import { parseCardPayload } from '../domain/cardCode';
+import type { Guest, Occasion } from '../domain/occasion';
 import { holderName } from '../domain/texts';
 import type { AccessEvent, AccessEventRecord, Card, CardRecord, Direction, Group, ScanMode, StaffRole } from '../domain/types';
 import { decryptText } from '../security/crypto';
@@ -25,6 +26,14 @@ export interface ScanOutcome {
   /** Protokolleintrag (fehlt bei Doppelscans und wartenden Scans – diese werden nicht gebucht). */
   event?: AccessEventRecord;
   at: number;
+  /** Einlass-Modus: Veranstaltung, für die gescannt wurde. */
+  occasion?: Pick<Occasion, 'id' | 'name' | 'color' | 'resultLayoutId'>;
+  /** Einlass-Modus: Gast der Einladung (Personendaten nur, wenn entsperrt). */
+  guest?: Guest;
+  /** Einladung gehört zu dieser (anderen) Veranstaltung. */
+  otherOccasion?: Pick<Occasion, 'id' | 'name' | 'color'>;
+  /** Von Hand eingelassen. */
+  manual?: boolean;
 }
 
 /**

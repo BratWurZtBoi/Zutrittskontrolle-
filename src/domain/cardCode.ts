@@ -1,7 +1,8 @@
 /**
- * Inhalt der QR-Codes auf den Ausweisen.
+ * Inhalt der QR-Codes auf den Ausweisen und Einladungen.
  *
- * Format: "ZK1:" + 26 Zeichen Base32 (128 Bit Zufall).
+ * Format Ausweis: "ZK1:" + 26 Zeichen Base32 (128 Bit Zufall).
+ * Format Einladung (Veranstaltung, nur einmal gültig): "ZE1:" + 26 Zeichen Base32.
  * Der Code enthält keine personenbezogenen Daten – er verweist nur auf
  * den Ausweis in der lokalen Datenbank. Wird ein neuer Ausweis ausgestellt,
  * bekommt die Person ein neues Token und der alte Code wird ungültig.
@@ -9,6 +10,7 @@
  */
 
 export const CARD_PREFIX = 'ZK1:';
+export const GUEST_PREFIX = 'ZE1:';
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const TOKEN_PATTERN = /^[A-Z2-7]{26}$/;
 
@@ -44,4 +46,26 @@ export function parseCardPayload(text: string): string | null {
   if (!trimmed.startsWith(CARD_PREFIX)) return null;
   const token = trimmed.slice(CARD_PREFIX.length);
   return TOKEN_PATTERN.test(token) ? token : null;
+}
+
+export function encodeGuestPayload(token: string): string {
+  return GUEST_PREFIX + token;
+}
+
+/** Token einer Einladung oder null. */
+export function parseGuestPayload(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith(GUEST_PREFIX)) return null;
+  const token = trimmed.slice(GUEST_PREFIX.length);
+  return TOKEN_PATTERN.test(token) ? token : null;
+}
+
+/** Ausweis oder Einladung dieser Anwendung? */
+export type AppCode = { kind: 'card'; token: string } | { kind: 'guest'; token: string };
+
+export function parseAppCode(text: string): AppCode | null {
+  const card = parseCardPayload(text);
+  if (card) return { kind: 'card', token: card };
+  const guest = parseGuestPayload(text);
+  return guest ? { kind: 'guest', token: guest } : null;
 }

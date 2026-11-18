@@ -46,13 +46,20 @@ export function toPresentationScan(result: ScanOutcome, displaySec: number, ctx:
           : decision.direction === 'out'
             ? 'out'
             : 'in';
-  // Verlorene Karte: auch kein persönliches Layout zeigen
-  const layout = pickLayout(ctx.layouts, {
-    card: hidden ? undefined : card?.presentationLayoutId,
-    group: hidden ? undefined : group?.presentationLayoutId,
-    fallback: ctx.defaultLayoutId,
-  });
-  const holder = card?.holder;
+  // Einlass-Modus: Layout der Veranstaltung; sonst Karte > Gruppe > Standard (verlorene Karte: kein persönliches Layout)
+  const { occasion, guest } = result;
+  const layout = occasion
+    ? pickLayout(ctx.layouts, { fallback: occasion.resultLayoutId ?? ctx.defaultLayoutId })
+    : pickLayout(ctx.layouts, {
+        card: hidden ? undefined : card?.presentationLayoutId,
+        group: hidden ? undefined : group?.presentationLayoutId,
+        fallback: ctx.defaultLayoutId,
+      });
+  const holder = guest ? guest.person : card?.holder;
+  const position = guest ? undefined : card?.holder?.position;
+  const room = guest ? undefined : card?.holder?.room;
+  const photo = guest ? undefined : card?.holder?.photo;
+  const badge = guest ? { groupName: guest.category || occasion?.name, groupColor: occasion?.color } : { groupName: group?.name, groupColor: group?.color };
   const built = buildLayoutResult(layout, {
     tone: text.tone,
     kind,
@@ -66,13 +73,12 @@ export function toPresentationScan(result: ScanOutcome, displaySec: number, ctx:
           firstName: holder?.firstName,
           lastName: holder?.lastName,
           company: holder?.company,
-          position: holder?.position,
-          room: holder?.room,
-          photo: holder?.photo,
-          groupName: group?.name,
-          groupColor: group?.color,
+          position,
+          room,
+          photo,
+          ...badge,
         },
-    cardLabel: !hidden && card && !holder ? `Karte ${card.number}` : undefined,
+    cardLabel: hidden || holder ? undefined : guest ? `Gast Nr. ${guest.number}` : card ? `Karte ${card.number}` : undefined,
     at: result.at,
     orgName: ctx.orgName,
   });
