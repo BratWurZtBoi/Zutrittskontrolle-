@@ -20,7 +20,7 @@ export type Audience = 'staff' | 'guest';
  * wer die Karte gefunden oder an sich genommen hat, soll nicht gewarnt werden.
  */
 export function hideIdentityFor(audience: Audience, result: ScanOutcome): boolean {
-  return audience === 'guest' && result.decision.reason === 'CARD_LOST';
+  return audience === 'guest' && (result.decision.reason === 'CARD_LOST' || result.decision.reason === 'OLD_CARD');
 }
 
 export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff'): ResultText {
@@ -37,8 +37,13 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
   }
   if (decision.outcome === 'denied') {
     if (result.occasion && decision.reason === 'ALREADY_ADMITTED') {
-      const when = result.guest?.admittedAt;
-      return { tone: 'warn', title: 'Bereits eingelassen', detail: when ? `Diese Einladung wurde um ${formatTime(when)} Uhr verwendet.` : reasonText(decision.reason) };
+      const when = result.admittedAt ?? result.guest?.admittedAt;
+      const what = result.card ? 'Dieser Ausweis' : 'Diese Einladung';
+      return {
+        tone: 'warn',
+        title: 'Bereits eingelassen',
+        detail: when ? `${what} wurde um ${formatTime(when)} Uhr für „${result.occasion.name}“ verwendet.` : reasonText(decision.reason),
+      };
     }
     if (decision.reason === 'OTHER_OCCASION') {
       return {
@@ -49,6 +54,7 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
     }
     if (hideIdentityFor(audience, result)) return { tone: 'deny', title: 'Kein Zutritt', detail: 'Bitte wenden Sie sich an den Empfang.' };
     if (decision.reason === 'CARD_LOST') return { tone: 'deny', title: 'Verlorene Karte!', detail: reasonText(decision.reason, card) };
+    if (decision.reason === 'OLD_CARD') return { tone: 'deny', title: 'Alte Karte!', detail: reasonText(decision.reason, card) };
     return { tone: 'deny', title: 'Kein Zutritt', detail: reasonText(decision.reason, card) };
   }
   if (decision.reason === 'CORRECTION') {

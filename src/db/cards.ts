@@ -281,12 +281,34 @@ export async function reissueToken(id: string, now = Date.now()): Promise<Card> 
     const current = await db.cards.get(id);
     if (!current) throw new ValidationError('Karte nicht gefunden.');
     // neuer Code → die gedruckte Karte gilt nicht mehr, muss neu gedruckt werden
-    const { lostAt: _lost, printedAt: _printed, ...rest } = current;
-    const updated: CardRecord = { ...rest, token: generateCardToken(), tokenIssuedAt: now, blocked: false, updatedAt: now };
+    const { lostAt: _lost, ...rest } = withNewToken(current, now);
+    const updated: CardRecord = { ...rest, blocked: false };
     await db.cards.put(updated);
     return updated;
   });
   return toCard(record);
+}
+
+/** So viele frühere QR-Codes je Karte werden erkannt („Alte Karte“). */
+export const MAX_OLD_TOKENS = 10;
+
+/** Neuer QR-Code: alter Code wandert in oldTokens, „gedruckt“ wird zurückgesetzt. */
+function withNewToken(card: CardRecord, now: number): CardRecord {
+  const { printedAt: _printed, ...rest } = card;
+  const oldTokens = [...(card.oldTokens ?? []), card.token].slice(-MAX_OLD_TOKENS);
+  return { ...rest, token: generateCardToken(), tokenIssuedAt: now, oldTokens, updatedAt: now };
+}
+
+/**
+ * Neue QR-Codes für mehrere Karten auf einmal (z. B. alle Karten neu ausgeben). Die bisherigen Karten gelten
+ * sofort nicht mehr (Scan zeigt „Alte Karte“); alle müssen neu gedruckt werden. Sperren bleiben bestehen.
+ */
+export async function reissueTokens(ids: string[], now = Date.now()): Promise<number> {
+  return db.transaction('rw', db.cards, async () => {
+    const cards = (await db.cards.bulkGet(ids)).filter((c): c is CardRecord => Boolean(c));
+    await db.cards.bulkPut(cards.map((c) => withNewToken(c, now)));
+    return cards.length;
+  });
 }
 
 /** Karten als gedruckt markieren (nach Rückfrage im Druck). */

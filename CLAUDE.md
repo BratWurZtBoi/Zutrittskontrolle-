@@ -36,6 +36,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   Gästebildschirm-Namensform `rank-last`. CSV-Spalten Dienstgrad, Einheit/Abteilung, Stellung/Posten,
   Raum (Alias „Firma/Abteilung“).
   Personenwechsel/Rückgabe bucht die bisherige Person automatisch aus (Quelle `system`).
+  Neuer QR-Code (`reissueToken`, mehrere: `reissueTokens` in der Mehrfachauswahl „Neue QR-Codes“): alter Code
+  wandert nach `oldTokens` (max. 10, DB-Version 6 mit Index `*oldTokens`) → Scan = Grund `OLD_CARD` („Alte
+  Karte!“, wird mit Karte protokolliert; Gäste sehen wie bei `CARD_LOST` nichts), `printedAt` zurückgesetzt.
   Verlust: `lostAt` (+ `blocked`), Grund `CARD_LOST` geht vor `CARD_BLOCKED`; Ersatzkarte
   (`issueReplacementCard`) übernimmt verschlüsselte Personendaten + Anwesenheit, Verweis
   `replacedBy`/`replaces`. Gäste (Kiosk, Präsentation: `Audience 'guest'`) sehen bei verlorenen
@@ -61,6 +64,14 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   Veranstaltung. Seiten `#/veranstaltungen`, `/neu`, `/:id` (Reiter Gäste/Teilnahme/Einstellungen),
   CSV `domain/guestImport.ts`. Im Backup (`occasions`, `guests`, `occasionLog`). Ohne Server: jedes
   Gerät prüft nur seine eigene Liste (ein Eingang).
+  **Gast mit vorhandener Karte:** `GuestRecord.cardId`/`cardNumber`/`cardHolderSince` (`NewGuest.cardId`,
+  beim Bearbeiten `null` = lösen; `cardLink` prüft Person/Sperre/doppelt). `GuestDialog` erkennt Karteninhaber
+  per `findHolderMatches` (Nachname ab 2, Vorname ab 3 Zeichen, Umlaute egal) → „Einladung“ bzw. „Karte … gilt“.
+  Scan einer Karte: zuerst `findCardGuest` (auch über `replaces`-Kette = Ersatzkarte) → `decideCardGuestEntry`
+  (Gästeliste entscheidet, nur verloren/gesperrt/Personenwechsel `CARD_PERSON_CHANGED` abgewiesen), sonst
+  `cardsAllowed`. **Dienstausweise gelten je Veranstaltung nur einmal** (`cardAdmissions` aus dem Log, erster
+  Einlass seit „Zurücknehmen“ `undoCardAdmission`); `repeatEntryDecision` gemeinsam für Gäste und Karten,
+  `ScanOutcome.admittedAt` für „Bereits eingelassen um …“. Einladungsdruck/PDF/Versandliste ohne Karten-Gäste.
   **Einladungen** (Serienbrief): `occasion.invitation` = `CardLayout` (Formate `INVITATION_FORMATS`
   a4/a5/a6/dl, `saveInvitation`), Logik `domain/invitation.ts` (Platzhalter `invitationValues` inkl.
   `{briefanrede}`, Vorlagen/Bausteine, `selectInvitationGuests`, `invitationFilename`, `mailingListCsv`).
@@ -292,7 +303,11 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
 20. ✅ Integrierte Hilfe (Admin + Bediener, Schritt für Schritt): „?“-Seitenleiste zur aktuellen Seite, Hilfe-Seite
     mit Suche; Menü passt jetzt auch auf Tablets (Notfall/Abmelden waren dort abgeschnitten) (Version 0.20).
 21. ✅ Hilfe Teil 2: „Erste Schritte“-Checkliste (erkennt Erledigtes selbst, Dashboard-Karte) und ⓘ-Erklärungen an
-    erklärungsbedürftigen Feldern (Version 0.21). Später: Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe.
+    erklärungsbedürftigen Feldern (Version 0.21).
+22. ✅ Rückmeldungen: Dienstausweis bei Veranstaltungen nur einmal („Bereits eingelassen“), Gast hinzufügen erkennt
+    vorhandene Personen (Einladung oder „Karte gilt“), neue QR-Codes für viele Karten mit „Alte Karte!“,
+    Druckseiten klarer (A4-Bogen vs. Kartendrucker, Seitenzahl, kleine Einladungen mehrfach je A4) (Version 0.22).
+    Später: Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe.
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

@@ -53,6 +53,10 @@ export function reasonText(reason: ReasonCode, card?: Pick<Card, 'validFrom' | '
       return 'Dienstausweise gelten bei dieser Veranstaltung nicht – bitte die Einladung vorzeigen.';
     case 'ADMISSION_UNDONE':
       return 'Einlass zurückgenommen.';
+    case 'CARD_PERSON_CHANGED':
+      return 'Die Karte gehört inzwischen einer anderen Person – sie steht nicht auf der Gästeliste.';
+    case 'OLD_CARD':
+      return 'Alte Karte – für diese Karte wurde ein neuer QR-Code ausgestellt. Bitte die neue Karte verwenden.';
   }
 }
 

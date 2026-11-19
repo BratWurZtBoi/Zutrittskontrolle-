@@ -219,14 +219,15 @@ export const INVITATION_SELECTIONS: { value: InvitationSelection; label: string 
   { value: 'open', label: 'Noch nicht eingelassen' },
 ];
 
-export function selectInvitationGuests<G extends Pick<Guest, 'cancelled' | 'admittedAt' | 'person' | 'category' | 'number'>>(
+export function selectInvitationGuests<G extends Pick<Guest, 'cancelled' | 'admittedAt' | 'person' | 'category' | 'number' | 'cardId'>>(
   guests: G[],
   selection: InvitationSelection,
   category = '',
 ): G[] {
   return guests
     .filter((g) => {
-      if (g.cancelled) return false;
+      // Gäste mit vorhandener Karte brauchen keine Einladung
+      if (g.cancelled || g.cardId) return false;
       if (category && (g.category?.trim() || '') !== category) return false;
       if (selection === 'post') return !g.person?.email;
       if (selection === 'mail') return Boolean(g.person?.email);

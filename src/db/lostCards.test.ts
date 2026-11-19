@@ -87,7 +87,7 @@ describe('Verlorene Karten', () => {
     await reportCardLost(card.id);
     const fresh = await reissueToken(card.id);
     expect(fresh.lostAt).toBeUndefined();
-    expect((await processScan(encodeCardPayload(card.token), opts)).decision.reason).toBe('UNKNOWN_CARD');
+    expect((await processScan(encodeCardPayload(card.token), opts)).decision.reason).toBe('OLD_CARD');
     expect((await processScan(encodeCardPayload(fresh.token), opts)).decision.outcome).toBe('granted');
   });
 });

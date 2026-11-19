@@ -34,6 +34,8 @@ export interface ScanOutcome {
   otherOccasion?: Pick<Occasion, 'id' | 'name' | 'color'>;
   /** Von Hand eingelassen. */
   manual?: boolean;
+  /** Einlass-Modus, „Bereits eingelassen“: Zeitpunkt des ersten Einlasses. */
+  admittedAt?: number;
 }
 
 /**
@@ -55,6 +57,16 @@ export async function processScan(text: string, opts: ScanOptions): Promise<Scan
     }
 
     const record = await db.cards.where('token').equals(token).first();
+    if (!record) {
+      // Alter QR-Code einer neu ausgestellten Karte: abweisen, aber mit Karte/Person im Protokoll
+      const old = await db.cards.where('oldTokens').equals(token).first();
+      if (old) {
+        const oldGroup = await db.groups.get(old.groupId);
+        const decision: Decision = { outcome: 'denied', reason: 'OLD_CARD' };
+        const event = await book(decision, old, oldGroup, at, opts.source);
+        return { decision, record: old, group: oldGroup, event };
+      }
+    }
     const group = record ? await db.groups.get(record.groupId) : undefined;
     const presence = record ? await db.presence.get(record.id) : undefined;
     const decision = decideAccess({

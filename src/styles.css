@@ -4214,3 +4214,70 @@ code.path {
 .help-setup-link:hover {
   border-color: var(--primary);
 }
+
+/* ---------- Gast hinzufügen: bereits erfasste Personen ---------- */
+.guest-matches {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+.guest-matches-title {
+  margin: 0 0 0.4rem;
+}
+.guest-matches ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.guest-match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.guest-match-who {
+  display: grid;
+  min-width: 0;
+}
+.guest-match-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.guest-access {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.guest-access legend {
+  padding: 0 0.3rem;
+  font-weight: 600;
+}
+.guest-access label.checkbox {
+  margin-bottom: 0.35rem;
+}
+.guest-card-badge {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+/* Unterzeile in Umschaltern (z. B. Druckformat „A4-Bogen – mehrere Karten je Seite“) */
+.seg-sub {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: normal;
+  line-height: 1.2;
+  opacity: 0.85;
+}

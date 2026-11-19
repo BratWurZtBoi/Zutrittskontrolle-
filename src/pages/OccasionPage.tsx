@@ -286,6 +286,11 @@ function GuestsTab({ occasion, guests }: { occasion: Occasion; guests: Guest[] }
                   <td className="cell-strong">
                     {g.person?.salutation ? <span className="muted">{g.person.salutation} </span> : null}
                     {guestListName(g)}
+                    {g.cardId && (
+                      <span className="badge guest-card-badge" title="Kommt mit der vorhandenen Karte (keine Einladung nötig)">
+                        Karte {g.cardNumber}
+                      </span>
+                    )}
                   </td>
                   <td>{g.person?.company ?? ''}</td>
                   <td>{g.category ?? ''}</td>
@@ -334,6 +339,7 @@ function InvitationsTab({ occasion, guests }: { occasion: Occasion; guests: Gues
   const first = firstGuest ?? SAMPLE_GUEST;
   const params = new URLSearchParams({ auswahl: selection, ...(category ? { kategorie: category } : {}) }).toString();
   const withoutMail = chosen.filter((g) => !g.person?.email).length;
+  const withCard = guests.filter((g) => g.cardId && !g.cancelled).length;
   const locked = chosen.some((g) => g.hasPerson && !g.person);
   const slug = occasion.name.replace(/[^\w-]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'veranstaltung';
 
@@ -401,6 +407,7 @@ function InvitationsTab({ occasion, guests }: { occasion: Occasion; guests: Gues
           </div>
           <p>
             <strong>{chosen.length}</strong> Einladung(en){selection !== 'post' && withoutMail > 0 ? ` – davon ${withoutMail} ohne E-Mail-Adresse` : ''}.
+            {withCard > 0 && <span className="muted"> {withCard} Gast/Gäste kommen mit ihrer Karte und brauchen keine Einladung.</span>}
           </p>
           {locked && <p className="hint">Personendaten gesperrt – bitte als Admin anmelden.</p>}
           <div className="button-row">

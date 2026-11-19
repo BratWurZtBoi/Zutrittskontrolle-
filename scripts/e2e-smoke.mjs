@@ -265,7 +265,10 @@ try {
     holderLabels.join(' | ') === 'Dienstgrad | Vorname | Nachname | Einheit/Abteilung | Stellung/Posten | Raum',
     `Personendaten: Dienstgrad vor dem Vornamen, Einheit/Abteilung, Stellung/Posten, Raum (${holderLabels.join(' | ')})`,
   );
-  check((await page.locator('#' + (await page.getByLabel('Einheit/Abteilung').getAttribute('list')) + ' option').count()) > 0, 'Vorschläge aus vorhandenen Einheiten');
+  // Vorschläge kommen asynchron (Karten werden im Hintergrund entschlüsselt) – darauf warten statt sofort zu zählen
+  const unitListId = await page.getByLabel('Einheit/Abteilung').getAttribute('list');
+  await page.locator(`[id="${unitListId}"] option`).first().waitFor({ state: 'attached', timeout: 10_000 });
+  check((await page.locator(`[id="${unitListId}"] option`).count()) > 0, 'Vorschläge aus vorhandenen Einheiten');
   await page.getByLabel('Vorname').fill('Berta');
   await page.getByLabel('Nachname').fill('Besuch');
   await page.getByLabel('Einheit/Abteilung').fill('Beispiel AG');
@@ -1287,10 +1290,45 @@ try {
   check((await page.locator('.timeline li').count()) >= 1, 'Teilnahme: Einlass im Zeitverlauf');
   await page.screenshot({ path: `${OUT}/35-teilnahme.png`, fullPage: true });
 
+  // Gast hinzufügen: vorhandene Person erkennen, ihre Karte gilt für die Veranstaltung (nur einmal)
+  await page.getByRole('button', { name: /^Gäste/ }).click();
+  await page.getByRole('button', { name: '+ Gast' }).click();
+  const linkDialog = page.getByRole('dialog');
+  await linkDialog.getByLabel('Nachname').fill('Testm');
+  const match = linkDialog.locator('.guest-match', { hasText: 'Tom Testmann' });
+  await match.waitFor();
+  const matchText = await match.textContent();
+  const linkedNumber = matchText.match(/Karte ([A-Z]+-\d+)/)?.[1];
+  check(matchText.includes('HptGefr Tom Testmann') && Boolean(linkedNumber), `Gast hinzufügen erkennt die vorhandene Person (Karte ${linkedNumber})`);
+  await page.screenshot({ path: `${OUT}/42-gast-erkannt.png` });
+  await match.getByRole('button', { name: /gilt$/ }).click();
+  check(
+    (await linkDialog.getByLabel('Vorname').inputValue()) === 'Tom' && (await linkDialog.getByLabel('Dienstgrad').inputValue()) === 'HptGefr' && (await linkDialog.getByRole('radio', { name: /vorhandener Karte/ }).isChecked()),
+    'Daten übernommen, „vorhandene Karte gilt“ gewählt',
+  );
+  await linkDialog.getByRole('button', { name: 'Speichern' }).click();
+  await page.locator('.guest-card-badge', { hasText: linkedNumber }).waitFor();
+  check(true, 'Gästeliste: Gast mit „Karte …“ markiert');
+  const linkedCard = (await readStore(page, 'cards')).find((c) => c.number === linkedNumber);
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.entry-status').waitFor();
+  await blur(page);
+  await scannerType(page, codeOf(linkedCard));
+  await page.locator('.result-panel', { hasText: 'Willkommen' }).waitFor();
+  check((await page.locator('.result-panel').textContent()).includes('Tom Testmann'), 'Gast kommt mit seiner Karte hinein (ohne „Dienstausweise gelten“)');
+  await page.waitForTimeout(2700);
+  await scannerType(page, codeOf(linkedCard));
+  await page.locator('.result-panel', { hasText: 'Bereits eingelassen' }).waitFor();
+  check((await page.locator('.result-panel').textContent()).includes('Dieser Ausweis wurde um'), 'Karte erneut gescannt: „Bereits eingelassen“ mit Uhrzeit statt neuer Begrüßung');
+  await page.goto(page.url().replace(/#.*/, '#/veranstaltungen'));
+  await page.locator('.occasion-row', { hasText: 'Sommerfest Test' }).click();
+  await page.getByRole('heading', { name: 'Sommerfest Test' }).waitFor();
+
   // Einladungen: Vorschau, PDF je Gast (ZIP), Versandliste, Editor, Serienbrief
   await page.getByRole('button', { name: 'Einladungen' }).click();
   await page.locator('.invitation-preview .card-view').waitFor();
   check((await page.locator('.invitation-preview').textContent()).includes('Sommerfest Test'), 'Einladung: Vorschau mit der Veranstaltung');
+  check((await page.locator('.invitations').textContent()).includes('1 Gast/Gäste kommen mit ihrer Karte'), 'Einladungen: Gast mit Karte braucht keine Einladung');
   const [zipDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF je Gast (ZIP)' }).click()]);
   const zipPath = `${OUT}/${zipDownload.suggestedFilename()}`;
   await zipDownload.saveAs(zipPath);
@@ -1451,6 +1489,28 @@ try {
   await tip.getByRole('link', { name: /Mehr in der Hilfe/ }).click();
   await page.getByRole('heading', { name: 'USB-Scanner einrichten und testen', level: 1 }).waitFor();
   check(true, '„Mehr in der Hilfe“ öffnet das passende Thema');
+
+  // Neue QR-Codes für mehrere Karten: neu drucken, alte Karte wird erkannt
+  await page.setViewportSize({ width: 1536, height: 900 });
+  const renewCard = (await readStore(page, 'cards')).find((c) => c.number === staffCards[0].number);
+  await page.goto(`${URL}#/karten`);
+  await page.getByRole('button', { name: 'Auswählen' }).click();
+  await page.getByLabel(`Karte ${renewCard.number} auswählen`).check();
+  await page.getByRole('button', { name: 'Neue QR-Codes' }).click();
+  await page.getByText(/1 neue QR-Code\(s\) erzeugt/).waitFor();
+  const renewed = (await readStore(page, 'cards')).find((c) => c.id === renewCard.id);
+  check(renewed.token !== renewCard.token && !renewed.printedAt && renewed.oldTokens?.includes(renewCard.token), 'Neuer QR-Code, „gedruckt“ zurückgesetzt, alter Code gemerkt');
+  await page.getByRole('button', { name: 'Jetzt drucken' }).click();
+  await page.getByRole('heading', { name: 'Karten drucken' }).waitFor();
+  const printLabel = await page.getByRole('button', { name: /Drucken \/ PDF/ }).textContent();
+  check(page.url().includes(renewCard.id) && printLabel.includes('(1 Seite)'), `„Jetzt drucken“ öffnet den Druck dieser Karte (${printLabel.trim()})`);
+  check((await page.getByRole('radio', { name: /A4-Bogen/ }).textContent()).includes('mehrere Karten je Seite'), 'Druckformat erklärt: A4-Bogen = mehrere Karten je Seite');
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.dash-status').waitFor();
+  await blur(page);
+  await scannerType(page, codeOf(renewCard));
+  await page.locator('.result-panel', { hasText: 'Alte Karte!' }).waitFor();
+  check((await page.locator('.result-panel').textContent()).includes(renewCard.number), 'Alter QR-Code: „Alte Karte!“ mit Karte am Empfang');
 
   console.log('18) Abmelden und Sperren');
   await page.setViewportSize(viewport);

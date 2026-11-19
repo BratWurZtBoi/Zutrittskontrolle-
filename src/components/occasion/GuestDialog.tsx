@@ -1,7 +1,10 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
+import { listCards, type CardWithGroup } from '../../db/cards';
 import { addGuest, deleteGuest, setGuestCancelled, updateGuest } from '../../db/occasions';
 import { formatTime } from '../../domain/dates';
-import { GUEST_STATUS_LABEL, guestStatus, type Guest, type GuestPerson } from '../../domain/occasion';
+import { GUEST_STATUS_LABEL, findHolderMatches, guestStatus, type Guest, type GuestPerson } from '../../domain/occasion';
+import { holderName, holderUnitLine } from '../../domain/texts';
+import { useSecureLiveQuery } from '../../hooks/useSecureLiveQuery';
 import { QrImage } from '../QrImage';
 
 interface Props {
@@ -21,25 +24,63 @@ interface Props {
 
 const EMPTY: GuestPerson = { firstName: '', lastName: '' };
 
+/** Vorhandene Karte, mit der der Gast hineinkommen kann. */
+interface LinkedCard {
+  id: string;
+  number: string;
+  groupName?: string;
+  /** gesperrt/verloren → kann nicht gewählt werden */
+  usable: boolean;
+  /** Angaben aus der Kartenliste geladen */
+  resolved?: boolean;
+}
+
+const usableCard = ({ card }: CardWithGroup) => card.hasHolder && !card.blocked && !card.lostAt;
+const toLinked = (c: CardWithGroup): LinkedCard => ({ id: c.card.id, number: c.card.number, groupName: c.group?.name, usable: usableCard(c), resolved: true });
+
 /** Gast anlegen oder bearbeiten: Anrede, Dienstgrad, Name, Einheit/Firma, Kategorie, E-Mail, Notiz. */
 export function GuestDialog({ occasionId, guest, categories, admitOption = false, onClose, onSaved, onAdmit, onUndoAdmission }: Props) {
   const id = useId();
   const [person, setPerson] = useState<GuestPerson>(guest?.person ?? EMPTY);
   const [category, setCategory] = useState(guest?.category ?? '');
   const [admit, setAdmit] = useState(true);
+  // Zutritt: mit Einladung (QR-Code) oder mit einer vorhandenen Karte
+  const [linked, setLinked] = useState<LinkedCard | null>(
+    guest?.cardId ? { id: guest.cardId, number: guest.cardNumber ?? '?', usable: true } : null,
+  );
+  const [useCard, setUseCard] = useState(Boolean(guest?.cardId));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const first = useRef<HTMLInputElement>(null);
   useEffect(() => first.current?.focus(), []);
   const set = (patch: Partial<GuestPerson>) => setPerson((p) => ({ ...p, ...patch }));
   const locked = guest?.hasPerson && !guest.person;
+  // Bereits erfasste Personen (Karteninhaber) zum eingegebenen Namen erkennen
+  const cards = useSecureLiveQuery(listCards, [], [] as CardWithGroup[]);
+  const matches = useMemo(() => (linked || locked ? [] : findHolderMatches(cards, person)), [cards, person, linked, locked]);
+  useEffect(() => {
+    // Gruppe der verknüpften Karte nachtragen (beim Bearbeiten)
+    if (!linked || linked.resolved) return;
+    const c = cards.find((x) => x.card.id === linked.id);
+    if (c) setLinked(toLinked(c));
+  }, [cards, linked]);
+
+  const takeOver = (c: CardWithGroup, withCard: boolean) => {
+    const h = c.card.holder;
+    if (h) setPerson((p) => ({ ...p, rank: h.rank, firstName: h.firstName, lastName: h.lastName, company: h.company }));
+    setLinked(toLinked(c));
+    setUseCard(withCard && usableCard(c));
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setBusy(true);
     try {
-      const saved = guest ? await updateGuest(guest.id, { person, category }) : await addGuest(occasionId, { person, category });
+      const cardId = useCard && linked ? linked.id : null;
+      const saved = guest
+        ? await updateGuest(guest.id, { person, category, cardId })
+        : await addGuest(occasionId, { person, category, cardId: cardId ?? undefined });
       onSaved?.(saved, admitOption && admit);
       onClose();
     } catch (err) {
@@ -114,12 +155,57 @@ export function GuestDialog({ occasionId, guest, categories, admitOption = false
             </label>
           </div>
         )}
+        {matches.length > 0 && (
+          <div className="guest-matches" role="group" aria-label="Bereits erfasste Personen">
+            <p className="guest-matches-title">
+              <strong>Bereits erfasst</strong> – Daten übernehmen und wählen, womit die Person hineinkommt:
+            </p>
+            <ul>
+              {matches.map((c) => (
+                <li key={c.card.id} className="guest-match">
+                  <span className="guest-match-who">
+                    <strong>{c.card.holder ? holderName(c.card.holder) : c.card.number}</strong>
+                    <span className="muted small">
+                      {[c.card.holder ? holderUnitLine(c.card.holder) : '', `Karte ${c.card.number}`, c.group?.name].filter(Boolean).join(' · ')}
+                      {!usableCard(c) && ' · Karte gesperrt'}
+                    </span>
+                  </span>
+                  <span className="guest-match-actions">
+                    <button type="button" className="btn btn-small" onClick={() => takeOver(c, false)}>
+                      Einladung
+                    </button>
+                    <button type="button" className="btn btn-small btn-primary" disabled={!usableCard(c)} onClick={() => takeOver(c, true)}>
+                      Karte {c.card.number} gilt
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {linked && (
+          <fieldset className="guest-access">
+            <legend>Zutritt zur Veranstaltung mit</legend>
+            <label className="checkbox">
+              <input type="radio" name={`${id}-access`} checked={!useCard} onChange={() => setUseCard(false)} />
+              Einladung mit QR-Code
+            </label>
+            <label className="checkbox">
+              <input type="radio" name={`${id}-access`} checked={useCard} disabled={!linked.usable} onChange={() => setUseCard(true)} />
+              <span>
+                vorhandener Karte {linked.number}
+                {linked.groupName ? ` (${linked.groupName})` : ''} – gilt für diese Veranstaltung, keine Einladung nötig
+                {!linked.usable && ' – Karte ist gesperrt oder verloren'}
+              </span>
+            </label>
+          </fieldset>
+        )}
         {admitOption && (
           <label className="checkbox">
             <input type="checkbox" checked={admit} onChange={(e) => setAdmit(e.target.checked)} /> gleich einlassen
           </label>
         )}
-        {guest && (
+        {guest && !useCard && (
           <details className="guest-qr">
             <summary>QR-Code der Einladung anzeigen</summary>
             <QrImage token={guest.token} kind="guest" className="guest-qr-image" />

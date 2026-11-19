@@ -6,7 +6,7 @@ import { GroupBadge } from '../components/GroupBadge';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { StatusBadge } from '../components/StatusBadge';
 import { UnassignedList } from '../components/UnassignedList';
-import { MAX_CARDS, deleteCards, listCards, returnCards, setCardsBlocked } from '../db/cards';
+import { MAX_CARDS, deleteCards, listCards, reissueTokens, returnCards, setCardsBlocked } from '../db/cards';
 import { db } from '../db/db';
 import { listGroups } from '../db/groups';
 import { seedTestCards } from '../db/seed';
@@ -37,6 +37,8 @@ export function CardListPage() {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<string | null>(null);
+  // nach „Neue QR-Codes“: diese Karten jetzt neu drucken
+  const [reprint, setReprint] = useState<string[] | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -87,13 +89,15 @@ export function CardListPage() {
   const selectedCards = cards.filter(({ card }) => selected.has(card.id));
   const withHolder = selectedCards.filter(({ card }) => card.hasHolder).length;
 
-  const runBulk = async (confirmText: string, action: () => Promise<number>, done: (n: number) => string) => {
-    if (!window.confirm(confirmText)) return;
+  const runBulk = async (confirmText: string, action: () => Promise<number>, done: (n: number) => string): Promise<boolean> => {
+    if (!window.confirm(confirmText)) return false;
     setBusy(true);
     try {
       const n = await action();
       setMessage(done(n));
+      setReprint(null);
       setSelected(new Set());
+      return true;
     } finally {
       setBusy(false);
     }
@@ -123,6 +127,14 @@ export function CardListPage() {
       {message && view === 'cards' && (
         <p className="form-success" role="status">
           {message}
+          {reprint && reprint.length > 0 && (
+            <>
+              {' '}
+              <button type="button" className="btn btn-small btn-primary" onClick={() => navigate(`/druck?ids=${reprint.join(',')}`)}>
+                Jetzt drucken
+              </button>
+            </>
+          )}
         </p>
       )}
 
@@ -211,6 +223,21 @@ export function CardListPage() {
                 </button>
                 <button type="button" className="btn btn-small" disabled={selected.size === 0} onClick={() => navigate(`/druck?ids=${ids.join(',')}`)}>
                   Drucken
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  disabled={busy || selected.size === 0}
+                  onClick={() => {
+                    const chosen = ids;
+                    void runBulk(
+                      `Neue QR-Codes für ${chosen.length} Karte(n) erzeugen?\n\nDie bisherigen Karten gelten ab sofort NICHT mehr (beim Scannen erscheint „Alte Karte“). Alle ${chosen.length} Karte(n) müssen neu gedruckt und ausgegeben werden.`,
+                      () => reissueTokens(chosen),
+                      (n) => `${n} neue QR-Code(s) erzeugt – die bisherigen Karten gelten nicht mehr. Bitte jetzt neu drucken.`,
+                    ).then((ok) => ok && setReprint(chosen));
+                  }}
+                >
+                  Neue QR-Codes
                 </button>
                 <button
                   type="button"

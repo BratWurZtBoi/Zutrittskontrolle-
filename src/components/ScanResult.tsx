@@ -121,7 +121,7 @@ export function ResultPanel({
   }
   return (
     <div
-      className={`result-panel result-${describe(result, 'staff').tone} ${fresh ? 'fresh' : 'stale'} ${result.decision.reason === 'CARD_LOST' ? 'result-lost' : ''}`}
+      className={`result-panel result-${describe(result, 'staff').tone} ${fresh ? 'fresh' : 'stale'} ${result.decision.reason === 'CARD_LOST' || result.decision.reason === 'OLD_CARD' ? 'result-lost' : ''}`}
       role="status"
       aria-live="polite"
     >

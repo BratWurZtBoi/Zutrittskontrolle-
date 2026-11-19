@@ -8,8 +8,11 @@ import { generateCardToken, parseAppCode } from '../domain/cardCode';
 import { isValidIsoDate, toLocalDateString } from '../domain/dates';
 import {
   OCCASION_COLORS,
+  cardAdmissions,
+  decideCardGuestEntry,
   decideGuestEntry,
   guestName,
+  repeatEntryDecision,
   type Guest,
   type GuestPerson,
   type GuestRecord,
@@ -179,6 +182,23 @@ async function encryptPerson(key: CryptoKey, person: GuestPerson) {
 export interface NewGuest {
   person: GuestPerson;
   category?: string;
+  /** Zutritt mit dieser vorhandenen Karte statt Einladung (null beim Bearbeiten = Verknüpfung lösen). */
+  cardId?: string | null;
+}
+
+/** Karte für einen Gast prüfen und die Verknüpfungsfelder liefern (in einer Transaktion aufrufen). */
+async function cardLink(occasionId: string, cardId: string, guestId?: string): Promise<Pick<GuestRecord, 'cardId' | 'cardNumber' | 'cardHolderSince'>> {
+  const card = await db.cards.get(cardId);
+  if (!card) throw new ValidationError('Die Karte gibt es nicht (mehr).');
+  if (!card.holderEnc && !card.holder) throw new ValidationError(`Karte ${card.number} ist keiner Person zugeordnet.`);
+  if (card.lostAt || card.blocked) throw new ValidationError(`Karte ${card.number} ist gesperrt bzw. verloren gemeldet.`);
+  const taken = await db.guests
+    .where('occasionId')
+    .equals(occasionId)
+    .filter((g) => g.cardId === cardId && g.id !== guestId)
+    .first();
+  if (taken) throw new ValidationError(`Karte ${card.number} steht schon auf der Gästeliste (Gast Nr. ${taken.number}).`);
+  return { cardId: card.id, cardNumber: card.number, cardHolderSince: card.holderSince };
 }
 
 /** Gäste hinzufügen (einzeln oder Import). Nummern fortlaufend je Veranstaltung. */
@@ -191,19 +211,17 @@ export async function addGuests(occasionId: string, items: NewGuest[], now = Dat
       return { ...(await encryptPerson(key, person)), category: item.category?.trim() || undefined };
     }),
   );
-  const records = await db.transaction('rw', db.guests, async () => {
+  const records = await db.transaction('rw', [db.guests, db.cards], async () => {
     const existing = await db.guests.where('occasionId').equals(occasionId).toArray();
     if (existing.length + prepared.length > MAX_GUESTS) throw new ValidationError(`Höchstens ${MAX_GUESTS} Gäste je Veranstaltung.`);
     let number = existing.reduce((max, g) => Math.max(max, g.number), 0);
-    const added: GuestRecord[] = prepared.map((p) => ({
-      id: newId(),
-      occasionId,
-      number: ++number,
-      token: generateCardToken(),
-      ...p,
-      createdAt: now,
-      updatedAt: now,
-    }));
+    const added: GuestRecord[] = [];
+    for (const [i, p] of prepared.entries()) {
+      const cardId = items[i]?.cardId;
+      const link = cardId ? await cardLink(occasionId, cardId) : {};
+      if (link.cardId && added.some((g) => g.cardId === link.cardId)) throw new ValidationError(`Karte ${link.cardNumber} ist doppelt in der Liste.`);
+      added.push({ id: newId(), occasionId, number: ++number, token: generateCardToken(), ...p, ...link, createdAt: now, updatedAt: now });
+    }
     await db.guests.bulkAdd(added);
     return added;
   });
@@ -219,10 +237,20 @@ export async function updateGuest(id: string, item: NewGuest, now = Date.now()):
   const key = requireKey();
   const person = normalizeGuestPerson(item.person);
   const enc = await encryptPerson(key, person);
-  const record = await db.transaction('rw', db.guests, async () => {
+  const record = await db.transaction('rw', [db.guests, db.cards], async () => {
     const current = await db.guests.get(id);
     if (!current) throw new ValidationError('Gast nicht gefunden.');
-    const next: GuestRecord = { ...current, ...enc, category: item.category?.trim() || undefined, updatedAt: now };
+    const { cardId: _c, cardNumber: _n, cardHolderSince: _h, ...base } = current;
+    // cardId undefined = Verknüpfung unverändert, null = lösen, sonst (neu) verknüpfen
+    const link =
+      item.cardId === undefined
+        ? { cardId: current.cardId, cardNumber: current.cardNumber, cardHolderSince: current.cardHolderSince }
+        : item.cardId === null
+          ? {}
+          : item.cardId === current.cardId
+            ? { cardId: current.cardId, cardNumber: current.cardNumber, cardHolderSince: current.cardHolderSince }
+            : await cardLink(current.occasionId, item.cardId, id);
+    const next: GuestRecord = { ...base, ...enc, ...link, category: item.category?.trim() || undefined, updatedAt: now };
     await db.guests.put(next);
     return next;
   });
@@ -299,13 +327,43 @@ export async function processOccasionScan(text: string, opts: OccasionScanOption
       }
       // Einladung einer anderen Veranstaltung: Name der anderen Veranstaltung für die Anzeige
       const other = guest && guest.occasionId !== occasion.id ? await db.occasions.get(guest.occasionId) : undefined;
-      return { occasion, decision, guest: record, other, card: undefined, group: undefined };
+      return { occasion, decision, guest: record, other, card: undefined, group: undefined, admittedAt: guest?.admittedAt };
     }
 
     if (code?.kind === 'card') {
-      const card = await db.cards.where('token').equals(code.token).first();
+      let card = await db.cards.where('token').equals(code.token).first();
+      // Alter QR-Code (Karte wurde neu ausgestellt)?
+      const oldCard = card ? undefined : await db.cards.where('oldTokens').equals(code.token).first();
+      card ??= oldCard;
       const group = card ? await db.groups.get(card.groupId) : undefined;
-      const decision = await decideCardAtOccasion(occasion, card, group, now, opts.cooldownMs);
+
+      // Gast mit vorhandener Karte: Gästeliste entscheidet, nur einmal
+      const guest = card && !oldCard ? await findCardGuest(occasion.id, card) : undefined;
+      if (card && guest) {
+        const decision = decideCardGuestEntry({ guest, card: { ...card, hasHolder: Boolean(card.holderEnc || card.holder) }, now, cooldownMs: opts.cooldownMs });
+        let record = guest;
+        if (decision.outcome === 'granted') {
+          record = { ...guest, admittedAt: at, admittedSource: opts.source, updatedAt: at };
+          await db.guests.put(record);
+        }
+        if (decision.outcome !== 'duplicate') {
+          await log({
+            outcome: decision.outcome === 'granted' ? 'admitted' : 'denied',
+            reason: decision.reason,
+            guestId: guest.id,
+            guestNumber: guest.number,
+            cardId: card.id,
+            cardNumber: card.number,
+            category: guest.category,
+            nameEnc: decision.reason === 'CARD_PERSON_CHANGED' ? card.nameEnc : guest.nameEnc,
+          });
+        }
+        return { occasion, decision, guest: record, other: undefined, card, group, admittedAt: guest.admittedAt };
+      }
+
+      const { decision, admittedAt } = oldCard
+        ? { decision: { outcome: 'denied', reason: 'OLD_CARD' } satisfies Decision, admittedAt: undefined }
+        : await decideCardAtOccasion(occasion, card, group, now, opts.cooldownMs);
       if (decision.outcome !== 'duplicate') {
         await log({
           outcome: decision.outcome === 'granted' ? 'admitted' : 'denied',
@@ -316,12 +374,12 @@ export async function processOccasionScan(text: string, opts: OccasionScanOption
           nameEnc: card?.nameEnc,
         });
       }
-      return { occasion, decision, guest: undefined, other: undefined, card, group };
+      return { occasion, decision, guest: undefined, other: undefined, card, group, admittedAt };
     }
 
     const decision: Decision = { outcome: 'denied', reason: 'INVALID_CODE' };
     await log({ outcome: 'denied', reason: 'INVALID_CODE' });
-    return { occasion, decision, guest: undefined, other: undefined, card: undefined, group: undefined };
+    return { occasion, decision, guest: undefined, other: undefined, card: undefined, group: undefined, admittedAt: undefined };
   });
   if (!result) return null;
 
@@ -335,7 +393,24 @@ export async function processOccasionScan(text: string, opts: OccasionScanOption
     otherOccasion: result.other ? brief(result.other) : undefined,
     card: result.card ? await toCard(result.card, key) : undefined,
     group: result.group,
+    admittedAt: result.decision.reason === 'ALREADY_ADMITTED' ? result.admittedAt : undefined,
   };
+}
+
+/** Gast dieser Veranstaltung, der mit der Karte (oder einer Karte, die sie ersetzt) hineindarf. */
+async function findCardGuest(occasionId: string, card: CardRecord): Promise<GuestRecord | undefined> {
+  const ids = [card.id];
+  let previous = card.replaces;
+  for (let i = 0; previous && i < 5; i++) {
+    ids.push(previous);
+    previous = (await db.cards.get(previous))?.replaces;
+  }
+  const guests = await db.guests
+    .where('occasionId')
+    .equals(occasionId)
+    .filter((g) => Boolean(g.cardId && ids.includes(g.cardId)))
+    .toArray();
+  return guests.find((g) => !g.cancelled) ?? guests[0];
 }
 
 async function decideCardAtOccasion(
@@ -344,21 +419,43 @@ async function decideCardAtOccasion(
   group: Group | undefined,
   now: Date,
   cooldownMs: number,
-): Promise<Decision> {
-  if (!occasion.cardsAllowed) return { outcome: 'denied', reason: 'CARDS_NOT_ADMITTED' };
-  if (!card) return { outcome: 'denied', reason: 'UNKNOWN_CARD' };
-  if (card.lostAt) return { outcome: 'denied', reason: 'CARD_LOST' };
-  if (card.blocked) return { outcome: 'denied', reason: 'CARD_BLOCKED' };
+): Promise<{ decision: Decision; admittedAt?: number }> {
+  const deny = (reason: Decision['reason']) => ({ decision: { outcome: 'denied', reason } satisfies Decision });
+  if (!card) return deny('UNKNOWN_CARD');
+  if (card.lostAt) return deny('CARD_LOST');
+  if (!occasion.cardsAllowed) return deny('CARDS_NOT_ADMITTED');
+  if (card.blocked) return deny('CARD_BLOCKED');
   const blocker = entryBlocker({ ...card, hasHolder: Boolean(card.holderEnc || card.holder) }, group, now);
-  if (blocker) return { outcome: 'denied', reason: blocker };
-  const last = await db.occasionLog
+  if (blocker) return deny(blocker);
+  // Dienstausweis gilt je Veranstaltung nur einmal (wie eine Einladung) – bis „Zurücknehmen“
+  const entries = await db.occasionLog
     .where('occasionId')
     .equals(occasion.id)
-    .filter((e) => e.cardId === card.id && e.outcome === 'admitted')
-    .last();
-  const since = last ? now.getTime() - last.timestamp : Infinity;
-  if (since >= 0 && since < cooldownMs) return { outcome: 'duplicate', reason: 'DUPLICATE', direction: 'in', secondsSinceLast: Math.round(since / 1000) };
-  return { outcome: 'granted', reason: 'OK', direction: 'in' };
+    .filter((e) => e.cardId === card.id)
+    .toArray();
+  const admittedAt = cardAdmissions(entries).get(card.id)?.timestamp;
+  const repeat = repeatEntryDecision(admittedAt, now, cooldownMs);
+  return repeat ? { decision: repeat, admittedAt } : { decision: { outcome: 'granted', reason: 'OK', direction: 'in' } };
+}
+
+/** Einlass mit Dienstausweis zurücknehmen (Fehlbedienung): der Ausweis gilt wieder, im Protokoll vermerkt. */
+export async function undoCardAdmission(occasionId: string, cardId: string, now = Date.now()): Promise<void> {
+  await db.transaction('rw', db.occasionLog, async () => {
+    const entries = await db.occasionLog.where('occasionId').equals(occasionId).filter((e) => e.cardId === cardId).toArray();
+    const current = cardAdmissions(entries).get(cardId);
+    if (!current) return;
+    await db.occasionLog.add({
+      occasionId,
+      timestamp: Math.max(now, current.timestamp),
+      source: 'manual',
+      outcome: 'undone',
+      reason: 'ADMISSION_UNDONE',
+      cardId,
+      cardNumber: current.cardNumber,
+      category: current.category,
+      nameEnc: current.nameEnc,
+    });
+  });
 }
 
 /** Gast von Hand einlassen (Einladung vergessen). Bereits eingelassen/storniert → abgelehnt, nichts gebucht. */
@@ -434,10 +531,7 @@ export async function listAdmittedPeople(occasionId: string): Promise<{ guests: 
     db.guests.where('occasionId').equals(occasionId).toArray(),
     db.occasionLog.where('occasionId').equals(occasionId).toArray(),
   ]);
-  const firstByCard = new Map<string, number>();
-  for (const e of log) {
-    if (e.outcome === 'admitted' && e.cardId && !firstByCard.has(e.cardId)) firstByCard.set(e.cardId, e.timestamp);
-  }
+  const firstByCard = new Map([...cardAdmissions(log)].map(([cardId, e]) => [cardId, e.timestamp]));
   const cardRecords = (await db.cards.bulkGet([...firstByCard.keys()])).filter((c): c is CardRecord => Boolean(c));
   const key = getDataKey();
   const guests = await Promise.all(guestRecords.filter((g) => g.admittedAt !== undefined && !g.cancelled).map((g) => toGuest(g, key)));
