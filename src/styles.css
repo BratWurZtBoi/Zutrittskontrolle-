@@ -4281,3 +4281,52 @@ code.path {
   line-height: 1.2;
   opacity: 0.85;
 }
+
+/* ---------- Begleitpersonen ---------- */
+.form-grid-wide {
+  grid-column: 1 / -1;
+}
+.companions-badge {
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+.result-companions {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.companion-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+.companion-stepper button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  font-weight: 700;
+}
+.companion-stepper-count {
+  min-width: 2.2rem;
+  text-align: center;
+  font-weight: 600;
+}
+.companion-more {
+  display: inline;
+  color: var(--warn-text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.emergency-companion td:nth-child(2) {
+  padding-left: 1.5rem;
+}
+
+.companion-count-more {
+  color: var(--warn-text);
+}
+/* schmale Liste: Hinweistext ausblenden, die orange Zahl reicht */
+@container dash-list (max-width: 760px) {
+  .companion-more {
+    display: none;
+  }
+}

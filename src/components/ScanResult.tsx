@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
 import { isCorrectable } from '../domain/overview';
-import { guestName } from '../domain/occasion';
+import { companionsText, guestName } from '../domain/occasion';
 import { holderName, holderUnitLine } from '../domain/texts';
 import { describeOutcome, hideIdentityFor, type Audience } from '../lib/resultText';
 import { GroupBadge } from './GroupBadge';
@@ -39,7 +39,12 @@ function ResultContent({ result, audience }: { result: ScanOutcome; audience: Au
           <Icon className="result-icon" />
           <span className="result-title">{title}</span>
         </div>
-        <div className="result-name">{guestName(person) ?? `Gast Nr. ${guest.number}`}</div>
+        <div className="result-name">
+          {guestName(person) ?? `Gast Nr. ${guest.number}`}
+          {result.decision.outcome === 'granted' && (guest.companionsAdmitted ?? 0) > 0 && (
+            <span className="result-companions"> + {companionsText(guest.companionsAdmitted)}</span>
+          )}
+        </div>
         {guest.hasPerson && !person && (
           <div className="result-locked">
             <LockIcon /> Name gesperrt

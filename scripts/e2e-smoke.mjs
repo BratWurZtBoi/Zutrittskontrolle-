@@ -1324,6 +1324,46 @@ try {
   await page.locator('.occasion-row', { hasText: 'Sommerfest Test' }).click();
   await page.getByRole('heading', { name: 'Sommerfest Test' }).waitFor();
 
+  // Begleitpersonen: angemeldet, beim Scan automatisch mit eingelassen, korrigierbar, Notfallliste je Person
+  await page.locator('.guest-table tbody tr', { hasText: 'Presse, Felix' }).click();
+  const companionDialog = page.getByRole('dialog');
+  await companionDialog.getByLabel(/^Begleitpersonen/).selectOption('2');
+  await companionDialog.getByLabel(/Namen der Begleitpersonen/).fill('Paula Presse\nPaul Presse');
+  await companionDialog.getByRole('button', { name: 'Speichern' }).click();
+  await page.locator('.guest-table tr', { hasText: 'Presse, Felix' }).locator('.companions-badge', { hasText: '+2' }).waitFor();
+  check(true, 'Gast mit 2 Begleitpersonen angemeldet („+2“ in der Gästeliste)');
+  const presseGuest = (await readStore(page, 'guests')).find((g) => g.number === 3);
+  check(presseGuest.companions === 2 && !JSON.stringify(presseGuest).includes('Paula'), 'Anzahl gespeichert, Namen der Begleitpersonen verschlüsselt');
+  await page.goto(`${URL}#/dashboard`);
+  await page.locator('.entry-status').waitFor();
+  const admittedBeforeCompanions = Number(await kpiText('kpi-admitted'));
+  await blur(page);
+  await scannerType(page, `ZE1:${presseGuest.token}`);
+  await page.locator('.result-panel', { hasText: 'Willkommen' }).waitFor();
+  check((await page.locator('.result-panel').textContent()).includes('+ 2 Begleitpersonen'), 'Einladung gescannt: „Willkommen … + 2 Begleitpersonen“');
+  await page.waitForFunction((n) => document.querySelector('[data-testid="kpi-admitted"]')?.textContent?.trim() === String(n), admittedBeforeCompanions + 3);
+  check(true, `Statusleiste zählt Personen: ${admittedBeforeCompanions} → ${admittedBeforeCompanions + 3}`);
+  await page.getByRole('tab', { name: /Eingelassen/ }).click();
+  const presseRow = page.locator('.dash-list tbody tr', { hasText: 'Presse, Felix' });
+  await presseRow.getByRole('button', { name: /Begleitperson weniger/ }).click();
+  await presseRow.locator('.companion-stepper-count', { hasText: '+1' }).waitFor();
+  await presseRow.getByRole('button', { name: /Begleitperson mehr/ }).click();
+  await presseRow.locator('.companion-stepper-count', { hasText: '+2' }).waitFor();
+  await presseRow.getByRole('button', { name: /Begleitperson mehr/ }).click(); // mehr als angemeldet → Rückfrage (angenommen)
+  await presseRow.locator('.companion-more', { hasText: '1 mehr als angemeldet' }).waitFor();
+  check(true, 'Begleitpersonen mit – / + korrigierbar, mehr als angemeldet mit Hinweis');
+  await page.screenshot({ path: `${OUT}/43-begleitpersonen.png` });
+  await page.goto(`${URL}#/notfallliste`);
+  await page.locator('.emergency-guests').waitFor();
+  const companionRows = await page.locator('.emergency-guests .emergency-companion').allTextContents();
+  check(
+    companionRows.length === 3 && companionRows[0].includes('Paula Presse') && companionRows[0].includes('Begleitung von Presse, Felix') && companionRows[2].includes('Begleitperson 3'),
+    `Notfallliste: je Begleitperson eine Zeile zum Abhaken (${companionRows.length})`,
+  );
+  await page.goto(page.url().replace(/#.*/, '#/veranstaltungen'));
+  await page.locator('.occasion-row', { hasText: 'Sommerfest Test' }).click();
+  await page.getByRole('heading', { name: 'Sommerfest Test' }).waitFor();
+
   // Einladungen: Vorschau, PDF je Gast (ZIP), Versandliste, Editor, Serienbrief
   await page.getByRole('button', { name: 'Einladungen' }).click();
   await page.locator('.invitation-preview .card-view').waitFor();

@@ -1,24 +1,25 @@
 /**
  * Gästeliste per CSV (z. B. aus Excel): Anrede, Dienstgrad, Vorname, Nachname, Einheit/Firma,
- * Kategorie, E-Mail, Notiz. Gleicher Parser wie beim Karten-Import (Trennzeichen, Windows-1252).
+ * Kategorie, E-Mail, Notiz, Begleitpersonen (Anzahl) und deren Namen (durch Komma getrennt).
+ * Gleicher Parser wie beim Karten-Import (Trennzeichen, Windows-1252).
  */
 import { toCsv } from './csv';
 import { parseCsv } from './csvImport';
-import { GUEST_STATUS_LABEL, guestStatus, type Guest, type GuestPerson } from './occasion';
+import { GUEST_STATUS_LABEL, MAX_COMPANIONS, guestStatus, normalizeCompanionNames, type Guest, type GuestPerson } from './occasion';
 import { formatDateTime } from './dates';
 
-export const GUEST_TEMPLATE_HEADER = ['Anrede', 'Dienstgrad', 'Vorname', 'Nachname', 'Einheit/Firma', 'Kategorie', 'E-Mail', 'Notiz'];
+export const GUEST_TEMPLATE_HEADER = ['Anrede', 'Dienstgrad', 'Vorname', 'Nachname', 'Einheit/Firma', 'Kategorie', 'E-Mail', 'Notiz', 'Begleitpersonen', 'Namen der Begleitpersonen'];
 
 /** Vorlage mit fiktiven Beispielzeilen. */
 export function guestTemplateCsv(): string {
   return toCsv([
     GUEST_TEMPLATE_HEADER,
-    ['Herr', 'Oberst', 'Max', 'Mustermann', 'Musterkommando', 'VIP', 'max.mustermann@example.com', ''],
-    ['Frau', '', 'Erika', 'Musterfrau', 'Beispiel GmbH', 'Gast', 'erika.musterfrau@example.com', 'Vegetarisch'],
+    ['Herr', 'Oberst', 'Max', 'Mustermann', 'Musterkommando', 'VIP', 'max.mustermann@example.com', '', '1', 'Anna Mustermann'],
+    ['Frau', '', 'Erika', 'Musterfrau', 'Beispiel GmbH', 'Gast', 'erika.musterfrau@example.com', 'Vegetarisch', '0', ''],
   ]);
 }
 
-type Column = 'salutation' | 'rank' | 'firstName' | 'lastName' | 'company' | 'category' | 'email' | 'note';
+type Column = 'salutation' | 'rank' | 'firstName' | 'lastName' | 'company' | 'category' | 'email' | 'note' | 'companions' | 'companionNames';
 
 const ALIASES: Record<Column, string[]> = {
   salutation: ['anrede'],
@@ -29,6 +30,8 @@ const ALIASES: Record<Column, string[]> = {
   category: ['kategorie', 'gruppe', 'gästegruppe'],
   email: ['e-mail', 'email', 'mail', 'e-mail-adresse'],
   note: ['notiz', 'bemerkung', 'hinweis', 'kommentar'],
+  companions: ['begleitpersonen', 'begleitung', 'anzahl begleitpersonen', 'anzahl begleitung', 'begleiter'],
+  companionNames: ['namen der begleitpersonen', 'namen begleitpersonen', 'namen begleitung', 'begleitung namen', 'begleitpersonen namen'],
 };
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -37,6 +40,7 @@ export interface GuestImportRow {
   line: number;
   person: GuestPerson;
   category?: string;
+  companions: number;
   errors: string[];
 }
 
@@ -65,11 +69,20 @@ export function parseGuestImport(text: string): { rows: GuestImportRow[]; fileEr
       company: cell(r, 'company') || undefined,
       email: cell(r, 'email') || undefined,
       note: cell(r, 'note') || undefined,
+      companionNames: normalizeCompanionNames(cell(r, 'companionNames').split(/[,\n]/)),
     };
     const errors: string[] = [];
     if (!person.firstName && !person.lastName) errors.push('Vor- oder Nachname fehlt.');
     if (person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email)) errors.push(`E-Mail „${person.email}“ ist ungültig.`);
-    return { line: i + 2, person, category: cell(r, 'category') || undefined, errors };
+    const rawCompanions = cell(r, 'companions');
+    let companions = 0;
+    if (rawCompanions) {
+      if (!/^\d+$/.test(rawCompanions) || Number(rawCompanions) > MAX_COMPANIONS) errors.push(`Begleitpersonen „${rawCompanions}“: bitte eine Zahl von 0 bis ${MAX_COMPANIONS}.`);
+      else companions = Number(rawCompanions);
+    }
+    // Namen ohne Anzahl: so viele Begleitpersonen wie Namen
+    if (!rawCompanions && person.companionNames) companions = Math.min(MAX_COMPANIONS, person.companionNames.length);
+    return { line: i + 2, person, category: cell(r, 'category') || undefined, companions, errors };
   });
   return { rows, fileErrors: [] };
 }
@@ -77,7 +90,7 @@ export function parseGuestImport(text: string): { rows: GuestImportRow[]; fileEr
 /** Teilnehmerliste als CSV (für Excel). */
 export function guestsToCsv(guests: Guest[]): string {
   return toCsv([
-    ['Nr.', 'Anrede', 'Dienstgrad', 'Nachname', 'Vorname', 'Einheit/Firma', 'Kategorie', 'E-Mail', 'Status', 'Eingelassen um', 'Notiz'],
+    ['Nr.', 'Anrede', 'Dienstgrad', 'Nachname', 'Vorname', 'Einheit/Firma', 'Kategorie', 'E-Mail', 'Status', 'Eingelassen um', 'Notiz', 'Begleitpersonen', 'davon eingelassen', 'Namen der Begleitpersonen'],
     ...guests.map((g) => [
       g.number,
       g.person?.salutation ?? '',
@@ -90,6 +103,9 @@ export function guestsToCsv(guests: Guest[]): string {
       GUEST_STATUS_LABEL[guestStatus(g)],
       g.admittedAt ? formatDateTime(g.admittedAt) : '',
       g.person?.note ?? '',
+      g.companions ?? 0,
+      g.admittedAt !== undefined ? (g.companionsAdmitted ?? 0) : '',
+      (g.person?.companionNames ?? []).join(', '),
     ]),
   ]);
 }

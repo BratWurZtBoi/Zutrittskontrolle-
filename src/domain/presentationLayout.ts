@@ -456,6 +456,8 @@ export interface PersonForLayout {
   photo?: string;
   groupName?: string;
   groupColor?: string;
+  /** Veranstaltung: mit Begleitpersonen eingelassen → „… und Begleitung“ hinter dem Namen. */
+  withCompanions?: boolean;
 }
 
 /** Name nach Datenschutz-Einstellung des Layouts. */
@@ -501,7 +503,8 @@ export function buildLayoutResult(layout: PresentationLayout, input: ResultInput
   const kind: ResultKind = input.kind === 'duplicate' ? 'wait' : input.kind;
   const d = new Date(input.at);
   const person = input.person;
-  const fullName = person ? formatName(person, layout.nameFormat) : '';
+  const formatted = person ? formatName(person, layout.nameFormat) : '';
+  const fullName = formatted && person?.withCompanions ? `${formatted} und Begleitung` : formatted;
   const showLastName = layout.nameFormat === 'full' || layout.nameFormat === 'rank-last';
   const name = fullName || (layout.nameFormat === 'none' ? '' : (input.cardLabel ?? ''));
   const t = layout.texts;

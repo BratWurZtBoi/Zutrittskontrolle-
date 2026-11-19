@@ -40,6 +40,8 @@ export interface GuestPerson {
   company?: string;
   email?: string;
   note?: string;
+  /** Namen der Begleitpersonen (optional, z. B. für die Notfallliste). */
+  companionNames?: string[];
 }
 
 /** Gast, wie er in der Datenbank liegt. */
@@ -66,6 +68,10 @@ export interface GuestRecord {
   cardNumber?: string;
   /** holderSince der Karte beim Verknüpfen – ändert sich die Person der Karte, gilt sie nicht mehr. */
   cardHolderSince?: number;
+  /** Angemeldete Begleitpersonen (0–9, unverschlüsselt – nur eine Zahl). */
+  companions?: number;
+  /** Tatsächlich eingelassene Begleitpersonen (beim Einlass = angemeldet, danach korrigierbar). */
+  companionsAdmitted?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -172,42 +178,106 @@ export function cardAdmissions<E extends Pick<OccasionLogRecord, 'outcome' | 'ca
 // Kennzahlen
 // ---------------------------------------------------------------------------
 
+/**
+ * Kennzahlen in **Personen** (Gast + Begleitpersonen). Erwartet je Gast: 1 + angemeldete Begleitpersonen
+ * (kamen mehr als angemeldet, zählt die tatsächliche Zahl).
+ */
 export interface OccasionStats {
-  /** Eingeladen (ohne stornierte) */
+  /** Erwartete Personen (ohne stornierte Einladungen) */
   invited: number;
+  /** Eingelassene Personen */
   admitted: number;
+  /** Noch erwartete Personen */
   open: number;
+  /** Stornierte Einladungen (Gäste) */
   cancelled: number;
   /** Quote in Prozent (gerundet) */
   rate: number;
+  /** davon: eingelassene Gäste bzw. Begleitpersonen */
+  admittedGuests: number;
+  admittedCompanions: number;
   perCategory: { category: string; invited: number; admitted: number }[];
 }
 
 export const NO_CATEGORY = 'Ohne Kategorie';
 
-export function occasionStats(guests: Pick<GuestRecord, 'cancelled' | 'admittedAt' | 'category'>[]): OccasionStats {
+type StatsGuest = Pick<GuestRecord, 'cancelled' | 'admittedAt' | 'category' | 'companions' | 'companionsAdmitted'>;
+
+/** Personen dieses Gastes: erwartet (1 + angemeldete bzw. tatsächliche Begleitung) und eingelassen. */
+export function guestPersons(g: StatsGuest): { expected: number; admitted: number; companionsIn: number } {
+  const announced = g.companions ?? 0;
+  if (g.admittedAt === undefined) return { expected: 1 + announced, admitted: 0, companionsIn: 0 };
+  const companionsIn = g.companionsAdmitted ?? 0;
+  return { expected: 1 + Math.max(announced, companionsIn), admitted: 1 + companionsIn, companionsIn };
+}
+
+export function occasionStats(guests: StatsGuest[]): OccasionStats {
   let invited = 0;
   let admitted = 0;
   let cancelled = 0;
+  let admittedGuests = 0;
+  let admittedCompanions = 0;
   const cats = new Map<string, { invited: number; admitted: number }>();
   for (const g of guests) {
     if (g.cancelled) {
       cancelled++;
       continue;
     }
-    invited++;
-    const isIn = g.admittedAt !== undefined;
-    if (isIn) admitted++;
+    const p = guestPersons(g);
+    invited += p.expected;
+    admitted += p.admitted;
+    if (g.admittedAt !== undefined) admittedGuests++;
+    admittedCompanions += p.companionsIn;
     const key = g.category?.trim() || NO_CATEGORY;
     const c = cats.get(key) ?? { invited: 0, admitted: 0 };
-    c.invited++;
-    if (isIn) c.admitted++;
+    c.invited += p.expected;
+    c.admitted += p.admitted;
     cats.set(key, c);
   }
   const perCategory = [...cats.entries()]
     .map(([category, c]) => ({ category, ...c }))
     .sort((a, b) => b.invited - a.invited || a.category.localeCompare(b.category, 'de'));
-  return { invited, admitted, open: invited - admitted, cancelled, rate: invited ? Math.round((admitted / invited) * 100) : 0, perCategory };
+  return {
+    invited,
+    admitted,
+    open: invited - admitted,
+    cancelled,
+    rate: invited ? Math.round((admitted / invited) * 100) : 0,
+    admittedGuests,
+    admittedCompanions,
+    perCategory,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Begleitpersonen
+// ---------------------------------------------------------------------------
+
+/** Höchstens so viele Begleitpersonen anmelden … */
+export const MAX_COMPANIONS = 9;
+/** … beim Einlass dürfen es (mit Hinweis) mehr werden. */
+export const MAX_COMPANIONS_ADMITTED = 20;
+
+export function clampCompanions(n: unknown, max = MAX_COMPANIONS): number {
+  const v = Math.floor(Number(n));
+  return Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : 0;
+}
+
+/** „eine Begleitperson“ / „2 Begleitpersonen“ / '' */
+export function companionsText(n: number | undefined): string {
+  if (!n || n <= 0) return '';
+  return n === 1 ? 'eine Begleitperson' : `${n} Begleitpersonen`;
+}
+
+/** Namen bereinigen: getrimmt, ohne leere, höchstens MAX_COMPANIONS_ADMITTED. */
+export function normalizeCompanionNames(names: string[] | undefined): string[] | undefined {
+  const list = (names ?? []).map((n) => n.trim().slice(0, 80)).filter(Boolean).slice(0, MAX_COMPANIONS_ADMITTED);
+  return list.length ? list : undefined;
+}
+
+/** Einlass-Zeitpunkte gewichtet nach Personen (für den Zeitverlauf). */
+export function admissionTimes(guests: StatsGuest[]): number[] {
+  return guests.flatMap((g) => (g.admittedAt !== undefined && !g.cancelled ? Array<number>(1 + (g.companionsAdmitted ?? 0)).fill(g.admittedAt) : []));
 }
 
 /** Einlass im Zeitverlauf: Anzahl je Zeitfenster (Standard 15 Minuten), lückenlos vom ersten bis zum letzten. */

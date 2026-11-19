@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { HolderPhoto } from '../components/HolderPhoto';
 import { listGroups } from '../db/groups';
@@ -68,6 +68,8 @@ export function EmergencyListPage() {
   );
   const presentIds = new Set((present ?? []).map((p) => p.card.id));
   const admittedGuests = admitted ? sortGuestsByName(admitted.guests) : [];
+  // Begleitpersonen: je Person eine eigene Zeile zum Abhaken
+  const companionCount = admittedGuests.reduce((sum, g) => sum + (g.companionsAdmitted ?? 0), 0);
   const admittedCards = (admitted?.cards ?? []).filter((c) => !presentIds.has(c.card.id));
   const total = (present?.length ?? 0) + admittedGuests.length + admittedCards.length;
   const [photoChoice, setPhotoChoice] = useState<boolean>();
@@ -203,10 +205,10 @@ export function EmergencyListPage() {
         ))
       )}
 
-      {occasion && admittedGuests.length + admittedCards.length > 0 && (
+      {occasion && admittedGuests.length + companionCount + admittedCards.length > 0 && (
         <section className="emergency-section emergency-guests">
           <h3 style={{ borderLeftColor: occasion.color }}>
-            Gäste: {occasion.name} <span className="muted">({admittedGuests.length + admittedCards.length})</span>
+            Gäste: {occasion.name} <span className="muted">({admittedGuests.length + companionCount + admittedCards.length})</span>
           </h3>
           <table className="data-table emergency-table">
             <thead>
@@ -221,19 +223,38 @@ export function EmergencyListPage() {
               </tr>
             </thead>
             <tbody>
-              {admittedGuests.map((g) => (
-                <tr key={g.id}>
-                  <td>{++n}</td>
-                  <td className="cell-strong">{g.hasPerson && !g.person ? '🔒 Name gesperrt' : guestListName(g)}</td>
-                  <td>{g.person?.company ?? ''}</td>
-                  <td>{g.category ?? ''}</td>
-                  <td>Nr. {g.number}</td>
-                  <td>{formatShortDateTime(g.admittedAt!, new Date(createdAt))}</td>
-                  <td>
-                    <span className="tick-box" aria-label="zum Abhaken" />
-                  </td>
-                </tr>
-              ))}
+              {admittedGuests.map((g) => {
+                const host = g.hasPerson && !g.person ? '🔒 Name gesperrt' : guestListName(g);
+                const companionsIn = g.companionsAdmitted ?? 0;
+                return (
+                  <Fragment key={g.id}>
+                    <tr>
+                      <td>{++n}</td>
+                      <td className="cell-strong">{host}</td>
+                      <td>{g.person?.company ?? ''}</td>
+                      <td>{g.category ?? ''}</td>
+                      <td>Nr. {g.number}</td>
+                      <td>{formatShortDateTime(g.admittedAt!, new Date(createdAt))}</td>
+                      <td>
+                        <span className="tick-box" aria-label="zum Abhaken" />
+                      </td>
+                    </tr>
+                    {Array.from({ length: companionsIn }, (_, i) => (
+                      <tr key={`${g.id}-c${i}`} className="emergency-companion">
+                        <td>{++n}</td>
+                        <td>{g.person?.companionNames?.[i] ?? `Begleitperson ${i + 1}`}</td>
+                        <td>Begleitung von {host}</td>
+                        <td>{g.category ?? ''}</td>
+                        <td>Nr. {g.number}</td>
+                        <td>{formatShortDateTime(g.admittedAt!, new Date(createdAt))}</td>
+                        <td>
+                          <span className="tick-box" aria-label="zum Abhaken" />
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
               {admittedCards.map(({ card, since }) => (
                 <tr key={card.id}>
                   <td>{++n}</td>

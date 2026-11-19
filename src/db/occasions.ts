@@ -7,8 +7,11 @@ import { normalizeCardLayout, type CardLayout } from '../domain/cardLayout';
 import { generateCardToken, parseAppCode } from '../domain/cardCode';
 import { isValidIsoDate, toLocalDateString } from '../domain/dates';
 import {
+  MAX_COMPANIONS_ADMITTED,
   OCCASION_COLORS,
   cardAdmissions,
+  clampCompanions,
+  normalizeCompanionNames,
   decideCardGuestEntry,
   decideGuestEntry,
   guestName,
@@ -169,6 +172,7 @@ export function normalizeGuestPerson(p: GuestPerson): GuestPerson {
     company: t(p.company),
     email: t(p.email),
     note: t(p.note),
+    companionNames: normalizeCompanionNames(p.companionNames),
   };
   if (!person.firstName && !person.lastName) throw new ValidationError('Bitte mindestens Vor- oder Nachnamen eingeben.');
   if (person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email)) throw new ValidationError(`E-Mail-Adresse „${person.email}“ ist ungültig.`);
@@ -182,6 +186,8 @@ async function encryptPerson(key: CryptoKey, person: GuestPerson) {
 export interface NewGuest {
   person: GuestPerson;
   category?: string;
+  /** Angemeldete Begleitpersonen (0–9). */
+  companions?: number;
   /** Zutritt mit dieser vorhandenen Karte statt Einladung (null beim Bearbeiten = Verknüpfung lösen). */
   cardId?: string | null;
 }
@@ -208,7 +214,8 @@ export async function addGuests(occasionId: string, items: NewGuest[], now = Dat
   const prepared = await Promise.all(
     items.map(async (item) => {
       const person = normalizeGuestPerson(item.person);
-      return { ...(await encryptPerson(key, person)), category: item.category?.trim() || undefined };
+      const companions = clampCompanions(item.companions);
+      return { ...(await encryptPerson(key, person)), category: item.category?.trim() || undefined, ...(companions ? { companions } : {}) };
     }),
   );
   const records = await db.transaction('rw', [db.guests, db.cards], async () => {
@@ -250,7 +257,9 @@ export async function updateGuest(id: string, item: NewGuest, now = Date.now()):
           : item.cardId === current.cardId
             ? { cardId: current.cardId, cardNumber: current.cardNumber, cardHolderSince: current.cardHolderSince }
             : await cardLink(current.occasionId, item.cardId, id);
-    const next: GuestRecord = { ...base, ...enc, ...link, category: item.category?.trim() || undefined, updatedAt: now };
+    const { companions: _old, ...withoutCompanions } = base;
+    const companions = item.companions === undefined ? current.companions : clampCompanions(item.companions);
+    const next: GuestRecord = { ...withoutCompanions, ...enc, ...link, ...(companions ? { companions } : {}), category: item.category?.trim() || undefined, updatedAt: now };
     await db.guests.put(next);
     return next;
   });
@@ -312,7 +321,7 @@ export async function processOccasionScan(text: string, opts: OccasionScanOption
       const decision = decideGuestEntry({ guest, occasionId: occasion.id, now, cooldownMs: opts.cooldownMs });
       let record = guest;
       if (guest && decision.outcome === 'granted') {
-        record = { ...guest, admittedAt: at, admittedSource: opts.source, updatedAt: at };
+        record = admit(guest, at, opts.source);
         await db.guests.put(record);
       }
       if (decision.outcome !== 'duplicate') {
@@ -343,7 +352,7 @@ export async function processOccasionScan(text: string, opts: OccasionScanOption
         const decision = decideCardGuestEntry({ guest, card: { ...card, hasHolder: Boolean(card.holderEnc || card.holder) }, now, cooldownMs: opts.cooldownMs });
         let record = guest;
         if (decision.outcome === 'granted') {
-          record = { ...guest, admittedAt: at, admittedSource: opts.source, updatedAt: at };
+          record = admit(guest, at, opts.source);
           await db.guests.put(record);
         }
         if (decision.outcome !== 'duplicate') {
@@ -458,6 +467,26 @@ export async function undoCardAdmission(occasionId: string, cardId: string, now 
   });
 }
 
+/** Einlass eines Gastes: alle angemeldeten Begleitpersonen kommen automatisch mit (danach korrigierbar). */
+function admit(guest: GuestRecord, at: number, source: AccessEventRecord['source']): GuestRecord {
+  return { ...guest, admittedAt: at, admittedSource: source, companionsAdmitted: guest.companions ?? 0, updatedAt: at };
+}
+
+/**
+ * Eingelassene Begleitpersonen korrigieren (weniger gekommen, jemand kommt nach). Mehr als angemeldet ist
+ * erlaubt (der Empfang entscheidet), höchstens MAX_COMPANIONS_ADMITTED. Nur für eingelassene Gäste.
+ */
+export async function setCompanionsAdmitted(guestId: string, count: number, now = Date.now()): Promise<number> {
+  return db.transaction('rw', db.guests, async () => {
+    const guest = await db.guests.get(guestId);
+    if (!guest) throw new ValidationError('Gast nicht gefunden.');
+    if (guest.admittedAt === undefined) throw new ValidationError('Der Gast ist noch nicht eingelassen.');
+    const n = clampCompanions(count, MAX_COMPANIONS_ADMITTED);
+    await db.guests.put({ ...guest, companionsAdmitted: n, updatedAt: now });
+    return n;
+  });
+}
+
 /** Gast von Hand einlassen (Einladung vergessen). Bereits eingelassen/storniert → abgelehnt, nichts gebucht. */
 export async function admitGuestManually(guestId: string, now = new Date()): Promise<ScanOutcome> {
   const at = now.getTime();
@@ -468,7 +497,7 @@ export async function admitGuestManually(guestId: string, now = new Date()): Pro
     if (!occasion) throw new ValidationError('Veranstaltung nicht gefunden.');
     const decision = decideGuestEntry({ guest, occasionId: occasion.id, now, cooldownMs: 0 });
     if (decision.outcome !== 'granted') return { occasion, guest, decision };
-    const record: GuestRecord = { ...guest, admittedAt: at, admittedSource: 'manual', updatedAt: at };
+    const record: GuestRecord = admit(guest, at, 'manual');
     await db.guests.put(record);
     await db.occasionLog.add({
       occasionId: occasion.id,
@@ -491,7 +520,7 @@ export async function undoAdmission(guestId: string, now = Date.now()): Promise<
   await db.transaction('rw', [db.guests, db.occasionLog], async () => {
     const guest = await db.guests.get(guestId);
     if (!guest || guest.admittedAt === undefined) return;
-    const { admittedAt: _a, admittedSource: _s, ...rest } = guest;
+    const { admittedAt: _a, admittedSource: _s, companionsAdmitted: _c, ...rest } = guest;
     await db.guests.put({ ...rest, updatedAt: now });
     await db.occasionLog.add({
       occasionId: guest.occasionId,

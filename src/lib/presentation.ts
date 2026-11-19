@@ -77,6 +77,7 @@ export function toPresentationScan(result: ScanOutcome, displaySec: number, ctx:
           room,
           photo,
           ...badge,
+          withCompanions: Boolean(guest && decision.outcome === 'granted' && (guest.companionsAdmitted ?? 0) > 0),
         },
     cardLabel: hidden || holder ? undefined : guest ? `Gast Nr. ${guest.number}` : card ? `Karte ${card.number}` : undefined,
     at: result.at,

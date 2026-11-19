@@ -14,7 +14,7 @@ import {
   type CardSize,
 } from './cardLayout';
 import { toCsv } from './csv';
-import type { Guest, GuestPerson, Occasion } from './occasion';
+import { companionsText, type Guest, type GuestPerson, type Occasion } from './occasion';
 
 export { INVITATION_FORMATS };
 
@@ -27,6 +27,7 @@ export const INVITATION_PLACEHOLDERS: { key: string; label: string }[] = [
   { key: '{name}', label: 'Name' },
   { key: '{einheit}', label: 'Einheit/Firma' },
   { key: '{kategorie}', label: 'Kategorie' },
+  { key: '{begleitung}', label: 'Begleitung („und eine Begleitperson“, sonst leer)' },
   { key: '{nr}', label: 'Nr. der Einladung' },
   { key: '{veranstaltung}', label: 'Veranstaltung' },
   { key: '{datum}', label: 'Datum' },
@@ -64,10 +65,11 @@ export function entryText(o: Pick<Occasion, 'entryFrom' | 'entryUntil'>): string
 /** Platzhalter-Werte einer Einladung. */
 export function invitationValues(
   occasion: Pick<Occasion, 'name' | 'date' | 'location' | 'entryFrom' | 'entryUntil'>,
-  guest: Pick<Guest, 'person' | 'number' | 'category'>,
+  guest: Pick<Guest, 'person' | 'number' | 'category' | 'companions'>,
   orgName: string,
 ): Record<string, string> {
   const p = guest.person;
+  const companions = companionsText(guest.companions);
   return {
     briefanrede: letterSalutation(p),
     anrede: p?.salutation ?? '',
@@ -77,6 +79,7 @@ export function invitationValues(
     name: join(' ', [p?.rank, p?.firstName, p?.lastName]),
     einheit: p?.company ?? '',
     kategorie: guest.category ?? '',
+    begleitung: companions ? `und ${companions}` : '',
     nr: String(guest.number),
     veranstaltung: occasion.name,
     datum: longDate(occasion.date),
@@ -92,9 +95,10 @@ export function invitationCardData(occasion: Pick<Occasion, 'name' | 'color'>, g
 }
 
 /** Fiktiver Gast für die Vorschau im Editor. */
-export const SAMPLE_GUEST: Pick<Guest, 'person' | 'number' | 'category'> = {
+export const SAMPLE_GUEST: Pick<Guest, 'person' | 'number' | 'category' | 'companions'> = {
   number: 12,
   category: 'Gast',
+  companions: 1,
   person: { salutation: 'Frau', firstName: 'Erika', lastName: 'Musterfrau', company: 'Beispiel GmbH' },
 };
 
@@ -102,7 +106,7 @@ type Spec = Omit<CardElement, 'align' | 'bold'> & Partial<Pick<CardElement, 'ali
 const el = (spec: Spec): CardElement => ({ align: 'left', bold: false, ...spec });
 
 const LETTER_TEXT =
-  'wir laden Sie herzlich zu unserer Veranstaltung ein und freuen uns auf Ihren Besuch.\n\nBitte bringen Sie diese Einladung mit – der QR-Code wird beim Einlass gescannt und gilt nur einmal.';
+  'wir laden Sie {begleitung} herzlich zu unserer Veranstaltung ein und freuen uns auf Ihren Besuch.\n\nBitte bringen Sie diese Einladung mit – der QR-Code wird beim Einlass gescannt und gilt nur einmal.';
 
 /** Vorlagen: Brief (hochkant, A4/A5/A6) und Karte (quer, A5/A6/DIN lang). */
 export const INVITATION_TEMPLATES: { id: string; label: string; orientation: CardOrientation; elements: () => CardElement[] }[] = [
@@ -193,7 +197,7 @@ export function invitationFilename(guest: Pick<Guest, 'number' | 'person'>, ext 
 /** Versandliste (z. B. für Outlook-Serien-E-Mail): Adresse, Briefanrede und Dateiname je Gast. */
 export function mailingListCsv(guests: Guest[]): string {
   return toCsv([
-    ['Nr.', 'Anrede', 'Dienstgrad', 'Vorname', 'Nachname', 'E-Mail', 'Briefanrede', 'Einheit/Firma', 'Kategorie', 'Datei'],
+    ['Nr.', 'Anrede', 'Dienstgrad', 'Vorname', 'Nachname', 'E-Mail', 'Briefanrede', 'Einheit/Firma', 'Kategorie', 'Datei', 'Begleitung'],
     ...guests.map((g) => [
       g.number,
       g.person?.salutation ?? '',
@@ -205,6 +209,7 @@ export function mailingListCsv(guests: Guest[]): string {
       g.person?.company ?? '',
       g.category ?? '',
       invitationFilename(g),
+      companionsText(g.companions),
     ]),
   ]);
 }

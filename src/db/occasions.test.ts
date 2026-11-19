@@ -21,6 +21,7 @@ import {
   listOccasions,
   loadActiveOccasion,
   processOccasionScan,
+  setCompanionsAdmitted,
   setGuestCancelled,
   startEntry,
   undoAdmission,
@@ -193,6 +194,27 @@ describe('Einlass mit Einladung', () => {
     expect((await listGuests(o.id))[0]?.admittedAt).toBeUndefined();
     expect((await scan(encodeGuestPayload(g.token), o.id, at(2)))?.decision.outcome).toBe('granted');
     expect((await listOccasionLog(o.id)).map((e) => e.outcome)).toEqual(['admitted', 'undone', 'admitted']);
+  });
+
+  it('Begleitpersonen: kommen beim Scan mit, korrigierbar (auch mehr), Zurücknehmen setzt zurück', async () => {
+    const o = await createOccasion(base);
+    const g = await addGuest(o.id, { person: { firstName: 'Max', lastName: 'Mustermann', companionNames: [' Anna Muster ', ''] }, companions: 2 });
+    expect(g).toMatchObject({ companions: 2, person: { companionNames: ['Anna Muster'] } });
+    expect(JSON.stringify(await db.guests.toArray())).not.toContain('Anna');
+    await expect(setCompanionsAdmitted(g.id, 1)).rejects.toThrow('noch nicht eingelassen');
+    const ok = await scan(encodeGuestPayload(g.token), o.id, at(1));
+    expect(ok?.guest?.companionsAdmitted).toBe(2);
+    expect(await setCompanionsAdmitted(g.id, 1)).toBe(1);
+    expect(await setCompanionsAdmitted(g.id, 4)).toBe(4); // mehr als angemeldet: erlaubt
+    expect(await setCompanionsAdmitted(g.id, 99)).toBe(20);
+    expect((await listAdmittedPeople(o.id)).guests[0]?.companionsAdmitted).toBe(20);
+    await undoAdmission(g.id, at(2).getTime());
+    const afterUndo = (await listGuests(o.id))[0];
+    expect(afterUndo?.companions).toBe(2);
+    expect(afterUndo?.companionsAdmitted).toBeUndefined();
+    expect((await admitGuestManually(g.id, at(3))).guest?.companionsAdmitted).toBe(2);
+    await updateGuest(g.id, { person: { firstName: 'Max', lastName: 'Mustermann' }, companions: 0 });
+    expect((await listGuests(o.id))[0]?.companions).toBeUndefined();
   });
 
   it('Gästedaten löschen: Namen weg, Zahlen bleiben', async () => {

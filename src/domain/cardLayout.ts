@@ -474,13 +474,16 @@ export function cardValues(data: CardData): Record<string, string> {
 }
 
 /** Text eines Textfelds – oder null, wenn es ausgeblendet wird. */
+/** Platzhalter, die leer sein dürfen, ohne dass das Element als „leer“ gilt (z. B. keine Begleitung). */
+const OPTIONAL_PLACEHOLDERS = new Set(['begleitung']);
+
 export function cardText(element: CardElement, values: Record<string, string>): string | null {
   const template = element.text ?? '';
   let missing = false;
   const text = template.replace(/\{(\w+)\}/g, (match, key: string) => {
     const k = key.toLowerCase();
     if (!(k in values)) return match;
-    if (!values[k]) missing = true;
+    if (!values[k] && !OPTIONAL_PLACEHOLDERS.has(k)) missing = true;
     return values[k] ?? '';
   });
   if (missing && element.hideIfEmpty) return null;

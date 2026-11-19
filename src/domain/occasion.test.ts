@@ -3,6 +3,9 @@ import { parseAppCode } from './cardCode';
 import { scannedCardPayload } from './keyboardScan';
 import {
   findHolderMatches,
+  admissionTimes,
+  clampCompanions,
+  companionsText,
   admissionTimeline,
   decideGuestEntry,
   filterGuests,
@@ -68,6 +71,19 @@ describe('Kennzahlen und Listen', () => {
       { category: 'Ohne Kategorie', invited: 1, admitted: 0 },
       { category: 'Presse', invited: 1, admitted: 1 },
     ]);
+  });
+
+  it('Begleitpersonen: es zählen Personen, mehr als angemeldet zählt mit, Zeitverlauf gewichtet', () => {
+    const gs = [
+      { companions: 2, admittedAt: t(1), companionsAdmitted: 1 }, // erwartet 3, da 2
+      { companions: 1 }, // erwartet 2
+      { companions: 0, admittedAt: t(2), companionsAdmitted: 2 }, // mehr als angemeldet: erwartet 3, da 3
+      { companions: 3, cancelled: true },
+    ];
+    expect(occasionStats(gs)).toMatchObject({ invited: 8, admitted: 5, open: 3, cancelled: 1, admittedGuests: 2, admittedCompanions: 3, rate: 63 });
+    expect(admissionTimes(gs)).toHaveLength(5);
+    expect([companionsText(0), companionsText(1), companionsText(4)]).toEqual(['', 'eine Begleitperson', '4 Begleitpersonen']);
+    expect([clampCompanions('12'), clampCompanions(-1), clampCompanions('x'), clampCompanions(2.7)]).toEqual([9, 0, 0, 2]);
   });
 
   it('Namen mit Dienstgrad, ohne Personendaten die Nummer', () => {

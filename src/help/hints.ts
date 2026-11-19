@@ -70,6 +70,10 @@ export const HINTS = {
     text: 'Standardmäßig kommt beim Einlass nur hinein, wer auf der Gästeliste steht (Einladung oder „Karte … gilt“). Mit Häkchen gelten zusätzlich alle Dienstausweise (Karten) – jeder nur einmal. Erfasst wird im Einlass-Protokoll der Veranstaltung, nicht in der normalen Anwesenheit.',
     topic: 'einlass',
   },
+  guestCompanions: {
+    text: 'So viele Personen bringt der Gast mit. Beim Scan der Einladung werden sie automatisch mit eingelassen; kamen weniger oder kommt jemand nach, im Einlass unter „Eingelassen“ mit – / + anpassen. Namen sind freiwillig und erscheinen auf der Notfallliste.',
+    topic: 'einlass',
+  },
   occasionEntry: {
     text: 'Erscheint auf der Einladung (Platzhalter {einlass}). Gescannt werden kann auch davor und danach – der Einlass läuft, bis er beendet wird.',
     topic: 'einladungen',

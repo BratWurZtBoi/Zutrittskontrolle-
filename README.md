@@ -326,6 +326,13 @@ Für Feiern, Empfänge, Tage der offenen Tür … – getrennt von der normalen 
   E-Mail, Notiz – einzeln oder per **CSV-Import** (Vorlage zum Herunterladen, Vorschau mit Fehlern).
   Jeder Gast hat eine Nummer und einen eigenen QR-Code (`ZE1:…`, verschieden von Ausweisen).
   Einladungen lassen sich stornieren; Personendaten liegen verschlüsselt auf dem Gerät.
+- **Begleitpersonen:** je Gast „keine“ bis „+ 9“ und optional ihre Namen (verschlüsselt), auch per CSV
+  (Spalten „Begleitpersonen“ und „Namen der Begleitpersonen“, durch Komma getrennt). Beim Scan der Einladung
+  kommen alle angemeldeten Begleitpersonen automatisch mit („Willkommen … + 2 Begleitpersonen“, auf dem
+  Gästebildschirm „… und Begleitung“). Unter **Eingelassen** lässt sich die Zahl mit **– / +** anpassen
+  (weniger gekommen, jemand kommt nach; mehr als angemeldet nach Rückfrage, mit Hinweis). Statusleiste, Teilnahme
+  und Zeitverlauf zählen **Personen**; die **Notfallliste** hat je Begleitperson eine eigene Zeile zum Abhaken.
+  Platzhalter **{begleitung}** in der Einladung: „und eine Begleitperson“ bzw. leer.
 - **Bereits erfasste Personen** (mit Karte) erkennt **+ Gast** schon beim Tippen des Namens: **Einladung**
   übernimmt die Daten (Einladung mit QR-Code), **„Karte M-001 gilt“** lässt die Person mit ihrer vorhandenen
   Karte hinein – ohne Einladung, nur einmal, auch wenn Dienstausweise sonst nicht gelten. In der Liste steht
@@ -471,6 +478,7 @@ Merge nach `main` automatisch gebaut.
 | CSV-Import: Personen ohne Gruppe unter „Nicht zugeordnet“, später zuordnen | ✅ |
 | Veranstaltungen: Gästeliste, Einladungs-Codes nur einmal gültig, Einlass-Dashboard, Teilnahme | ✅ |
 | Einladungen: Editor (A4/A5/A6/DIN lang), Serienbrief, PDF je Gast (ZIP/Ordner), Versandliste | ✅ |
+| Begleitpersonen: Anzahl + Namen, automatisch mit eingelassen, korrigierbar, Notfallliste je Person | ✅ |
 | Integrierte Hilfe: „?“ mit Anleitungen zur Seite, Hilfe-Seite mit Suche, Admin/Bediener getrennt | ✅ |
 | „Erste Schritte“-Checkliste (erkennt Erledigtes selbst) und ⓘ-Erklärungen an Feldern | ✅ |
 

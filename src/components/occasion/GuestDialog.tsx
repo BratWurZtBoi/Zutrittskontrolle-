@@ -2,9 +2,10 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'rea
 import { listCards, type CardWithGroup } from '../../db/cards';
 import { addGuest, deleteGuest, setGuestCancelled, updateGuest } from '../../db/occasions';
 import { formatTime } from '../../domain/dates';
-import { GUEST_STATUS_LABEL, findHolderMatches, guestStatus, type Guest, type GuestPerson } from '../../domain/occasion';
+import { GUEST_STATUS_LABEL, MAX_COMPANIONS, findHolderMatches, guestStatus, type Guest, type GuestPerson } from '../../domain/occasion';
 import { holderName, holderUnitLine } from '../../domain/texts';
 import { useSecureLiveQuery } from '../../hooks/useSecureLiveQuery';
+import { InfoTip } from '../InfoTip';
 import { QrImage } from '../QrImage';
 
 interface Props {
@@ -44,6 +45,8 @@ export function GuestDialog({ occasionId, guest, categories, admitOption = false
   const [person, setPerson] = useState<GuestPerson>(guest?.person ?? EMPTY);
   const [category, setCategory] = useState(guest?.category ?? '');
   const [admit, setAdmit] = useState(true);
+  const [companions, setCompanions] = useState(guest?.companions ?? 0);
+  const [companionNames, setCompanionNames] = useState((guest?.person?.companionNames ?? []).join('\n'));
   // Zutritt: mit Einladung (QR-Code) oder mit einer vorhandenen Karte
   const [linked, setLinked] = useState<LinkedCard | null>(
     guest?.cardId ? { id: guest.cardId, number: guest.cardNumber ?? '?', usable: true } : null,
@@ -78,9 +81,9 @@ export function GuestDialog({ occasionId, guest, categories, admitOption = false
     setBusy(true);
     try {
       const cardId = useCard && linked ? linked.id : null;
-      const saved = guest
-        ? await updateGuest(guest.id, { person, category, cardId })
-        : await addGuest(occasionId, { person, category, cardId: cardId ?? undefined });
+      const names = companions > 0 ? companionNames.split('\n') : [];
+      const data = { person: { ...person, companionNames: names }, category, companions };
+      const saved = guest ? await updateGuest(guest.id, { ...data, cardId }) : await addGuest(occasionId, { ...data, cardId: cardId ?? undefined });
       onSaved?.(saved, admitOption && admit);
       onClose();
     } catch (err) {
@@ -153,6 +156,24 @@ export function GuestDialog({ occasionId, guest, categories, admitOption = false
               Notiz
               <input value={person.note ?? ''} onChange={(e) => set({ note: e.target.value })} autoComplete="off" />
             </label>
+            <label>
+              <span>
+                Begleitpersonen <InfoTip hint="guestCompanions" />
+              </span>
+              <select value={companions} onChange={(e) => setCompanions(Number(e.target.value))}>
+                {Array.from({ length: MAX_COMPANIONS + 1 }, (_, n) => (
+                  <option key={n} value={n}>
+                    {n === 0 ? 'keine' : `+ ${n}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {companions > 0 && (
+              <label className="form-grid-wide">
+                Namen der Begleitpersonen (optional, je Zeile einer)
+                <textarea rows={Math.min(companions, 4)} value={companionNames} onChange={(e) => setCompanionNames(e.target.value)} autoComplete="off" />
+              </label>
+            )}
           </div>
         )}
         {matches.length > 0 && (
