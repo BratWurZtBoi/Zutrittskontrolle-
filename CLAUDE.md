@@ -72,6 +72,14 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
   `cardsAllowed`. **Dienstausweise gelten je Veranstaltung nur einmal** (`cardAdmissions` aus dem Log, erster
   Einlass seit „Zurücknehmen“ `undoCardAdmission`); `repeatEntryDecision` gemeinsam für Gäste und Karten,
   `ScanOutcome.admittedAt` für „Bereits eingelassen um …“. Einladungsdruck/PDF/Versandliste ohne Karten-Gäste.
+  **Begleitpersonen:** `GuestRecord.companions` (angemeldet 0–`MAX_COMPANIONS`=9, unverschlüsselt) und
+  `companionsAdmitted` (beim Einlass per `admit()` = angemeldet, `setCompanionsAdmitted` 0–20, Zurücknehmen
+  entfernt es), Namen verschlüsselt in `GuestPerson.companionNames`. `occasionStats` zählt **Personen**
+  (`guestPersons`: erwartet = 1 + max(angemeldet, eingelassen)), `admissionTimes` gewichtet den Zeitverlauf.
+  Anzeige: Dashboard „+ 2 Begleitpersonen“ beim Namen, Gästebildschirm `PersonForLayout.withCompanions` →
+  „… und Begleitung“ an `{name}`, Liste „Eingelassen“ mit `CompanionStepper` (–/+, mehr als angemeldet mit
+  Rückfrage/Hinweis), Notfallliste je Begleitperson eine Zeile. Einladung `{begleitung}` (in `cardText` ein
+  optionaler Platzhalter: leer zählt nicht als „fehlend“), CSV-Spalten Begleitpersonen/Namen, Versandliste „Begleitung“.
   **Einladungen** (Serienbrief): `occasion.invitation` = `CardLayout` (Formate `INVITATION_FORMATS`
   a4/a5/a6/dl, `saveInvitation`), Logik `domain/invitation.ts` (Platzhalter `invitationValues` inkl.
   `{briefanrede}`, Vorlagen/Bausteine, `selectInvitationGuests`, `invitationFilename`, `mailingListCsv`).
@@ -307,7 +315,9 @@ Android-Tablets und einem Windows-Rechner mit Webcam. Betrieb immer mit **zwei B
 22. ✅ Rückmeldungen: Dienstausweis bei Veranstaltungen nur einmal („Bereits eingelassen“), Gast hinzufügen erkennt
     vorhandene Personen (Einladung oder „Karte gilt“), neue QR-Codes für viele Karten mit „Alte Karte!“,
     Druckseiten klarer (A4-Bogen vs. Kartendrucker, Seitenzahl, kleine Einladungen mehrfach je A4) (Version 0.22).
-    Später: Begleitpersonen, Kategorie-Farben, Abendkasse, Outlook-Hilfe.
+23. ✅ Begleitpersonen bei Veranstaltungen: Anzahl + optional Namen, beim Scan automatisch mit eingelassen,
+    – / + in „Eingelassen“, Zählung in Personen, Notfallliste je Person, {begleitung} in Einladungen (Version 0.23).
+    Später: Kategorie-Farben, Abendkasse, Outlook-Hilfe.
 
 Farben in `styles.css` nur über Variablen (`--surface`, `--text`, `--danger-fg` …), damit beide
 Layouts funktionieren. Dunkle Bereiche (Scanner, Navigation, Präsentation) sind bewusst fest dunkel.

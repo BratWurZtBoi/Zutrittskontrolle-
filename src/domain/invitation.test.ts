@@ -22,6 +22,11 @@ describe('Einladungen', () => {
     expect(v).toMatchObject({ name: 'Oberst Max Mustermann', nr: '7', einlass: '17:30 bis 19:00 Uhr', ort: 'Halle 1', einheit: 'Stab' });
     const text = { id: 't', type: 'text' as const, x: 0, y: 0, w: 50, size: 3, align: 'left' as const, bold: false, text: '{briefanrede},\nEinlass: {einlass}' };
     expect(cardText(text, v)).toBe('Sehr geehrter Herr Oberst Mustermann,\nEinlass: 17:30 bis 19:00 Uhr');
+    // {begleitung}: „und eine Begleitperson“ bzw. leer – ohne doppelte Leerzeichen, Element bleibt sichtbar
+    const body = { ...text, text: 'wir laden Sie {begleitung} herzlich ein.', hideIfEmpty: true };
+    expect(cardText(body, v)).toBe('wir laden Sie herzlich ein.');
+    expect(cardText(body, invitationValues(occasion, { ...guest, companions: 1 }, ''))).toBe('wir laden Sie und eine Begleitperson herzlich ein.');
+    expect(cardText(body, invitationValues(occasion, { ...guest, companions: 3 }, ''))).toBe('wir laden Sie und 3 Begleitpersonen herzlich ein.');
   });
 
   it('Standard-Einladung A5 hoch, Formate A4/DIN lang', () => {
@@ -36,7 +41,9 @@ describe('Einladungen', () => {
     expect(invitationFilename({ number: 3, person: { firstName: 'Jürgen', lastName: 'Größe-Weiß' } })).toBe('Einladung_003_Groesse-Weiss_Juergen.pdf');
     expect(invitationFilename({ number: 4 })).toBe('Einladung_004.pdf');
     const csv = mailingListCsv([{ ...guest, id: 'g', occasionId: 'o', token: 't', hasPerson: true, createdAt: 0, updatedAt: 0 }]);
-    expect(csv.slice(1).split('\r\n')[1]).toBe('7;Herr;Oberst;Max;Mustermann;max@example.com;Sehr geehrter Herr Oberst Mustermann;Stab;VIP;Einladung_007_Mustermann_Max.pdf');
+    expect(csv.slice(1).split('\r\n')[1]).toBe('7;Herr;Oberst;Max;Mustermann;max@example.com;Sehr geehrter Herr Oberst Mustermann;Stab;VIP;Einladung_007_Mustermann_Max.pdf;');
+    const withCompanion = mailingListCsv([{ ...guest, companions: 2, id: 'g', occasionId: 'o', token: 't', hasPerson: true, createdAt: 0, updatedAt: 0 }]);
+    expect(withCompanion.slice(1).split('\r\n')[1]?.endsWith(';2 Begleitpersonen')).toBe(true);
   });
 });
 

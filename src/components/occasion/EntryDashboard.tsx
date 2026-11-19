@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { undoAdmission, undoCardAdmission } from '../../db/occasions';
+import { setCompanionsAdmitted, undoAdmission, undoCardAdmission } from '../../db/occasions';
 import type { AppSettings } from '../../db/settings';
 import { splitTopGroups } from '../../domain/overview';
 import {
+  MAX_COMPANIONS_ADMITTED,
   cardAdmissions,
+  companionsText,
   NO_CATEGORY,
   filterGuests,
   guestCategories,
@@ -36,7 +38,12 @@ export function EntryStatusBar({ occasion, settings, guests, deniedCount, onShow
     stats.perCategory.filter((c) => c.admitted > 0).map((c) => ({ ...c, count: c.admitted })),
     3,
   );
-  const breakdown = stats.perCategory.map((c) => `${c.category}: ${c.admitted}/${c.invited}`).join(', ');
+  const breakdown = [
+    stats.admittedCompanions > 0 ? `${stats.admittedGuests} Gäste + ${stats.admittedCompanions} Begleitung` : '',
+    stats.perCategory.map((c) => `${c.category}: ${c.admitted}/${c.invited}`).join(', '),
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <div className="dash-status entry-status no-print">
       <div className="ds-mode entry-name" style={{ borderColor: occasion.color }} title={occasion.name}>
@@ -163,6 +170,7 @@ export function EntryList({ occasion, tab, onTab, guests, log, onAdmit }: ListPr
                     <th className="th-plain">Name</th>
                     <th className="th-plain col-optional">Einheit/Firma</th>
                     <th className="th-plain">Kategorie</th>
+                    <th className="th-plain">Begleitung</th>
                     <th className="th-plain" aria-label="Aktion" />
                   </tr>
                 </thead>
@@ -176,6 +184,9 @@ export function EntryList({ occasion, tab, onTab, guests, log, onAdmit }: ListPr
                       <td className="cell-strong">{guestListName(g)}</td>
                       <td className="muted cell-ellipsis col-optional">{g.person?.company ?? ''}</td>
                       <td>{g.category ?? ''}</td>
+                      <td>
+                        <CompanionStepper guest={g} />
+                      </td>
                       <td className="cell-action">
                         <button
                           type="button"
@@ -197,6 +208,7 @@ export function EntryList({ occasion, tab, onTab, guests, log, onAdmit }: ListPr
                       <td className="cell-strong">{e.name ?? (e.nameLocked ? '🔒 Name gesperrt' : `Karte ${e.cardNumber}`)}</td>
                       <td className="muted col-optional">Karte {e.cardNumber}</td>
                       <td>Dienstausweis</td>
+                      <td />
                       <td className="cell-action">
                         <button
                           type="button"
@@ -234,7 +246,14 @@ export function EntryList({ occasion, tab, onTab, guests, log, onAdmit }: ListPr
                   {open.map((g) => (
                     <tr key={g.id}>
                       <td>{g.number}</td>
-                      <td className="cell-strong">{guestListName(g)}</td>
+                      <td className="cell-strong">
+                        {guestListName(g)}
+                        {(g.companions ?? 0) > 0 && (
+                          <span className="badge companions-badge" title={`kommt mit ${companionsText(g.companions)}`}>
+                            +{g.companions}
+                          </span>
+                        )}
+                      </td>
                       <td className="muted cell-ellipsis col-optional">{g.person?.company ?? ''}</td>
                       <td>{g.category ?? ''}</td>
                       <td className="cell-action">
@@ -281,5 +300,39 @@ export function EntryList({ occasion, tab, onTab, guests, log, onAdmit }: ListPr
         )}
       </div>
     </section>
+  );
+}
+
+/** Eingelassene Begleitpersonen anpassen: weniger gekommen (–) oder jemand kommt nach (+, auch mehr als angemeldet). */
+function CompanionStepper({ guest }: { guest: Guest }) {
+  const count = guest.companionsAdmitted ?? 0;
+  const announced = guest.companions ?? 0;
+  const more = count - announced;
+  const change = (n: number) => void setCompanionsAdmitted(guest.id, n).catch((err: unknown) => window.alert(err instanceof Error ? err.message : String(err)));
+  return (
+    <span className="companion-stepper">
+      <button type="button" className="btn btn-small" aria-label={`Eine Begleitperson weniger (${guestListName(guest)})`} disabled={count <= 0} onClick={() => change(count - 1)}>
+        –
+      </button>
+      <span
+        className={more > 0 ? 'companion-stepper-count companion-count-more' : 'companion-stepper-count'}
+        title={`angemeldet: ${announced}${more > 0 ? ` – ${more} mehr als angemeldet` : ''}`}
+      >
+        {count > 0 ? `+${count}` : '0'}
+      </span>
+      <button
+        type="button"
+        className="btn btn-small"
+        aria-label={`Eine Begleitperson mehr (${guestListName(guest)})`}
+        disabled={count >= MAX_COMPANIONS_ADMITTED}
+        onClick={() => {
+          if (count >= announced && !window.confirm(`${guestListName(guest)} hat ${announced ? companionsText(announced) : 'keine Begleitperson'} angemeldet. Trotzdem eine weitere Begleitperson einlassen?`)) return;
+          change(count + 1);
+        }}
+      >
+        +
+      </button>
+      {more > 0 && <span className="companion-more">{more} mehr als angemeldet</span>}
+    </span>
   );
 }

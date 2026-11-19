@@ -23,6 +23,8 @@ import {
   GUEST_STATUS_LABEL,
   NO_CATEGORY,
   admissionTimeline,
+  admissionTimes,
+  companionsText,
   filterGuests,
   guestCategories,
   guestListName,
@@ -167,7 +169,7 @@ function GuestsTab({ occasion, guests }: { occasion: Occasion; guests: Guest[] }
     try {
       await addGuests(
         occasion.id,
-        valid.map((r) => ({ person: r.person, category: r.category })),
+        valid.map((r) => ({ person: r.person, category: r.category, companions: r.companions })),
       );
       setMessage(`${valid.length} Gäste importiert.`);
       setImporting(null);
@@ -286,6 +288,11 @@ function GuestsTab({ occasion, guests }: { occasion: Occasion; guests: Guest[] }
                   <td className="cell-strong">
                     {g.person?.salutation ? <span className="muted">{g.person.salutation} </span> : null}
                     {guestListName(g)}
+                    {(g.companions ?? 0) > 0 && (
+                      <span className="badge companions-badge" title={`kommt mit ${companionsText(g.companions)}`}>
+                        +{g.companions}
+                      </span>
+                    )}
                     {g.cardId && (
                       <span className="badge guest-card-badge" title="Kommt mit der vorhandenen Karte (keine Einladung nötig)">
                         Karte {g.cardNumber}
@@ -456,7 +463,7 @@ function InvitationsTab({ occasion, guests }: { occasion: Occasion; guests: Gues
 function ParticipationTab({ occasion, guests }: { occasion: Occasion; guests: Guest[] }) {
   const log = useOccasionLog(occasion.id) ?? [];
   const stats = occasionStats(guests);
-  const timeline = admissionTimeline(guests.flatMap((g) => (g.admittedAt !== undefined && !g.cancelled ? [g.admittedAt] : [])));
+  const timeline = admissionTimeline(admissionTimes(guests));
   const peak = Math.max(1, ...timeline.map((b) => b.count));
   const denied = log.filter((e) => e.outcome === 'denied');
   const viaCard = new Set(log.filter((e) => e.outcome === 'admitted' && e.cardId).map((e) => e.cardId)).size;
@@ -470,6 +477,11 @@ function ParticipationTab({ occasion, guests }: { occasion: Occasion; guests: Gu
         <span className="chip chip-present">
           <strong>{stats.admitted}</strong> eingelassen ({stats.rate} %)
         </span>
+        {stats.admittedCompanions > 0 && (
+          <span className="chip">
+            davon <strong>{stats.admittedCompanions}</strong> Begleitpersonen
+          </span>
+        )}
         <span className="chip">
           <strong>{stats.open}</strong> noch offen
         </span>

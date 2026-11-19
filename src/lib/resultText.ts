@@ -1,7 +1,7 @@
 /** Texte und Farbton für ein Scan-Ergebnis – gemeinsam für Scanner, Dashboard und Präsentation. */
 import type { ScanOutcome } from '../db/scans';
 import { formatTime } from '../domain/dates';
-import { guestName } from '../domain/occasion';
+import { companionsText, guestName } from '../domain/occasion';
 import { directionText, holderName, reasonText } from '../domain/texts';
 
 export type ResultTone = 'ok' | 'out' | 'deny' | 'warn';
@@ -66,6 +66,7 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
   }
   if (result.occasion) {
     const how = result.manual ? ' (von Hand)' : result.card ? ' mit Dienstausweis' : '';
+    // Begleitpersonen stehen beim Namen (Dashboard: „+ 2 Begleitpersonen“, Gästebildschirm: „und Begleitung“)
     return { tone: 'ok', title: 'Willkommen', detail: `Einlass ${result.occasion.name}${how} · ${formatTime(result.at)} Uhr` };
   }
   const manual = result.event?.source === 'manual' ? ' (manuell)' : '';
@@ -78,7 +79,12 @@ export function describeOutcome(result: ScanOutcome, audience: Audience = 'staff
 /** Anzeigename: Name der Person, sonst Kartennummer. */
 export function displayName(result: ScanOutcome, audience: Audience = 'staff'): string | undefined {
   const { card, guest } = result;
-  if (guest) return guestName(guest.person) ?? `Gast Nr. ${guest.number}`;
+  if (guest) {
+    const name = guestName(guest.person) ?? `Gast Nr. ${guest.number}`;
+    const plus = result.decision.outcome === 'granted' ? (guest.companionsAdmitted ?? 0) : 0;
+    if (!plus) return name;
+    return audience === 'guest' ? `${name} und Begleitung` : `${name} + ${companionsText(plus)}`;
+  }
   if (!card || hideIdentityFor(audience, result)) return undefined;
   return card.holder ? holderName(card.holder) : `Karte ${card.number}`;
 }

@@ -106,6 +106,13 @@ describe('Scan-Anzeige für den Gästebildschirm', () => {
     expect(r).toMatchObject({ layoutId: 'vip', kind: 'in', photo: input.person?.photo, groupName: 'Besucher' });
   });
 
+  it('Veranstaltung mit Begleitpersonen: „… und Begleitung“ hinter dem Namen (nicht ohne Namen)', () => {
+    const r = buildLayoutResult(vip, { ...input, person: { ...input.person, withCompanions: true } });
+    expect(r.texts.welcome).toBe('Schön, dass Sie da sind, Erika Musterfrau und Begleitung von Vertrieb.');
+    const none = buildLayoutResult({ ...vip, nameFormat: 'none' }, { ...input, person: { ...input.person, withCompanions: true } });
+    expect(none.texts.title).toBe('Hallo!');
+  });
+
   it('Elemente nur bei den gewählten Ergebnissen', () => {
     const out = buildLayoutResult(vip, { ...input, kind: 'out', tone: 'out' });
     expect(out.texts.welcome).toBeUndefined();
