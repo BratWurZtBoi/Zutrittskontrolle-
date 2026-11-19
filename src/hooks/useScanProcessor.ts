@@ -19,7 +19,7 @@ const SAME_CODE_HOLD_MS = 2500;
 function feedbackKind(o: ScanOutcome, staffView: boolean): FeedbackKind {
   if (o.decision.outcome === 'duplicate') return 'duplicate';
   if (staffView && o.decision.reason === 'ALREADY_ADMITTED') return 'alert';
-  if (staffView && o.decision.reason === 'CARD_LOST') return 'alert';
+  if (staffView && (o.decision.reason === 'CARD_LOST' || o.decision.reason === 'OLD_CARD')) return 'alert';
   if (o.decision.outcome === 'pending') return 'attention';
   if (o.decision.outcome === 'denied') return 'denied';
   return o.decision.direction === 'out' ? 'granted-out' : 'granted-in';

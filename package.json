@@ -2,7 +2,7 @@
   "name": "zutrittskontrolle",
   "productName": "Zutrittskontrolle",
   "private": true,
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Offlinefähige Zutritts- und Anwesenheitskontrolle (PWA)",
   "author": "Zutrittskontrolle",
   "main": "desktop/main.cjs",

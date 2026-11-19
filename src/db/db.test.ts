@@ -12,6 +12,7 @@ import {
   listCards,
   markCardsPrinted,
   reissueToken,
+  reissueTokens,
   returnCard,
   setCardBlocked,
   suggestNumbers,
@@ -150,8 +151,29 @@ describe('Scan-Verarbeitung', () => {
     const reissued = await reissueToken(card!.id);
     expect(reissued.blocked).toBe(false);
     expect(reissued.printedAt).toBeUndefined(); // neuer Code → neu drucken
-    expect((await processScan(oldCode, opts)).decision.reason).toBe('UNKNOWN_CARD');
+    // alter Code: abgewiesen als „Alte Karte“ – mit Karte im Protokoll (statt „unbekannt“)
+    const old = await processScan(oldCode, opts);
+    expect(old.decision.reason).toBe('OLD_CARD');
+    expect(old.card?.number).toBe(card!.number);
+    expect(old.event).toMatchObject({ outcome: 'denied', reason: 'OLD_CARD', cardId: card!.id });
     expect((await processScan(encodeCardPayload(reissued.token), opts)).decision.outcome).toBe('granted');
+  });
+
+  it('neue QR-Codes für mehrere Karten: alte Codes → „Alte Karte“, neu drucken, Sperren bleiben', async () => {
+    const cards = await createCards({ groupId: staff.id, count: 3 });
+    for (const c of cards) await updateCard(c.id, { accessGranted: true, holder: max });
+    await markCardsPrinted(cards.map((c) => c.id), 5000);
+    await setCardBlocked(cards[2]!.id, true);
+    expect(await reissueTokens(cards.map((c) => c.id), 6000)).toBe(3);
+    const after = await Promise.all(cards.map((c) => db.cards.get(c.id)));
+    for (const [i, rec] of after.entries()) {
+      expect(rec?.token).not.toBe(cards[i]!.token);
+      expect(rec?.printedAt).toBeUndefined();
+      expect(rec?.oldTokens).toEqual([cards[i]!.token]);
+    }
+    expect(after[2]?.blocked).toBe(true);
+    expect((await processScan(encodeCardPayload(cards[0]!.token), opts)).decision.reason).toBe('OLD_CARD');
+    expect((await processScan(encodeCardPayload(after[0]!.token), opts)).decision.outcome).toBe('granted');
   });
 
   it('Rückgabe bucht aus und entfernt Personendaten, Historie bleibt lesbar', async () => {

@@ -3,7 +3,7 @@ import { encodeCardPayload, encodeGuestPayload } from '../domain/cardCode';
 import type { Group } from '../domain/types';
 import { createVault } from '../security/crypto';
 import { setDataKeyForTests } from '../security/session';
-import { createCards, updateCard } from './cards';
+import { createCards, issueReplacementCard, reissueToken, reportCardLost, returnCard, updateCard } from './cards';
 import { clearAllData, db } from './db';
 import { ensureDefaultGroups, listGroups } from './groups';
 import {
@@ -24,6 +24,8 @@ import {
   setGuestCancelled,
   startEntry,
   undoAdmission,
+  undoCardAdmission,
+  updateGuest,
   updateOccasion,
 } from './occasions';
 import { listPresentCards, listRecentEvents } from './scans';
@@ -121,6 +123,65 @@ describe('Einlass mit Einladung', () => {
     expect(await listPresentCards()).toEqual([]);
     const people = await listAdmittedPeople(o.id);
     expect(people.cards.map((c) => c.card.holder?.lastName)).toEqual(['Probe']);
+  });
+
+  it('Dienstausweis gilt je Veranstaltung nur einmal; Zurücknehmen macht ihn wieder gültig', async () => {
+    const o = await createOccasion({ ...base, cardsAllowed: true });
+    const [card] = await createCards({ groupId: staff.id, count: 1 });
+    await updateCard(card!.id, { accessGranted: true, holder: { firstName: 'Lena', lastName: 'Probe' } });
+    const code = encodeCardPayload(card!.token);
+    expect((await scan(code, o.id, at(1)))?.decision.outcome).toBe('granted');
+    const again = await scan(code, o.id, at(20));
+    expect(again).toMatchObject({ decision: { outcome: 'denied', reason: 'ALREADY_ADMITTED' }, admittedAt: at(1).getTime() });
+    await undoCardAdmission(o.id, card!.id, at(21).getTime());
+    expect((await listAdmittedPeople(o.id)).cards).toEqual([]);
+    expect((await scan(code, o.id, at(22)))?.decision.outcome).toBe('granted');
+    expect((await listOccasionLog(o.id)).map((e) => [e.outcome, e.reason])).toEqual([
+      ['admitted', 'OK'],
+      ['denied', 'ALREADY_ADMITTED'],
+      ['undone', 'ADMISSION_UNDONE'],
+      ['admitted', 'OK'],
+    ].reverse());
+  });
+
+  it('Gast mit vorhandener Karte: Karte gilt (auch ohne „Dienstausweise“), nur einmal, nicht nach Personenwechsel', async () => {
+    const o = await createOccasion(base);
+    const [card, other] = await createCards({ groupId: staff.id, count: 2 });
+    await updateCard(card!.id, { accessGranted: false, holder: { rank: 'Hptm', firstName: 'Lena', lastName: 'Probe' } });
+    const g = await addGuest(o.id, { person: { rank: 'Hptm', firstName: 'Lena', lastName: 'Probe' }, category: 'VIP', cardId: card!.id });
+    expect(g).toMatchObject({ cardId: card!.id, cardNumber: card!.number });
+    await expect(addGuest(o.id, { person: { firstName: 'X', lastName: 'Y' }, cardId: card!.id })).rejects.toThrow('schon auf der Gästeliste');
+    await expect(addGuest(o.id, { person: { firstName: 'X', lastName: 'Y' }, cardId: other!.id })).rejects.toThrow('keiner Person');
+    const code = encodeCardPayload(card!.token);
+    // Gästeliste entscheidet: auch ohne Zutrittsberechtigung der Karte und ohne „Dienstausweise gelten“
+    const ok = await scan(code, o.id, at(1));
+    expect(ok).toMatchObject({ decision: { outcome: 'granted' }, guest: { number: g.number, admittedAt: at(1).getTime() }, card: { number: card!.number } });
+    expect(await scan(code, o.id, at(30))).toMatchObject({ decision: { reason: 'ALREADY_ADMITTED' }, admittedAt: at(1).getTime() });
+    // die Einladung desselben Gastes gilt dann auch nicht mehr
+    expect((await scan(encodeGuestPayload(g.token), o.id, at(31)))?.decision.reason).toBe('ALREADY_ADMITTED');
+    await undoAdmission(g.id, at(32).getTime());
+    // Karte zurückgegeben und neu vergeben → andere Person: abgewiesen
+    await returnCard(card!.id, at(33).getTime());
+    await updateCard(card!.id, { accessGranted: true, holder: { firstName: 'Tom', lastName: 'Testmann' } });
+    expect((await scan(code, o.id, at(34)))?.decision.reason).toBe('CARD_PERSON_CHANGED');
+    // Verknüpfung lösen → Gast braucht wieder die Einladung, Karte gilt nicht
+    await updateGuest(g.id, { person: { firstName: 'Lena', lastName: 'Probe' }, cardId: null });
+    expect((await listGuests(o.id))[0]?.cardId).toBeUndefined();
+    expect((await scan(code, o.id, at(40)))?.decision.reason).toBe('CARDS_NOT_ADMITTED');
+  });
+
+  it('Gast mit Karte: Ersatzkarte gilt, verlorene Karte und alter QR-Code nicht', async () => {
+    const o = await createOccasion(base);
+    const [card] = await createCards({ groupId: staff.id, count: 1 });
+    await updateCard(card!.id, { accessGranted: true, holder: { firstName: 'Lena', lastName: 'Probe' } });
+    await addGuest(o.id, { person: { firstName: 'Lena', lastName: 'Probe' }, cardId: card!.id });
+    await reportCardLost(card!.id);
+    expect((await scan(encodeCardPayload(card!.token), o.id, at(1)))?.decision.reason).toBe('CARD_LOST');
+    const replacement = await issueReplacementCard(card!.id);
+    expect((await scan(encodeCardPayload(replacement.token), o.id, at(2)))?.decision.outcome).toBe('granted');
+    const fresh = await reissueToken(replacement.id);
+    expect((await scan(encodeCardPayload(replacement.token), o.id, at(5)))?.decision.reason).toBe('OLD_CARD');
+    expect((await scan(encodeCardPayload(fresh.token), o.id, at(6)))?.decision.reason).toBe('ALREADY_ADMITTED');
   });
 
   it('von Hand einlassen, zurücknehmen, danach wieder gültig', async () => {

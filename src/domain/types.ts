@@ -124,6 +124,8 @@ export interface CardRecord {
   testData?: boolean;
   /** Zuletzt gedruckt (nach Rückfrage beim Drucken); neuer QR-Code setzt das zurück. */
   printedAt?: number;
+  /** Frühere QR-Codes (neueste zuletzt) – ein Scan zeigt „Alte Karte“ statt „unbekannt“. */
+  oldTokens?: string[];
   createdAt: number;
   updatedAt: number;
 }
@@ -177,7 +179,11 @@ export type ReasonCode =
   /** Dienstausweise gelten bei dieser Veranstaltung nicht. */
   | 'CARDS_NOT_ADMITTED'
   /** Einlass zurückgenommen (Fehlbedienung). */
-  | 'ADMISSION_UNDONE';
+  | 'ADMISSION_UNDONE'
+  /** Gast mit Karte: die Karte gehört inzwischen einer anderen Person. */
+  | 'CARD_PERSON_CHANGED'
+  /** Alter QR-Code: für diese Karte wurde ein neuer QR-Code ausgestellt. */
+  | 'OLD_CARD';
 
 /** 'pending' = wartet auf Bestätigung durch den Bediener (noch nicht gebucht). */
 export type Outcome = 'granted' | 'denied' | 'duplicate' | 'pending';

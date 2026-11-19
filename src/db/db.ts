@@ -59,6 +59,10 @@ export class ZkDatabase extends Dexie {
       guests: 'id, occasionId, &token',
       occasionLog: '++seq, occasionId',
     });
+    // v6: alte QR-Codes je Karte (nach „Neuer QR-Code“) erkennen → „Alte Karte“ statt „unbekannt“
+    this.version(6).stores({
+      cards: 'id, &number, &token, groupId, *oldTokens',
+    });
   }
 }
 

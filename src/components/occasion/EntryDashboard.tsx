@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { undoAdmission } from '../../db/occasions';
+import { undoAdmission, undoCardAdmission } from '../../db/occasions';
 import type { AppSettings } from '../../db/settings';
 import { splitTopGroups } from '../../domain/overview';
 import {
+  cardAdmissions,
   NO_CATEGORY,
   filterGuests,
   guestCategories,
@@ -110,15 +111,8 @@ export function EntryList({ occasion, tab, onTab, guests, log, onAdmit }: ListPr
   const filtered = useMemo(() => filterGuests(all, { query, status: 'all', category }), [all, query, category]);
   const admitted = filtered.filter((g) => g.admittedAt !== undefined && !g.cancelled).sort((a, b) => b.admittedAt! - a.admittedAt!);
   const open = sortGuestsByName(filtered.filter((g) => g.admittedAt === undefined && !g.cancelled));
-  // Mit Dienstausweis eingelassen (wenn erlaubt): je Karte der letzte Einlass
-  const cardEntries = useMemo(() => {
-    const seen = new Set<string>();
-    return (log ?? []).filter((e) => {
-      if (e.outcome !== 'admitted' || !e.cardId || seen.has(e.cardId)) return false;
-      seen.add(e.cardId);
-      return true;
-    });
-  }, [log]);
+  // Mit Dienstausweis eingelassen (ohne Gästeliste): je Karte der aktuelle Einlass, neueste zuerst
+  const cardEntries = useMemo(() => [...cardAdmissions(log ?? []).values()].sort((a, b) => b.timestamp - a.timestamp), [log]);
   const cards = category ? [] : cardEntries.filter((e) => !q || `${e.name ?? ''} ${e.cardNumber ?? ''} ${e.category ?? ''}`.toLowerCase().includes(q));
   const denied = (log ?? []).filter(
     (e) =>
@@ -203,7 +197,18 @@ export function EntryList({ occasion, tab, onTab, guests, log, onAdmit }: ListPr
                       <td className="cell-strong">{e.name ?? (e.nameLocked ? '🔒 Name gesperrt' : `Karte ${e.cardNumber}`)}</td>
                       <td className="muted col-optional">Karte {e.cardNumber}</td>
                       <td>Dienstausweis</td>
-                      <td />
+                      <td className="cell-action">
+                        <button
+                          type="button"
+                          className="btn btn-small"
+                          title="Fehlbedienung: Ausweis gilt danach wieder"
+                          onClick={() =>
+                            window.confirm(`Einlass von ${e.name ?? `Karte ${e.cardNumber}`} zurücknehmen?`) && void undoCardAdmission(occasion.id, e.cardId!)
+                          }
+                        >
+                          Zurücknehmen
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

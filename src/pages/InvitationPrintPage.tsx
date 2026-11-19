@@ -30,7 +30,8 @@ export function InvitationPrintPage() {
   const settings = useSettings();
   const selection = (INVITATION_SELECTIONS.some((s) => s.value === params.get('auswahl')) ? params.get('auswahl') : 'all') as InvitationSelection;
   const category = params.get('kategorie') ?? '';
-  const [sheet, setSheet] = useState(false);
+  // kleine Formate (z. B. A6) standardmäßig mehrere je A4-Blatt – spart Papier und Seiten im PDF
+  const [sheet, setSheet] = useState(true);
   const layout = occasion ? (occasion.invitation ?? defaultInvitation(occasion.id)) : undefined;
   const chosen = useMemo(() => selectInvitationGuests(guests ?? [], selection, category), [guests, selection, category]);
   if (!occasion || !guests || !layout) return null;
@@ -41,6 +42,7 @@ export function InvitationPrintPage() {
   const useSheet = sheet && canSheet;
   const sheets = useSheet ? layoutSheets(chosen.map((g) => ({ key: g.id, size, hasBack: false })), 'none') : null;
   const byId = new Map(chosen.map((g) => [g.id, g]));
+  const pageCount = sheets ? sheets.pages.length : chosen.length;
   const render = (guestId: string) => {
     const g = byId.get(guestId)!;
     return (
@@ -61,7 +63,7 @@ export function InvitationPrintPage() {
         <h1>Einladungen drucken</h1>
         <div className="button-row">
           <button type="button" className="btn btn-primary" onClick={printCurrentPage} disabled={chosen.length === 0}>
-            Drucken / PDF
+            Drucken / PDF ({pageCount} {pageCount === 1 ? 'Seite' : 'Seiten'})
           </button>
           <Link className="btn btn-ghost" to={`/veranstaltungen/${occasion.id}?ansicht=einladungen`}>
             Zurück

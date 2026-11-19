@@ -3,13 +3,13 @@ import { encodeCardPayload } from '../domain/cardCode';
 import { createVault } from '../security/crypto';
 import { setDataKeyForTests } from '../security/session';
 import { createBackupFile, openBackupFile, restoreBackup, validatePayload } from './backup';
-import { createCards, listCards, updateCard } from './cards';
+import { createCards, listCards, reissueToken, updateCard } from './cards';
 import { VAULT_KEY, clearAllData, db } from './db';
 import { createGroup, ensureDefaultGroups, listGroups } from './groups';
 import { listPresentCards, listRecentEvents, processScan } from './scans';
 import { loadSettings, saveSettings } from './settings';
 import { addUnassigned, listUnassigned } from './unassigned';
-import { createSampleOccasion, listGuests, listOccasionLog, listOccasions, processOccasionScan } from './occasions';
+import { addGuest, createSampleOccasion, listGuests, listOccasionLog, listOccasions, processOccasionScan } from './occasions';
 import { encodeGuestPayload } from '../domain/cardCode';
 
 const FAST = 1000;
@@ -37,14 +37,18 @@ async function sampleData() {
   const occasion = await createSampleOccasion();
   const [guest] = await listGuests(occasion.id);
   await processOccasionScan(encodeGuestPayload(guest!.token), { occasionId: occasion.id, cooldownMs: 0, source: 'test' });
-  return { a: a!, b: b!, occasion, guest: guest! };
+  // Gast mit vorhandener Karte und eine Karte mit neuem QR-Code (alter Code wird erkannt)
+  await addGuest(occasion.id, { person: { firstName: 'Max', lastName: 'Mustermann' }, cardId: a!.id });
+  const oldTokenB = b!.token;
+  await reissueToken(b!.id);
+  return { a: a!, b: b!, occasion, guest: guest!, oldTokenB };
 }
 
 beforeEach(freshDevice);
 
 describe('Backup', () => {
   it('sichert alles verschlüsselt und stellt es vollständig wieder her', async () => {
-    const { a, occasion, guest } = await sampleData();
+    const { a, occasion, guest, oldTokenB } = await sampleData();
     const before = await listCards();
     const guestsBefore = await listGuests(occasion.id);
     const { blob, filename, summary } = await createBackupFile(PW, '0.5.0', FAST);
@@ -87,6 +91,9 @@ describe('Backup', () => {
     expect(JSON.stringify(await db.guests.toArray())).not.toContain('Mustermann');
     const again = await processOccasionScan(encodeGuestPayload(guest.token), { occasionId: occasion.id, cooldownMs: 0, source: 'test' });
     expect(again?.decision.reason).toBe('ALREADY_ADMITTED');
+    // Gast mit Karte und alte QR-Codes bleiben erhalten
+    expect((await listGuests(occasion.id)).find((g) => g.cardId)?.cardNumber).toBe(a.number);
+    expect((await processScan(encodeCardPayload(oldTokenB), opts)).decision.reason).toBe('OLD_CARD');
   });
 
   it('lehnt ein falsches Backup-Passwort ab', async () => {

@@ -188,6 +188,10 @@ Keine APK, keine Installation aus fremden Quellen, keine Cloud für Daten.
 
 - *Karten* → **Auswählen** → Karten antippen oder „Alle angezeigten“ → **Personendaten entfernen**
   (z. B. alle Besucherkarten des Tages freigeben), **Sperren**, **Entsperren**, **Drucken**, **Löschen**.
+- **Neue QR-Codes** (z. B. alle Karten neu ausgeben): nach einer deutlichen Rückfrage gelten die bisherigen
+  Karten sofort nicht mehr; die Karten sind wieder „noch nicht gedruckt“, **Jetzt drucken** öffnet den Druck.
+  Wird eine alte Karte gescannt, zeigt das Dashboard **„Alte Karte!“** mit Karte und Name (Gäste sehen nur
+  „Kein Zutritt“). Personendaten, Gruppen, Berechtigungen und Sperren bleiben unverändert.
 
 ### Einstellungen
 
@@ -307,7 +311,8 @@ etwas anzuklicken.
   an den Empfang“, ohne Name oder Foto.
 - **„Ersatzkarte ausstellen“**: neue Karte (nächste Nummer) mit Person, Berechtigung, Gültigkeit und
   Anwesenheit; danach direkt drucken. Die verlorene Karte bleibt gesperrt und verweist auf den Ersatz.
-- Alternativ **„Neuer QR-Code“**: gleiche Kartennummer, neu drucken – der alte Code ist ungültig.
+- Alternativ **„Neuer QR-Code“**: gleiche Kartennummer, neu drucken – der alte Code ist ungültig
+  (Scan zeigt **„Alte Karte!“**).
 - **„Wiedergefunden – entsperren“** hebt die Meldung auf.
 
 ### Veranstaltungen (einmalige Events)
@@ -321,12 +326,18 @@ Für Feiern, Empfänge, Tage der offenen Tür … – getrennt von der normalen 
   E-Mail, Notiz – einzeln oder per **CSV-Import** (Vorlage zum Herunterladen, Vorschau mit Fehlern).
   Jeder Gast hat eine Nummer und einen eigenen QR-Code (`ZE1:…`, verschieden von Ausweisen).
   Einladungen lassen sich stornieren; Personendaten liegen verschlüsselt auf dem Gerät.
+- **Bereits erfasste Personen** (mit Karte) erkennt **+ Gast** schon beim Tippen des Namens: **Einladung**
+  übernimmt die Daten (Einladung mit QR-Code), **„Karte M-001 gilt“** lässt die Person mit ihrer vorhandenen
+  Karte hinein – ohne Einladung, nur einmal, auch wenn Dienstausweise sonst nicht gelten. In der Liste steht
+  „Karte M-001“; Einladungsdruck, PDFs und Versandliste lassen diese Gäste aus. Verlorene/gesperrte Karten
+  und ein Personenwechsel auf der Karte werden abgewiesen; eine Ersatzkarte gilt weiter.
 - **„Einlass starten“** (je Gerät): oben erscheint ein **farbiges Band** mit der Veranstaltung, aus
   „Dashboard“ wird **„Einlass“**. Am Veranstaltungstag bietet das Dashboard den Start selbst an.
   - Jeder Einladungs-Code gilt **nur einmal**. Ein zweiter Scan zeigt **„Bereits eingelassen um …“**
     (orange). Stornierte Einladungen, Einladungen anderer Veranstaltungen und unbekannte Codes
     werden abgewiesen.
-  - **Dienstausweise** gelten standardmäßig nicht; je Veranstaltung einschaltbar.
+  - **Dienstausweise** gelten standardmäßig nicht; je Veranstaltung einschaltbar – dann ebenfalls **nur
+    einmal** je Veranstaltung („Bereits eingelassen um …“, **Zurücknehmen** macht den Ausweis wieder gültig).
   - Statusleiste: **Eingelassen · von · Quote · Noch offen · abgewiesen**; Reiter **Eingelassen /
     Noch offen / Abgewiesen**. Einladung vergessen → in „Noch offen“ **Einlassen**; nicht auf der
     Liste → **+ Gast nachtragen** (gleich einlassen). Fehlbedienung → **Zurücknehmen**.
@@ -451,7 +462,7 @@ Merge nach `main` automatisch gebaut.
 | „Alle ausbuchen“ | ✅ |
 | Verschlüsseltes Backup (Export/Import), CSV-Export für Excel | ✅ |
 | CSV-Import von Personenlisten mit Vorlage und Vorschau | ✅ |
-| Mehrfachauswahl: Personendaten entfernen, sperren, drucken, löschen | ✅ |
+| Mehrfachauswahl: Personendaten entfernen, sperren, drucken, löschen, neue QR-Codes | ✅ |
 | Präsentationsansicht für Gäste auf zweitem Bildschirm | ✅ |
 | Helles und dunkles Layout | ✅ |
 | Programm für Windows (Installationsdatei) und Linux (.deb, auch Raspberry Pi) | ✅ |

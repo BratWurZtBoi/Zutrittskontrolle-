@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseAppCode } from './cardCode';
 import { scannedCardPayload } from './keyboardScan';
 import {
+  findHolderMatches,
   admissionTimeline,
   decideGuestEntry,
   filterGuests,
@@ -87,5 +88,20 @@ describe('Kennzahlen und Listen', () => {
   it('Zeitverlauf in 15-Minuten-Schritten, lückenlos', () => {
     expect(admissionTimeline([t(2), t(5), t(40)]).map((b) => b.count)).toEqual([2, 0, 1]);
     expect(admissionTimeline([])).toEqual([]);
+  });
+});
+
+describe('Gast hinzufügen: vorhandene Personen erkennen', () => {
+  const card = (id: string, firstName: string, lastName: string) => ({ card: { id, number: id, blocked: false, holder: { firstName, lastName } } });
+  const all = [card('M-001', 'Max', 'Mustermann'), card('M-002', 'Erika', 'Musterfrau'), card('M-003', 'Jürgen', 'Müller'), { card: { id: 'B-001', number: 'B-001', blocked: false } }];
+
+  it('Nachname ab 2 Zeichen, Vorname schränkt ein, Umlaute egal, exakte Treffer zuerst', () => {
+    expect(findHolderMatches(all, { firstName: '', lastName: 'M' })).toEqual([]);
+    expect(findHolderMatches(all, { firstName: '', lastName: 'must' }).map((c) => c.card.id)).toEqual(['M-002', 'M-001']);
+    expect(findHolderMatches(all, { firstName: 'Ma', lastName: 'Must' }).map((c) => c.card.id)).toEqual(['M-001']);
+    expect(findHolderMatches(all, { firstName: 'jurgen', lastName: '' }).map((c) => c.card.id)).toEqual([]);
+    expect(findHolderMatches(all, { firstName: 'juergen', lastName: '' }).map((c) => c.card.id)).toEqual(['M-003']);
+    expect(findHolderMatches(all, { firstName: '', lastName: 'Mueller' }).map((c) => c.card.id)).toEqual(['M-003']);
+    expect(findHolderMatches([card('X', 'Max', 'Musterfrauenhaus'), card('Y', 'Max', 'Musterfrau')], { firstName: '', lastName: 'Musterfrau' }).map((c) => c.card.id)).toEqual(['Y', 'X']);
   });
 });

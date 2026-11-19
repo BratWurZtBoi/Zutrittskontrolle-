@@ -121,7 +121,7 @@ export function PrintPage() {
         <h1>Karten drucken</h1>
         <div className="button-row">
           <button type="button" className="btn btn-primary" onClick={print} disabled={!probe && list.length === 0}>
-            {probe ? 'Probeseite drucken' : 'Drucken / PDF'}
+            {probe ? 'Probeseite drucken' : `Drucken / PDF (${pageCount} ${pageCount === 1 ? 'Seite' : 'Seiten'})`}
           </button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
             Zurück
@@ -152,9 +152,11 @@ export function PrintPage() {
         <div className="segmented segmented-light" role="radiogroup" aria-label="Druckformat">
           <button type="button" role="radio" aria-checked={!cardPrinter} className={cardPrinter ? '' : 'active'} onClick={() => save({ cardPrintFormat: 'sheet' })}>
             A4-Bogen
+            <small className="seg-sub">mehrere Karten je Seite</small>
           </button>
           <button type="button" role="radio" aria-checked={cardPrinter} className={cardPrinter ? 'active' : ''} onClick={() => save({ cardPrintFormat: 'card-printer' })}>
             Kartendrucker
+            <small className="seg-sub">eine Karte je Seite</small>
           </button>
         </div>
         {anyBack && (
@@ -219,7 +221,7 @@ export function PrintPage() {
       <p className="muted no-print print-summary">
         {list.length} Karte(n) auf {pageCount} Seite(n).{' '}
         {cardPrinter
-          ? `Kartendrucker: jede Kartenseite auf einer eigenen Seite in Kartengröße${backMode === 'duplex' ? ' – Vorder- und Rückseite abwechselnd, im Druckdialog „beidseitig“ wählen' : ''}. Im Druckdialog den Kartendrucker und „Ränder: keine“ wählen.`
+          ? `Kartendrucker: jede Kartenseite auf einer eigenen Seite in Kartengröße – nur für Kartendrucker; für normale Drucker oben „A4-Bogen“ wählen${backMode === 'duplex' ? ' – Vorder- und Rückseite abwechselnd, im Druckdialog „beidseitig“ wählen' : ''}. Im Druckdialog den Kartendrucker und „Ränder: keine“ wählen.`
           : backMode === 'duplex'
             ? `Beidseitig: im Druckdialog „Beidseitig – an ${settings.cardPrintFlip === 'long' ? 'langer' : 'kurzer'} Kante wenden“ und Maßstab 100 % wählen. Erst eine Probeseite drucken.`
             : backMode === 'fold'

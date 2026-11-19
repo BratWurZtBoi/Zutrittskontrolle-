@@ -67,7 +67,7 @@ export const HINTS = {
     topic: 'karten-drucken',
   },
   occasionCards: {
-    text: 'Standardmäßig kommt beim Einlass nur hinein, wer eine Einladung hat. Mit Häkchen gelten zusätzlich die Dienstausweise (Karten). Sie werden im Einlass-Protokoll der Veranstaltung erfasst, nicht in der normalen Anwesenheit.',
+    text: 'Standardmäßig kommt beim Einlass nur hinein, wer auf der Gästeliste steht (Einladung oder „Karte … gilt“). Mit Häkchen gelten zusätzlich alle Dienstausweise (Karten) – jeder nur einmal. Erfasst wird im Einlass-Protokoll der Veranstaltung, nicht in der normalen Anwesenheit.',
     topic: 'einlass',
   },
   occasionEntry: {

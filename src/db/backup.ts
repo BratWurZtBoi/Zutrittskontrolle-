@@ -343,7 +343,10 @@ export async function restoreBackup(payload: BackupPayload): Promise<BackupSumma
   // 1. Verschlüsseln (außerhalb der Transaktion)
   const cards: CardRecord[] = await Promise.all(
     payload.cards.map(async (c) => {
-      const { holder, ...rest } = c;
+      const { holder, oldTokens, ...base } = c;
+      // alte QR-Codes (Index *oldTokens): nur Texte übernehmen
+      const old = Array.isArray(oldTokens) ? oldTokens.filter((t): t is string => typeof t === 'string').slice(-10) : [];
+      const rest = old.length ? { ...base, oldTokens: old } : base;
       if (!holder) return rest;
       return {
         ...rest,
